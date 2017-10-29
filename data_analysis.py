@@ -27,9 +27,30 @@ def create_connection(db_file, autocommit=False):
 
 
 def select_all_tags(conn):
+    """
+    Returns all tags
+
+    :param conn:
+    :return:
+    """
     sql = '''SELECT * FROM tags'''
     cur = conn.cursor()
     cur.execute(sql)
+    return cur.fetchall()
+
+
+def count_tag(conn, tag):
+    """
+    For a given tag, count the number of its occurrences in the `entries_tags` table
+
+    :param conn:
+    :return:
+    """
+    # Sanity check
+    assert type(tag) is tuple
+    sql = '''SELECT COUNT(name) FROM entries_tags WHERE name=?'''
+    cur = conn.cursor()
+    cur.execute(sql, tag)
     return cur.fetchone()
 
 
@@ -39,8 +60,18 @@ if __name__ == '__main__':
     with conn:
         # Analysis of Stackoverflow dev jobs postings
         # 1. Analysis of tags (technologies)
+        # Get all tags
+        tags = select_all_tags(conn)
         # For each tag, count how many they are
-        # Select the number of unique tags
-        n_tags = select_all_tags(conn)
+        tags_times = {}
+        for tag in tags:
+            # Since `tags` is a list of tuple
+            tag = tag[0]
+            n_times = count_tag(conn, (tag,))
+            tags_times[tag] = n_times
+
+        # Sort tags in order of decreasing occurrences (i.e. most popular at first)
+        sorted(tags_times.items(), key=lambda x: x[1], reverse=True)
+        ipdb.set_trace()
 
         # 2. Analysis of

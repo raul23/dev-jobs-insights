@@ -102,3 +102,6 @@ ENV/
 
 # Sqlite db
 *.sqlite
+
+# pickle files
+*.pkl
