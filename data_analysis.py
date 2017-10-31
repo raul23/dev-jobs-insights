@@ -1,8 +1,9 @@
+import os
 import sqlite3
 import ipdb
 
 
-DB_FILENAME = "feeds.sqlite"
+DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
 
 
 # TODO: utility function
@@ -59,6 +60,7 @@ if __name__ == '__main__':
     conn = create_connection(DB_FILENAME)
     with conn:
         # Analysis of Stackoverflow dev jobs postings
+
         # 1. Analysis of tags (technologies)
         # Get all tags
         tags = select_all_tags(conn)
@@ -71,7 +73,7 @@ if __name__ == '__main__':
             tags_times[tag] = n_times
 
         # Sort tags in order of decreasing occurrences (i.e. most popular at first)
-        sorted(tags_times.items(), key=lambda x: x[1], reverse=True)
         ipdb.set_trace()
+        sorted_tags = sorted(tags_times.items(), key=lambda x: x[1], reverse=True)
 
-        # 2. Analysis of
+        # 2. Analysis of salary
