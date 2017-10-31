@@ -1,7 +1,9 @@
 import os
 import pickle
+import re
 import sqlite3
 
+from forex_python.converter import convert, CurrencyCodes
 import ipdb
 
 
@@ -28,9 +30,15 @@ def create_connection(db_file, autocommit=False):
     return None
 
 
-def validate_value(value):
-    if "k" in value:
+def replace_letter(string):
+    regex = r"(?P<number>\d)k"
+    subst = "\g<number>000"
+    new_string = re.sub(regex, subst, string, 0)
+    return new_string
 
+
+def convert_currency(amount, target_currency="USD"):
+    return convert("", target_currency, amount)
 
 
 def append_items(prefix_item, input_items, output_items):
@@ -40,7 +48,11 @@ def append_items(prefix_item, input_items, output_items):
         for val in values:
             for v in val.split(","):
                 if name in ["company_size", "salary"]:
-
+                    ipdb.set_trace()
+                    v = replace_letter(v)
+                if name == "salary":
+                    ipdb.set_trace()
+                    pass
                 output_items.append((prefix_item, name, v))
 
 
