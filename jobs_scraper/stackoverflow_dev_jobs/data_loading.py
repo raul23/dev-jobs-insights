@@ -1,13 +1,16 @@
+import json
 import os
 import pickle
 import re
 import sqlite3
 
-from forex_python.converter import convert, CurrencyCodes
+from forex_python.converter import convert, get_symbol
 import ipdb
 
 
 DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
+CURRENCIES_FILENAME = os.path.expanduser("~/databases/currencies.json")
+CURRENCY_DATA = None
 
 
 # TODO: utility function
@@ -37,8 +40,47 @@ def replace_letter(string):
     return new_string
 
 
+def get_currency_code(currency_symbol):
+    # NOTE: there is a not 1-to-1 mapping when going from currency symbols
+    # to currency code
+    # e.g. the currency symbol £ is used for EGP, FKP, GDP, GIP, LBP, and SHP
+    #
+    # Sanity check for CURRENCY_DATA
+    assert CURRENCY_DATA is not None, "CURRENCY_DATA is None; not loaded with data."
+    results = [item for item in CURRENCY_DATA if item["symbol"] == currency_symbol]
+    if len(results) == 1:
+        # Found only one currency code associated with the given currency symbol
+        return results[0]
+    else:
+        # Two possible cases
+        # 1. Too many currency codes associated with the given currency symbol
+        # 2. It is not a currency symbol
+        if currency_symbol == "A$":  # Australian dollar
+            currency_code = "AUD"
+        elif currency_symbol == "C$":  # Canadian dollar
+            currency_code = "CAD"
+        else:
+            print("WARNING: Could not get a currency code from {}".format(currency_symbol))
+            return None
+        return currency_code
+
+
 def convert_currency(amount, target_currency="USD"):
-    return convert("", target_currency, amount)
+    ipdb.set_trace()
+    if "Equity" in amount:
+        return None
+    prefix_currency = re.search('^\D+', amount).group()
+    if get_symbol(prefix_currency) is None:
+        # `prefix_currency` is not a valid currency code. It might be a currency symbol
+        #
+        # Get currency code from possible currency symbol
+        currency_code = get_currency_code(prefix_currency)
+        if currency_code is None:
+            return None
+    else:
+        currency_code = prefix_currency
+    converted_amount = convert(currency_code, target_currency, amount)
+    return converted_amount
 
 
 def append_items(prefix_item, input_items, output_items):
@@ -48,16 +90,18 @@ def append_items(prefix_item, input_items, output_items):
         for val in values:
             for v in val.split(","):
                 if name in ["company_size", "salary"]:
-                    ipdb.set_trace()
                     v = replace_letter(v)
                 if name == "salary":
-                    ipdb.set_trace()
-                    pass
+                    if not v.startswith("$"):
+                        convert_currency(v)
                 output_items.append((prefix_item, name, v))
 
 
 if __name__ == '__main__':
     ipdb.set_trace()
+    with open(CURRENCIES_FILENAME) as f:
+        CURRENCIES_DATA = json.loads(f.read())
+
     conn = create_connection(DB_FILENAME)
     with conn:
         f = open("entries_data.pkl", "rb")
