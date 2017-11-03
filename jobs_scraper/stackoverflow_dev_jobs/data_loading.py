@@ -9,8 +9,10 @@ import ipdb
 
 
 DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
-CURRENCIES_FILENAME = os.path.expanduser("~/databases/currencies.json")
+CURRENCY_FILENAME = os.path.expanduser("~/databases/currencies.json")
 CURRENCY_DATA = None
+DEST_CURRENCY = "USD"
+DEST_SYMBOL = "$"
 
 
 # TODO: utility function
@@ -43,43 +45,44 @@ def replace_letter(string):
 def get_currency_code(currency_symbol):
     # NOTE: there is a not 1-to-1 mapping when going from currency symbols
     # to currency code
-    # e.g. the currency symbol £ is used for EGP, FKP, GDP, GIP, LBP, and SHP
+    # e.g. the currency symbol £ is used for the currency codes EGP, FKP, GDP,
+    # GIP, LBP, and SHP
     #
     # Sanity check for CURRENCY_DATA
     assert CURRENCY_DATA is not None, "CURRENCY_DATA is None; not loaded with data."
     results = [item for item in CURRENCY_DATA if item["symbol"] == currency_symbol]
     if len(results) == 1:
         # Found only one currency code associated with the given currency symbol
-        return results[0]
+        return results[0]["cc"]
     else:
         # Two possible cases
         # 1. Too many currency codes associated with the given currency symbol
-        # 2. It is not a currency symbol
+        # 2. It is not a valid currency symbol
         if currency_symbol == "A$":  # Australian dollar
             currency_code = "AUD"
         elif currency_symbol == "C$":  # Canadian dollar
             currency_code = "CAD"
+        elif currency_symbol == "£":  # We assume £ is always associated with the British pound
+            currency_code = "GBP"     # However, it could have been EGP, FKP, GIP, ...
         else:
             print("WARNING: Could not get a currency code from {}".format(currency_symbol))
             return None
         return currency_code
 
 
-def convert_currency(amount, target_currency="USD"):
-    ipdb.set_trace()
-    if "Equity" in amount:
-        return None
-    prefix_currency = re.search('^\D+', amount).group()
-    if get_symbol(prefix_currency) is None:
+def convert_currency(amount, base_currency, dest_currency="USD"):
+    # Sanity check on `amount`
+    assert type(amount) in [float, int], "amount is not of type int or float"
+    # Sanity check for `base_currency` to make sure it is a valid currency code
+    assert get_symbol(base_currency) is not None, "currency code '{}' is not a valid currency ".format(base_currency)
+    if get_symbol(base_currency) is None:
         # `prefix_currency` is not a valid currency code. It might be a currency symbol
         #
         # Get currency code from possible currency symbol
-        currency_code = get_currency_code(prefix_currency)
-        if currency_code is None:
+        base_currency = get_currency_code(base_currency)
+        if base_currency is None:
             return None
-    else:
-        currency_code = prefix_currency
-    converted_amount = convert(currency_code, target_currency, amount)
+    converted_amount = convert(base_currency, dest_currency, amount)
     return converted_amount
 
 
@@ -92,15 +95,57 @@ def append_items(prefix_item, input_items, output_items):
                 if name in ["company_size", "salary"]:
                     v = replace_letter(v)
                 if name == "salary":
-                    if not v.startswith("$"):
-                        convert_currency(v)
+                    # Get the min and max salary
+                    if "Equity" != v:
+                        min_salary, max_salary = get_min_max_salary(v)
+                        prefix_currency = re.search('^\D+', v).group()
+                        if not prefix_currency.startswith(DEST_SYMBOL):
+                            ipdb.set_trace()
+                            if get_symbol(prefix_currency) is None:
+                                base_currency_code = get_currency_code(prefix_currency)
+                                if base_currency_code is None:
+                                    base_currency_code = prefix_currency
+                            else:
+                                base_currency_code = prefix_currency
+                            min_salary = convert_currency(float(min_salary),
+                                                          base_currency=base_currency_code,
+                                                          dest_currency=DEST_CURRENCY)
+                            max_salary = convert_currency(float(max_salary),
+                                                          base_currency=base_currency_code,
+                                                          dest_currency=DEST_CURRENCY)
+                            output_items.append((prefix_item,
+                                                 "salary ({})".format(DEST_CURRENCY),
+                                                 "{}{} - {}".format(DEST_SYMBOL, min_salary, max_salary)))
+                            ipdb.set_trace()
+                        else:
+                            # Sanity check on `prefix_currency`
+                            assert prefix_currency == DEST_SYMBOL, \
+                                "'{}' is not equal to the destination symbol '{}'".format(prefix_currency, DEST_SYMBOL)
+                            base_currency_code = DEST_CURRENCY
+                        output_items.append((prefix_item,
+                                             "min salary ({})".format(DEST_CURRENCY),
+                                             min_salary))
+                        output_items.append((prefix_item,
+                                             "max salary ({})".format(DEST_CURRENCY),
+                                             max_salary))
+                        name = 'salary ({})'.format(base_currency_code)
                 output_items.append((prefix_item, name, v))
+
+
+def get_min_max_salary(salary_range):
+    # Sanity check for `salary_range`
+    assert "-" in salary_range, "salary range '{}' doesn't have a valid format".format(salary_range)
+    regex = r"(^\D+)(?P<number>\d+)"
+    subst = "\g<number>"
+    salary_range = re.sub(regex, subst, salary_range, 0)
+    min_salary, max_salary = salary_range.replace(" ", "").split("-")
+    return min_salary, max_salary
 
 
 if __name__ == '__main__':
     ipdb.set_trace()
-    with open(CURRENCIES_FILENAME) as f:
-        CURRENCIES_DATA = json.loads(f.read())
+    with open(CURRENCY_FILENAME) as f:
+        CURRENCY_DATA = json.loads(f.read())
 
     conn = create_connection(DB_FILENAME)
     with conn:
@@ -129,3 +174,17 @@ if __name__ == '__main__':
         cur.executemany("INSERT INTO job_perks (job_id, name, value) VALUES(?, ?, ?)", job_perks)
         cur.executemany("INSERT INTO job_overview (job_id, name, value) VALUES(?, ?, ?)", job_overview)
         conn.commit()
+
+"""
+$120k - 130k
+A$100k - 130k
+C$100k - 170k
+CHF 84k - 108k
+Equity
+NZD 80k - 100k
+RM72k - 96k
+zł13k - 19k
+£15k - 25k
+€30k - 49k
+₹1000k - 3000k
+"""
