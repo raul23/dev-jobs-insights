@@ -4,8 +4,9 @@ import pickle
 import re
 import sqlite3
 
-from forex_python.converter import convert, get_symbol
+from forex_python.converter import convert, get_symbol, RatesNotAvailableError
 import ipdb
+import requests
 
 
 DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
@@ -51,7 +52,10 @@ def get_currency_code(currency_symbol):
     # Sanity check for CURRENCY_DATA
     assert CURRENCY_DATA is not None, "CURRENCY_DATA is None; not loaded with data."
     results = [item for item in CURRENCY_DATA if item["symbol"] == currency_symbol]
-    if len(results) == 1:
+    # NOTE: C$ is used as a currency symbol for Canadian Dollar instead of $
+    # However, C$ is already the official currency symbol for Nicaragua Cordoba (NIO)
+    # Thus we will assume that C$ is related to the Canadian Dollar.
+    if currency_symbol != "C$" and len(results) == 1:
         # Found only one currency code associated with the given currency symbol
         return results[0]["cc"]
     else:
@@ -82,54 +86,77 @@ def convert_currency(amount, base_currency, dest_currency="USD"):
         base_currency = get_currency_code(base_currency)
         if base_currency is None:
             return None
-    converted_amount = convert(base_currency, dest_currency, amount)
+    try:
+        converted_amount = convert(base_currency, dest_currency, amount)
+    except RatesNotAvailableError:
+        ipdb.set_trace()
+        return None
+    except requests.exceptions.ConnectionError:
+        # When no connection to api.fixer.io (e.g. working offline)
+        # TODO: retrieve the rates beforehand, it is a lot quicker
+        # or at least cache the rates
+        converted_amount = amount * 1.25
+    converted_amount = int(round(converted_amount))
+    # TODO: save this note somewhere else
+    # NOTE: round(a, 2) doesn't work in python 2.7:
+    # >> a = 0.3333333
+    # >> round(a, 2),
+    # Use the following in python2.7:
+    # >> float(format(a, '.2f'))
     return converted_amount
 
 
-def append_items(prefix_item, input_items, output_items):
+def append_perks(prefix_item, input_items, output_items):
     for name, values in input_items.items():
+        name_orig = name
         if type(values) is not list:
             values = [values]
         for val in values:
             for v in val.split(","):
+                # Remove white spaces
+                v = v.strip()
                 if name in ["company_size", "salary"]:
                     v = replace_letter(v)
-                if name == "salary":
+                if name == "salary" and "Equity" != v:
                     # Get the min and max salary
-                    if "Equity" != v:
-                        min_salary, max_salary = get_min_max_salary(v)
-                        prefix_currency = re.search('^\D+', v).group()
-                        if not prefix_currency.startswith(DEST_SYMBOL):
-                            ipdb.set_trace()
-                            if get_symbol(prefix_currency) is None:
-                                base_currency_code = get_currency_code(prefix_currency)
-                                if base_currency_code is None:
-                                    base_currency_code = prefix_currency
-                            else:
+                    min_salary, max_salary = get_min_max_salary(v)
+                    # Remove trailing white spaces from searched string
+                    prefix_currency = re.search('^\D+', v).group().strip()
+                    # TODO: remove debugging
+                    #if prefix_currency == "C$":
+                    #    ipdb.set_trace()
+                    if not prefix_currency.startswith(DEST_SYMBOL):
+                        if get_symbol(prefix_currency) is None:
+                            base_currency_code = get_currency_code(prefix_currency)
+                            if base_currency_code is None:
                                 base_currency_code = prefix_currency
-                            min_salary = convert_currency(float(min_salary),
-                                                          base_currency=base_currency_code,
-                                                          dest_currency=DEST_CURRENCY)
-                            max_salary = convert_currency(float(max_salary),
-                                                          base_currency=base_currency_code,
-                                                          dest_currency=DEST_CURRENCY)
-                            output_items.append((prefix_item,
-                                                 "salary ({})".format(DEST_CURRENCY),
-                                                 "{}{} - {}".format(DEST_SYMBOL, min_salary, max_salary)))
-                            ipdb.set_trace()
                         else:
-                            # Sanity check on `prefix_currency`
-                            assert prefix_currency == DEST_SYMBOL, \
-                                "'{}' is not equal to the destination symbol '{}'".format(prefix_currency, DEST_SYMBOL)
-                            base_currency_code = DEST_CURRENCY
-                        output_items.append((prefix_item,
-                                             "min salary ({})".format(DEST_CURRENCY),
-                                             min_salary))
-                        output_items.append((prefix_item,
-                                             "max salary ({})".format(DEST_CURRENCY),
-                                             max_salary))
-                        name = 'salary ({})'.format(base_currency_code)
-                output_items.append((prefix_item, name, v))
+                            base_currency_code = prefix_currency
+                        min_salary = convert_currency(min_salary,
+                                                      base_currency=base_currency_code,
+                                                      dest_currency=DEST_CURRENCY)
+                        max_salary = convert_currency(max_salary,
+                                                      base_currency=base_currency_code,
+                                                      dest_currency=DEST_CURRENCY)
+                        if min_salary and max_salary:
+                            output_items["job_perks"].append((prefix_item,
+                                                              "salary ({})".format(DEST_CURRENCY),
+                                                              "{}{} - {}".format(DEST_SYMBOL, min_salary, max_salary)))
+                    else:
+                        # Sanity check on `prefix_currency`
+                        assert prefix_currency == DEST_SYMBOL, \
+                            "'{}' is not equal to the destination symbol '{}'".format(prefix_currency, DEST_SYMBOL)
+                        base_currency_code = DEST_CURRENCY
+                    if min_salary and max_salary:
+                        output_items["job_salary"].append((prefix_item,
+                                                           "min salary ({})".format(DEST_CURRENCY),
+                                                           min_salary))
+                        output_items["job_salary"].append((prefix_item,
+                                                           "max salary ({})".format(DEST_CURRENCY),
+                                                           max_salary))
+                    name = 'salary ({})'.format(base_currency_code)
+                output_items["job_perks"].append((prefix_item, name, v))
+                name = name_orig
 
 
 def get_min_max_salary(salary_range):
@@ -139,6 +166,8 @@ def get_min_max_salary(salary_range):
     subst = "\g<number>"
     salary_range = re.sub(regex, subst, salary_range, 0)
     min_salary, max_salary = salary_range.replace(" ", "").split("-")
+    min_salary = round(int(min_salary))
+    max_salary = round(int(max_salary))
     return min_salary, max_salary
 
 
@@ -155,9 +184,13 @@ if __name__ == '__main__':
 
         job_posts = []
         job_perks = []
+        job_salary = []
         job_overview = []
 
+        count = 1
         for k, v in data.items():
+            print(count)
+            count += 1
             id = k
             author = v['author']
             link = v['link']
@@ -165,14 +198,19 @@ if __name__ == '__main__':
             job_posts.append((id, author, link, location))
             perks = v['perks']
             overview_items = v['overview_items']
-            append_items(prefix_item=id, input_items=perks, output_items=job_perks)
-            append_items(prefix_item=id, input_items=overview_items, output_items=job_overview)
+            append_perks(prefix_item=id, input_items=perks, output_items={'job_perks': job_perks,
+                                                                          'job_salary': job_salary})
+            # TODO: uncomment when done with debugging
+            #append_overview(prefix_item=id, input_items=overview_items, output_items={'job_overview': job_overview})
 
         ipdb.set_trace()
         cur = conn.cursor()
-        cur.executemany("INSERT INTO job_posts VALUES(?, ?, ?, ?)", job_posts)
+        # TODO: uncomment when done with debugging
+        #cur.executemany("INSERT INTO job_posts VALUES(?, ?, ?, ?)", job_posts)
         cur.executemany("INSERT INTO job_perks (job_id, name, value) VALUES(?, ?, ?)", job_perks)
-        cur.executemany("INSERT INTO job_overview (job_id, name, value) VALUES(?, ?, ?)", job_overview)
+        cur.executemany("INSERT INTO job_salary (job_id, name, value) VALUES(?, ?, ?)", job_salary)
+        # TODO: uncomment when done with debugging
+        #cur.executemany("INSERT INTO job_overview (job_id, name, value) VALUES(?, ?, ?)", job_overview)
         conn.commit()
 
 """
