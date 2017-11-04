@@ -77,3 +77,10 @@ if __name__ == '__main__':
         sorted_tags = sorted(tags_times.items(), key=lambda x: x[1], reverse=True)
 
         # 2. Analysis of salary
+        # Average, Max, Min salary, STD
+        # Histogram: salary range and frequency, spot outliers (e.g. extremely low salary)
+        # Salary by country in USD
+        # Salary by US states
+        # Salary by job_overview: "Company size", "Company type", "Experience level",
+        #                         "Industry", "Job type", "Role"
+        # Salary by job_perks: "relocation", "remote", "salary", "visa"
