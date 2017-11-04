@@ -77,10 +77,16 @@ if __name__ == '__main__':
         sorted_tags = sorted(tags_times.items(), key=lambda x: x[1], reverse=True)
 
         # 2. Analysis of salary
-        # Average, Max, Min salary, STD
+        # Average, Max, Min salary, STD (mode, median)
         # Histogram: salary range and frequency, spot outliers (e.g. extremely low salary)
-        # Salary by country in USD
+        # Salary by country: location (job_posts), job post might not have location; lots
+        #                    of similar locations (e.g. Barcelona, Spanien and Barcelona, Spain or
+        #                    Montreal, QC, Canada and Montréal, QC, Canada)
         # Salary by US states
         # Salary by job_overview: "Company size", "Company type", "Experience level",
         #                         "Industry", "Job type", "Role"
         # Salary by job_perks: "relocation", "remote", "salary", "visa"
+        # Salary by tags: e.g. android, java, python
+
+        # 3. Analysis of locations
+        # Bar chart: locations (by countries and by US states) vs number of job posts
