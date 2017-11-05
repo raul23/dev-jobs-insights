@@ -79,6 +79,7 @@ if __name__ == '__main__':
         # 2. Analysis of salary
         # Average, Max, Min salary, STD (mode, median)
         # Histogram: salary range and frequency, spot outliers (e.g. extremely low salary)
+
         # Salary by country: location (job_posts), job post might not have location; lots
         #                    of similar locations (e.g. Barcelona, Spanien and Barcelona, Spain or
         #                    Montreal, QC, Canada and Montréal, QC, Canada)
