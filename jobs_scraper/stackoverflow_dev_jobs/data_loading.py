@@ -95,6 +95,7 @@ def convert_currency(amount, base_currency, dest_currency="USD"):
         # When no connection to api.fixer.io (e.g. working offline)
         # TODO: retrieve the rates beforehand, it is a lot quicker
         # or at least cache the rates
+        ipdb.set_trace()
         converted_amount = amount * 1.25
     converted_amount = int(round(converted_amount))
     # TODO: save this note somewhere else

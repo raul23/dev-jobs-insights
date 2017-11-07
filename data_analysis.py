@@ -2,6 +2,8 @@ import os
 import sqlite3
 import ipdb
 
+import numpy as np
+
 
 DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
 
@@ -40,6 +42,32 @@ def select_all_tags(conn):
     return cur.fetchall()
 
 
+def select_all_min_salaries(conn):
+    """
+    Returns all minimum salaries
+
+    :param conn:
+    :return:
+    """
+    sql = """SELECT value FROM job_salary WHERE name LIKE 'min%'"""
+    cur = conn.cursor()
+    cur.execute(sql)
+    return cur.fetchall()
+
+
+def select_all_max_salaries(conn):
+    """
+    Returns all maximum salaries
+
+    :param conn:
+    :return:
+    """
+    sql = """SELECT value FROM job_salary WHERE name LIKE 'max%'"""
+    cur = conn.cursor()
+    cur.execute(sql)
+    return cur.fetchall()
+
+
 def count_tag(conn, tag):
     """
     For a given tag, count the number of its occurrences in the `entries_tags` table
@@ -73,12 +101,19 @@ if __name__ == '__main__':
             tags_times[tag] = n_times
 
         # Sort tags in order of decreasing occurrences (i.e. most popular at first)
-        ipdb.set_trace()
         sorted_tags = sorted(tags_times.items(), key=lambda x: x[1], reverse=True)
+
+        ipdb.set_trace()
 
         # 2. Analysis of salary
         # Average, Max, Min salary, STD (mode, median)
         # Histogram: salary range and frequency, spot outliers (e.g. extremely low salary)
+        # Return list of maxmimum salary
+        max_salaries = select_all_max_salaries(conn)
+        # Return list of minimum salary
+        min_salaries = select_all_min_salaries(conn)
+        # Compute mid-range for each min-max interval
+        mid_ranges = np.hstack((min_salaries, max_salaries))
 
         # Salary by country: location (job_posts), job post might not have location; lots
         #                    of similar locations (e.g. Barcelona, Spanien and Barcelona, Spain or
