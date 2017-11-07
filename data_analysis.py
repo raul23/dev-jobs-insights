@@ -49,7 +49,7 @@ def select_all_min_salaries(conn):
     :param conn:
     :return:
     """
-    sql = """SELECT value FROM job_salary WHERE name LIKE 'min%'"""
+    sql = """SELECT job_id, value FROM job_salary WHERE name LIKE 'max%'"""
     cur = conn.cursor()
     cur.execute(sql)
     return cur.fetchall()
@@ -62,7 +62,7 @@ def select_all_max_salaries(conn):
     :param conn:
     :return:
     """
-    sql = """SELECT value FROM job_salary WHERE name LIKE 'max%'"""
+    sql = """SELECT job_id, value FROM job_salary WHERE name LIKE 'max%'"""
     cur = conn.cursor()
     cur.execute(sql)
     return cur.fetchall()
@@ -112,12 +112,18 @@ if __name__ == '__main__':
         max_salaries = select_all_max_salaries(conn)
         # Return list of minimum salary
         min_salaries = select_all_min_salaries(conn)
-        # Compute mid-range for each min-max interval
-        mid_ranges = np.hstack((min_salaries, max_salaries))
+        # Compute salary mid-range for each min-max interval
+        salary_ranges = np.hstack((min_salaries, max_salaries))
+        salary_mid_ranges = salary_ranges.mean()
+        # Compute salary mean on list of mid-ranges
+        global_mean_salary = salary_mid_ranges.mean()
+
+
 
         # Salary by country: location (job_posts), job post might not have location; lots
         #                    of similar locations (e.g. Barcelona, Spanien and Barcelona, Spain or
         #                    Montreal, QC, Canada and Montréal, QC, Canada)
+
         # Salary by US states
         # Salary by job_overview: "Company size", "Company type", "Experience level",
         #                         "Industry", "Job type", "Role"
