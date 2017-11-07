@@ -68,6 +68,38 @@ def select_all_max_salaries(conn):
     return cur.fetchall()
 
 
+def select_entries_tags(conn, job_ids):
+    # TODO: change function name
+    # Sanity check
+    assert type(job_ids) is tuple
+    sql = '''SELECT * FROM entries_tags WHERE id IN ({})'''
+    placeholders = list(len(job_ids)*"?")
+    placeholders = str(placeholders)
+    placeholders = placeholders.replace("[", "")
+    placeholders = placeholders.replace("]", "")
+    placeholders = placeholders.replace("'", "")
+    sql = sql.format(placeholders)
+    cur = conn.cursor()
+    cur.execute(sql, job_ids)
+    return cur.fetchall()
+
+
+def select_industries(conn, job_ids):
+    # Sanity check
+    assert type(job_ids) is tuple
+    # TODO: factorization, same code as select_entries_tags
+    sql = '''SELECT job_id, value FROM job_overview WHERE id IN ({})'''
+    placeholders = list(len(job_ids)*"?")
+    placeholders = str(placeholders)
+    placeholders = placeholders.replace("[", "")
+    placeholders = placeholders.replace("]", "")
+    placeholders = placeholders.replace("'", "")
+    sql = sql.format(placeholders)
+    cur = conn.cursor()
+    cur.execute(sql, job_ids)
+    return cur.fetchall()
+
+
 def count_tag(conn, tag):
     """
     For a given tag, count the number of its occurrences in the `entries_tags` table
@@ -94,6 +126,8 @@ if __name__ == '__main__':
         tags = select_all_tags(conn)
         # For each tag, count how many they are
         tags_times = {}
+        # TODO: optimization, too many requests to the db to get the count of each tag
+        # can you do it all in one request?
         for tag in tags:
             # Since `tags` is a list of tuple
             tag = tag[0]
@@ -102,8 +136,6 @@ if __name__ == '__main__':
 
         # Sort tags in order of decreasing occurrences (i.e. most popular at first)
         sorted_tags = sorted(tags_times.items(), key=lambda x: x[1], reverse=True)
-
-        ipdb.set_trace()
 
         # 2. Analysis of salary
         # Average, Max, Min salary, STD (mode, median)
@@ -120,6 +152,7 @@ if __name__ == '__main__':
         max_salaries = max_salaries[:, 1].astype(np.float64)
         # Sanity check on `job_ids_*`
         assert np.array_equal(job_ids_1, job_ids_2), "The two returned job_ids don't match"
+        # TODO: change name to job_ids_with_salary
         job_ids = job_ids_1
         del job_ids_2
 
@@ -127,11 +160,10 @@ if __name__ == '__main__':
         min_salaries = min_salaries.reshape((len(min_salaries), 1))
         max_salaries = max_salaries.reshape((len(max_salaries), 1))
 
-        ipdb.set_trace()
-
         # Compute salary mid-range for each min-max interval
         salary_ranges = np.hstack((min_salaries, max_salaries))
         salary_mid_ranges = salary_ranges.mean(axis=1)
+        job_id_to_salary_ranges = dict(zip(job_ids, salary_mid_ranges))
         # Compute salary mean across list of mid-range salaries
         global_mean_salary = salary_mid_ranges.mean()
         # Precision to two decimals
@@ -169,8 +201,6 @@ if __name__ == '__main__':
         max_job_id = job_ids[max_index]  # 155189
         """
 
-
-
         # Salary by country: location (job_posts), job post might not have location; lots
         #                    of similar locations (e.g. Barcelona, Spanien and Barcelona, Spain or
         #                    Montreal, QC, Canada and Montréal, QC, Canada)
@@ -178,9 +208,47 @@ if __name__ == '__main__':
         # Salary by US states
         # Salary by job_overview: "Company size", "Company type", "Experience level",
         #                         "Industry", "Job type", "Role"
+        # Get salary by industry (e.g. Animation, Cloud Computing, Finance)
+        # Select industries associated to job_id's with salaries
+        results = select_industries(conn, tuple(job_ids))
+        ipdb.set_trace()
+
+        # Get salary by job type (i.e. Contract, Internship, Permanent)
+
+        # Get salary by role (e.g. Backend Developer, Mobile Developer)
+
+        # Select job_id's with
         # Salary by job_perks: "relocation", "remote", "salary", "visa"
         # Salary by tags: e.g. android, java, python
+        # Select tags associated to job_id's with salaries
+        results = select_entries_tags(conn, tuple(job_ids))
+        results = np.array(results)
+        entries_job_ids = results[:, 0]
+        entries_tags = results[:, 1]
 
+        tags_salaries = {}
+        for job_id, tag in results:
+            tags_salaries.setdefault(tag, [0, 0, 0])
+            mid_range_salary = job_id_to_salary_ranges[job_id]
+            tags_salaries[tag][2] += 1  # update count
+            cum_sum = tags_salaries[tag][1]
+            tags_salaries[tag][0] = (cum_sum + mid_range_salary) / tags_salaries[tag][2]  # update average
+            tags_salaries[tag][1] += mid_range_salary  # update cumulative sum
+        temp_array = np.array([(k, v[0], v[2]) for k,v in tags_salaries.items()])
+        tags_with_salary = temp_array[:, 0]
+        salary_of_tags = temp_array[:, 1].astype(np.float64)
+        counts_of_tags = temp_array[:, 2].astype(np.int64)
+        del temp_array
+        sorted_indices = np.argsort(salary_of_tags)[::-1]
+        tags_with_salary = tags_with_salary[sorted_indices]
+        salary_of_tags = salary_of_tags[sorted_indices]
+        counts_of_tags = counts_of_tags[sorted_indices]
+        # Reshape min-max salaries arrays
+        ipdb.set_trace()
+        tags_with_salary = tags_with_salary.reshape((len(tags_with_salary), 1))
+        salary_of_tags = salary_of_tags.reshape((len(salary_of_tags), 1))
+        counts_of_tags = counts_of_tags.reshape((len(counts_of_tags), 1))
+        tags_salaries = np.hstack((tags_with_salary, salary_of_tags, counts_of_tags))
 
         # 3. Analysis of locations
         # Bar chart: locations (by countries and by US states) vs number of job posts
