@@ -2,6 +2,7 @@ import os
 import sqlite3
 import ipdb
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -233,7 +234,17 @@ if __name__ == '__main__':
         """
 
         # Histogram: salary range and frequency, spot outliers (e.g. extremely low salary)
+        # NOTE: histogram for continuous data
         # TODO: histogram for salary range, globally and in the USA only
+        # Compute number of bins
+        # TODO: get the second highest salary since the highest one is an outlier
+        n_bins = (salary_mid_ranges_sorted[-2] - global_min_salary)/10000.
+        ax = plt.gca()
+        # TODO: we remove the outlier corresponding to the highest value
+        ax.hist(salary_mid_ranges_sorted[:-1], bins=n_bins, color='r')
+        ax.set_xlabel('Mid-range salaries')
+        ax.set_ylabel('Frequency')
+        ax.set_title('Histogram: Mid-range salaries')
 
 
         # Salary by country: location (job_posts), job post might not have location; lots
@@ -268,6 +279,8 @@ if __name__ == '__main__':
                     elif location == "Schweiz":
                         location = "Switzerland"
                     else:
+                        # TODO: Add an assert to test that you are not getting a never seen location
+                        # maybe retrieve a list
                         pass
 
                     countries_salaries.setdefault(location, [0, 0, 0])
@@ -407,6 +420,7 @@ if __name__ == '__main__':
 
         # 3. Frequency analysis
         # 3.1 location analysis
+        # NOTE: bar chart for categorical data
         # Bar chart: locations (by countries and by US states) vs number of job posts
 
         # 3.2 tags analysis
