@@ -166,10 +166,46 @@ if __name__ == '__main__':
             # Since `tags` is a list of tuple
             tag = tag[0]
             n_times = count_tag(conn, (tag,))
-            tags_times[tag] = n_times
+            tags_times[tag] = n_times[0]
 
         # Sort tags in order of decreasing occurrences (i.e. most popular at first)
+        # NOTE: these are all the tags (even those that don't a salary associated
+        # with), i.e. do not confuse `sorted_tags` with `tags_with_salary`
+        # TODO: rename `sorted_tags` to `all_tags_sorted` to be able to differentiate it with `tags_with_salary`
+        # which refer only to tags that have a salary associated with
         sorted_tags = sorted(tags_times.items(), key=lambda x: x[1], reverse=True)
+        sorted_tags = np.array(sorted_tags)
+
+        # 3.1 location analysis
+        # NOTE: bar chart for categorical data
+        # Bar chart: locations (by countries and by US states) vs number of job posts
+        ipdb.set_trace()
+        ax = plt.gca()
+
+        """
+        index = np.arange(5)
+        values1 = [5, 7, 3, 4, 6]
+        plt.bar(index, values1)
+        plt.xticks(index, ['B', 'D', 'A', 'D', 'E'])
+        plt.show()
+        ipdb.set_trace()
+        """
+
+        index = np.arange(len(sorted_tags[:20, 0]))
+        plt.bar(index, sorted_tags[:20, 1].astype(np.int64))
+        plt.xticks(index, sorted_tags[:20, 0])
+        # TODO: we only have to call it once
+        ax.set_xlabel('Skills (tags)')
+        ax.set_ylabel('Number of jobs')
+        ax.set_title('Top 20 skills')
+        labels = ax.get_xticklabels()
+        plt.setp(labels, rotation=270.)
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(20))
+        ax.yaxis.set_minor_locator(ticker.MultipleLocator(10))
+        plt.grid(True, which="major")
+        plt.tight_layout()
+        plt.show()
+        ipdb.set_trace()
 
         # 2. Analysis of salary
         # Average, Max, Min salary, STD (mode, median)
@@ -239,7 +275,6 @@ if __name__ == '__main__':
         # TODO: histogram for salary range, globally and in the USA only
         # Compute number of bins
         # TODO: get the second highest salary since the highest one is an outlier
-        ipdb.set_trace()
         # TODO: do we use np.int32 or np.int64?
         n_bins = np.ceil((salary_mid_ranges_sorted[-2] - global_min_salary)/10000.).astype(np.int64)
         ax = plt.gca()
@@ -249,16 +284,16 @@ if __name__ == '__main__':
         ax.set_ylabel('Number of jobs')
         ax.set_title('Histogram: Mid-range salaries')
         ax.xaxis.set_major_locator(ticker.MultipleLocator(10000))
-        #ax.xaxis.set_major_locator(ticker.MultipleLocator(5000))
+        #ax.xaxis.set_major_locator(ticker.MultipleLocator(10000))
         ax.yaxis.set_major_locator(ticker.MultipleLocator(5))
         ax.yaxis.set_minor_locator(ticker.MultipleLocator(1))
+        plt.xlim(0, salary_mid_ranges_sorted[-2])
         labels = ax.get_xticklabels()
         plt.setp(labels, rotation=270.)
         plt.grid(True, which='major')
-        plt.show()
-        ipdb.set_trace()
-
-
+        plt.tight_layout()
+        # TODO: add function to save image instead of showing it
+        #plt.show()
 
         # Salary by country: location (job_posts), job post might not have location; lots
         #                    of similar locations (e.g. Barcelona, Spanien and Barcelona, Spain or
@@ -429,11 +464,10 @@ if __name__ == '__main__':
         tags_salaries = np.hstack((tags_with_salary, salary_of_tags, counts_of_tags))
 
         # 3. Frequency analysis
-        # 3.1 location analysis
-        # NOTE: bar chart for categorical data
-        # Bar chart: locations (by countries and by US states) vs number of job posts
 
         # 3.2 tags analysis
+        # Bar chart: tags vs number of job posts
+        # TODO: maybe take the first top 20 tags because there are so many tags they will not all fit
 
         # 3.3.
 
