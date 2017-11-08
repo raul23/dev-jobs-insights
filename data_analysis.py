@@ -3,6 +3,7 @@ import sqlite3
 import ipdb
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 
 
@@ -238,13 +239,25 @@ if __name__ == '__main__':
         # TODO: histogram for salary range, globally and in the USA only
         # Compute number of bins
         # TODO: get the second highest salary since the highest one is an outlier
-        n_bins = (salary_mid_ranges_sorted[-2] - global_min_salary)/10000.
+        ipdb.set_trace()
+        # TODO: do we use np.int32 or np.int64?
+        n_bins = np.ceil((salary_mid_ranges_sorted[-2] - global_min_salary)/10000.).astype(np.int64)
         ax = plt.gca()
         # TODO: we remove the outlier corresponding to the highest value
         ax.hist(salary_mid_ranges_sorted[:-1], bins=n_bins, color='r')
         ax.set_xlabel('Mid-range salaries')
-        ax.set_ylabel('Frequency')
+        ax.set_ylabel('Number of jobs')
         ax.set_title('Histogram: Mid-range salaries')
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(10000))
+        #ax.xaxis.set_major_locator(ticker.MultipleLocator(5000))
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(5))
+        ax.yaxis.set_minor_locator(ticker.MultipleLocator(1))
+        labels = ax.get_xticklabels()
+        plt.setp(labels, rotation=270.)
+        plt.grid(True, which='major')
+        plt.show()
+        ipdb.set_trace()
+
 
 
         # Salary by country: location (job_posts), job post might not have location; lots
@@ -256,7 +269,6 @@ if __name__ == '__main__':
         # Process locations to extract countries or US states
         countries_salaries = {}
         us_states_salaries = {}
-        ipdb.set_trace()
         for job_id, location in results:
             # Check if No location given
             if location in [None, "No office location"]:
@@ -311,7 +323,6 @@ if __name__ == '__main__':
                     countries_salaries[location][0] = (cum_sum + mid_range_salary) / countries_salaries[location][2]  # update average
                     countries_salaries[location][1] += mid_range_salary  # update cumulative sum
 
-        ipdb.set_trace()
         temp_array_1 = np.array([(k, v[0], v[2]) for k, v in countries_salaries.items()])
         temp_array_2 = np.array([(k, v[0], v[2]) for k, v in us_states_salaries.items()])
 
@@ -385,7 +396,6 @@ if __name__ == '__main__':
         salary_of_roles = salary_of_roles.reshape((len(salary_of_roles), 1))
         counts_of_roles = counts_of_roles.reshape((len(counts_of_roles), 1))
         roles_salaries = np.hstack((roles_with_salary, salary_of_roles, counts_of_roles))
-        ipdb.set_trace()
 
         # Salary by tags: e.g. android, java, python
         # Select tags associated to job_id's with salaries
