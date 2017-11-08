@@ -149,7 +149,21 @@ def count_tag(conn, tag):
     return cur.fetchone()
 
 
+def count_location_occurences(conn):
+    """
+    For a given location, count the number of its occurrences in the `job_posts` table
+
+    :param conn:
+    :return:
+    """
+    sql = '''SELECT location, COUNT(*) as CountOf from job_posts GROUP BY location ORDER BY CountOf DESC'''
+    cur = conn.cursor()
+    cur.execute(sql)
+    return cur.fetchall()
+
+
 if __name__ == '__main__':
+    # TODO: don't forget to delete big variables if you don't use it anymore
     ipdb.set_trace()
     conn = create_connection(DB_FILENAME)
     with conn:
@@ -159,8 +173,10 @@ if __name__ == '__main__':
         # Get all tags
         tags = select_all_tags(conn)
         # For each tag, count how many they are
+        # TODO: rename `tags_times` to `tags_to_count`
         tags_times = {}
         # TODO: optimization, too many requests to the db to get the count of each tag
+        # Solution: select name, count(name) as CountOf from entries_tags group by name ORDER BY CountOf DESC
         # can you do it all in one request?
         for tag in tags:
             # Since `tags` is a list of tuple
@@ -173,31 +189,145 @@ if __name__ == '__main__':
         # with), i.e. do not confuse `sorted_tags` with `tags_with_salary`
         # TODO: rename `sorted_tags` to `all_tags_sorted` to be able to differentiate it with `tags_with_salary`
         # which refer only to tags that have a salary associated with
+        # TODO: delete `tags_times`
         sorted_tags = sorted(tags_times.items(), key=lambda x: x[1], reverse=True)
         sorted_tags = np.array(sorted_tags)
 
         # 3.1 location analysis
         # NOTE: bar chart for categorical data
         # Bar chart: locations (by countries and by US states) vs number of job posts
-        ipdb.set_trace()
+        # Get number of job posts for each location
+        results = count_location_occurences(conn)
+        # Process results
+        countries_to_count = {}
+        us_states_to_count = {}
+        # TODO: make sure that all US states are valid
+        for location, count in results:
+            # TODO: factorization, same code as in location-salary case
+            # Check if No location given
+            if location in [None, "No office location"]:
+                continue
+            else:
+                # Get country or US state
+                last_part = location.split(",")[-1].strip()
+                location = last_part
+                # Is it a country or a US state?
+                if len(last_part) > 2 or last_part == "UK":
+                    # It is a country
+                    # Check for similar countries written in other languages
+                    if location == "Deutschland":
+                        location = "Germany"
+                    elif location == "Spanien":
+                        location = "Spain"
+                    elif location == "Österreich":
+                        location = "Austria"
+                    elif location == "Schweiz":
+                        location = "Switzerland"
+                    else:
+                        # TODO: Add an assert to test that you are not getting a never seen location
+                        # maybe retrieve a list
+                        pass
+                    countries_to_count.setdefault(location, 0)
+                    countries_to_count[location] += count
+                else:
+                    # It is a US state
+                    # TODO: factorization, same code as for the if case (the countries case)
+                    us_states_to_count.setdefault(location, 0)
+                    us_states_to_count[location] += count
+
+                    # Add the US state to the countries dict also
+                    # TODO: factorization, same code as for the US states (see previously)
+                    location = "USA"
+                    countries_to_count.setdefault(location, 0)
+                    countries_to_count[location] += count
+        sorted_countries_count = sorted(countries_to_count.items(), key=lambda x: x[1], reverse=True)
+        sorted_countries_count = np.array(sorted_countries_count)
+        sorted_us_states_count = sorted(us_states_to_count.items(), key=lambda x: x[1], reverse=True)
+        sorted_us_states_count = np.array(sorted_us_states_count)
+
+        # TODO: don't forget that we removed the 'No office location' and Null values
+
+
+        # 5. Add locations on a map of the World
+        # Case 1: US states
+
+
+        # Case 2: Countries
+
+
+        # Bar chart: countries vs number of job posts
+        # TODO: uncomment to plot bar chart
+        """
         ax = plt.gca()
-
-        """
-        index = np.arange(5)
-        values1 = [5, 7, 3, 4, 6]
-        plt.bar(index, values1)
-        plt.xticks(index, ['B', 'D', 'A', 'D', 'E'])
+        index = np.arange(len(sorted_countries_count))
+        plt.bar(index, sorted_countries_count[:, 1].astype(np.int64))
+        plt.xticks(index, sorted_countries_count[:, 0])
+        ax.set_xlabel('Countries')
+        ax.set_ylabel('Number of jobs')
+        ax.set_title("Countries popularity")
+        labels = ax.get_xticklabels()
+        plt.setp(labels, rotation=270.)
+        plt.tight_layout()
         plt.show()
-        ipdb.set_trace()
         """
 
+        # Pie chart: countries vs number of jobs
+        # TODO: add other countries for countries with few job posts
+        # TODO: add % for each country
+        # TODO: uncomment to plot pie chart
+        """
+        ax = plt.gca()
+        values = sorted_countries_count[:, 1].astype(np.int64)
+        labels = sorted_countries_count[:, 0]
+        plt.pie(values, labels=labels, autopct='%1.1f%%')
+        ax.set_title("Countries popularity by number of job posts")
+        plt.axis('equal')
+        plt.show()
+        """
+
+        ipdb.set_trace()
+
+        # Bar chart: us states vs number of job posts
+        ax = plt.gca()
+        index = np.arange(len(sorted_us_states_count))
+        plt.bar(index, sorted_us_states_count[:, 1].astype(np.int64))
+        plt.xticks(index, sorted_us_states_count[:, 0])
+        ax.set_xlabel('US states')
+        ax.set_ylabel('Number of jobs')
+        ax.set_title("US states popularity")
+        labels = ax.get_xticklabels()
+        plt.setp(labels, rotation=270.)
+        plt.tight_layout()
+        plt.show()
+
+        ipdb.set_trace()
+
+        # Pie chart: US states vs number of jobs
+        # TODO: add other US states for US states with few job posts
+        # TODO: add % for each US state
+        ax = plt.gca()
+        values = sorted_us_states_count[:, 1].astype(np.int64)
+        labels = sorted_us_states_count[:, 0]
+        plt.pie(values, labels=labels, autopct='%1.1f%%')
+        ax.set_title("US states popularity by number of job posts")
+        plt.axis('equal')
+        plt.show()
+
+        ipdb.set_trace()
+
+        # 3.2 tags analysis
+        # Bar chart: tags vs number of job posts
+        # TODO: maybe take the first top 20 tags because there are so many tags they will not all fit
+        ipdb.set_trace()
+        # TODO: we only have to call it once
+        ax = plt.gca()
+        # TODO: the top X should be a param
         index = np.arange(len(sorted_tags[:20, 0]))
         plt.bar(index, sorted_tags[:20, 1].astype(np.int64))
         plt.xticks(index, sorted_tags[:20, 0])
-        # TODO: we only have to call it once
         ax.set_xlabel('Skills (tags)')
         ax.set_ylabel('Number of jobs')
-        ax.set_title('Top 20 skills')
+        ax.set_title('Top 20 most popular skills')
         labels = ax.get_xticklabels()
         plt.setp(labels, rotation=270.)
         ax.yaxis.set_major_locator(ticker.MultipleLocator(20))
@@ -314,6 +444,7 @@ if __name__ == '__main__':
                 # Is it a country or a US state?
                 if len(last_part) > 2 or last_part == "UK":
                     # It is a country
+                    # TODO: the following line is also in the else and should be place before the current if
                     location = last_part
 
                     # Check for similar countries written in other languages
@@ -464,13 +595,14 @@ if __name__ == '__main__':
         tags_salaries = np.hstack((tags_with_salary, salary_of_tags, counts_of_tags))
 
         # 3. Frequency analysis
-
-        # 3.2 tags analysis
-        # Bar chart: tags vs number of job posts
-        # TODO: maybe take the first top 20 tags because there are so many tags they will not all fit
-
-        # 3.3.
-
+        # TODO: bring all code here
 
         # 4. Analysis of industries and tags
         # For each industries, get all tags that are related to the given industry
+
+        # 5. Add locations on a map of the World
+        # TODO; bring all code here
+        # Case 1: US states
+
+
+        # Case 2: Countries
