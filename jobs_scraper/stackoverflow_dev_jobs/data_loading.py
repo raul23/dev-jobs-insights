@@ -195,6 +195,8 @@ if __name__ == '__main__':
             id = k
             author = v['author']
             link = v['link']
+            # `location` can have two locations in one separated by ;
+            # e.g. Teunz, Germany; Kastl, Germany
             location = v['location']
             job_posts.append((id, author, link, location))
             perks = v['perks']
