@@ -1,3 +1,6 @@
+"""
+Data analysis of Stackoverflow developer jobs postings
+"""
 import os
 import pickle
 import sqlite3
@@ -141,6 +144,7 @@ def select_locations(conn, job_ids):
     return cur.fetchall()
 
 
+# TODO: not used anymore
 def count_tag(conn, tag):
     """
     For a given tag, count the number of its occurrences in the `entries_tags` table
@@ -156,85 +160,96 @@ def count_tag(conn, tag):
     return cur.fetchone()
 
 
-def count_location_occurences(conn):
+def count_tag_occurrences(conn):
     """
-    For a given location, count the number of its occurrences in the `job_posts` table
+    For a given tag, count the number of its occurrences in the `entries_tags` table
 
-    :param conn:
-    :return:
+    :param conn: sqlite3.Connection object
+    :return: list of tuples of the form (tag_name, count)
     """
-    sql = '''SELECT location, COUNT(*) as CountOf from job_posts GROUP BY location ORDER BY CountOf DESC'''
+    sql = '''SELECT name, COUNT(name) as CountOf FROM entries_tags GROUP BY name ORDER BY CountOf DESC'''
     cur = conn.cursor()
     cur.execute(sql)
     return cur.fetchall()
 
 
-def count_industry_occurences(conn):
+def count_location_occurrences(conn):
+    """
+    For a given location, count the number of its occurrences in the `job_posts` table
+
+    :param conn: sqlite3.Connection object
+    :return: list of tuples of the form (location, count)
+    """
+    sql = '''SELECT location, COUNT(*) as CountOf FROM job_posts GROUP BY location ORDER BY CountOf DESC'''
+    cur = conn.cursor()
+    cur.execute(sql)
+    return cur.fetchall()
+
+
+def count_industry_occurrences(conn):
     """
     For a given industry, count the number of its occurrences in the `job_overview` table
 
     :param conn:
     :return:
     """
-    sql = '''SELECT value, COUNT(*) as CountOf from job_overview WHERE name='Industry' GROUP BY value ORDER BY CountOf DESC'''
+    sql = '''SELECT value, COUNT(*) as CountOf FROM job_overview WHERE name='Industry' GROUP BY value ORDER BY CountOf DESC'''
     cur = conn.cursor()
     cur.execute(sql)
     return cur.fetchall()
 
 
+def process_locations():
+    pass
+
+
 if __name__ == '__main__':
-    # TODO: don't forget to delete big variables if you don't use it anymore
-    ipdb.set_trace()
+    # TODO: don't forget to delete big variables if you don't use them anymore
     conn = create_connection(DB_FILENAME)
     with conn:
-        # Analysis of Stackoverflow dev jobs postings
-
-        # 1. Analysis of tags (technologies)
-        # Get all tags
-        tags = select_all_tags(conn)
-        # For each tag, count how many they are
-        # TODO: rename `tags_times` to `tags_to_count`
-        tags_times = {}
-        # TODO: optimization, too many requests to the db to get the count of each tag
-        # Solution: select name, count(name) as CountOf from entries_tags group by name ORDER BY CountOf DESC
-        # can you do it all in one request?
-        for tag in tags:
-            # Since `tags` is a list of tuple
-            tag = tag[0]
-            n_times = count_tag(conn, (tag,))
-            tags_times[tag] = n_times[0]
-
-        # Sort tags in order of decreasing occurrences (i.e. most popular at first)
+        # 1. Tags analysis (i.e. technologies such as java, python)
+        # Get counts of tags, i.e. for each tag we want to know its number of
+        # occurrences in job postings
+        results = count_tag_occurrences(conn)
+        # Convert the result (from the SQL SELECT request) as a dict
+        results = dict(results)
+        # Sort tags in order of decreasing number of occurrences (i.e. most
+        # popular at first)
         # NOTE: these are all the tags (even those that don't a salary associated
-        # with), i.e. do not confuse `sorted_tags` with `tags_with_salary`
-        # TODO: rename `sorted_tags` to `all_tags_sorted` to be able to differentiate it with `tags_with_salary`
-        # which refer only to tags that have a salary associated with
-        # TODO: delete `tags_times`
-        sorted_tags = sorted(tags_times.items(), key=lambda x: x[1], reverse=True)
-        sorted_tags = np.array(sorted_tags)
+        # with), i.e. do not confuse `all_tags_sorted` with `tags_with_salary`
+        all_tags_sorted_tags = sorted(results.items(), key=lambda x: x[1], reverse=True)
+        all_tags_sorted_tags = np.array(all_tags_sorted_tags)
 
-        # 3.1 location analysis
-        # NOTE: bar chart for categorical data
-        # Bar chart: locations (by countries and by US states) vs number of job posts
-        # Get number of job posts for each location
-        results = count_location_occurences(conn)
-        # Process results
+        # 2. Locations analysis
+        # Get counts of job posts for each location
+        results = count_location_occurrences(conn)
+        # Process the results
         countries_to_count = {}
         us_states_to_count = {}
         # TODO: make sure that all US states are valid
+        ipdb.set_trace()
         for location, count in results:
             # TODO: factorization, same code as in location-salary case
-            # Check if No location given
+            # Check if 'No location' or empty for the location
             if location in [None, "No office location"]:
                 continue
             else:
-                # Get country or US state
+                # Get country or US state the location string
+                # NOTE: in most cases, location is of the form 'Berlin, Germany'
+                # where country is given at the end after the comma
                 last_part = location.split(",")[-1].strip()
                 location = last_part
-                # Is it a country or a US state?
+                # Is the location refers to a country or a US state?
+                # NOTE: the location can refer to a country (e.g. Seongnam-si, South Korea)
+                # or to a US state (e.g. Portland, OR). Usually, if the last
+                # part of the location string consist of two letter in capital,
+                # it refers to a US state; however must take into account 'UK'
                 if len(last_part) > 2 or last_part == "UK":
-                    # It is a country
-                    # Check for similar countries written in other languages
+                    # The location string refers to a country
+                    # Check for similar countries written in other languages,
+                    # and keep only the english version only
+                    # NOTE: sometimes, a country is given in English or another
+                    # language, e.g. Deutschland and Germany
                     if location == "Deutschland":
                         location = "Germany"
                     elif location == "Spanien":
@@ -409,6 +424,7 @@ if __name__ == '__main__':
         ipdb.set_trace()
         """
 
+        # NOTE: bar charts are for categorical data
         # Bar chart: countries vs number of job posts
         # TODO: uncomment to plot bar chart
         """
@@ -783,7 +799,7 @@ if __name__ == '__main__':
         # Get number of job posts for each industry
         # TODO: specify that the results are already sorted in decreasing order of industry's count, i.e.
         # from the most popular industry to the least one
-        results = count_industry_occurences(conn)
+        results = count_industry_occurrences(conn)
         # TODO: Process the results by summing the similar industries (e.g. Software Development with
         # Software Development / Engineering or eCommerce with E-Commerce)
         # TODO: use Software Development instead of the longer Software Development / Engineering
