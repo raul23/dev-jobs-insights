@@ -765,18 +765,17 @@ if __name__ == '__main__':
         # tag
         # TODO: specify that this is only for tags that have a salary, there are alot more tags that don't have a salary
         # TODO: uncomment
-        #"""
-        ipdb.set_trace()
+        # TODO: removed the outlier, salary_of_tags[2:]
+        """
         plotly.offline.plot({
-            "data": [Scatter(x=list(counts_of_tags.flatten()),
-                             y=list(salary_of_tags.flatten()),
+            "data": [Scatter(x=list(counts_of_tags[2:].flatten()),
+                             y=list(salary_of_tags[2:].flatten()),
                              mode='markers',
-                             text=list(tags_with_salary.flatten()))],
+                             text=list(tags_with_salary[2:].flatten()))],
             "layout": Layout(title="Average mid-range salary of programming skills", hovermode='closest',
                              yaxis=dict(tickformat="$0.0f"))
         })
-        #"""
-        ipdb.set_trace()
+        """
 
         # 3.X Industries analysis
         # Bar chart: industries vs number of job posts
@@ -809,10 +808,23 @@ if __name__ == '__main__':
         # TODO: uncomment
         #plt.show()
 
+        # Scatter plot: on the x-axis we have the number of job posts for a given
+        # industry and on the y-axis we have the average mid-range salary for the given
+        # industry
+        # TODO: specify that this is only for tags that have a salary, there are alot more tags that don't have a salary
+        # TODO: uncomment
+        # TODO: removed the outlier, salary_of_industries[1:]
+        """
+        plotly.offline.plot({
+            "data": [Scatter(x=list(counts_of_industries[1:].flatten()),
+                             y=list(salary_of_industries[1:].flatten()),
+                             mode='markers',
+                             text=list(industries_with_salary[1:].flatten()))],
+            "layout": Layout(title="Average mid-range salary of industries", hovermode='closest',
+                             yaxis=dict(tickformat="$0.0f"))
+        })
+        """
         ipdb.set_trace()
-
-        # Scatter plot:
-
 
 
         # 3. Frequency analysis
