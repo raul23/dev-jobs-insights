@@ -779,17 +779,23 @@ if __name__ == '__main__':
         # Bar chart: industries vs number of job posts
         # NOTE: these are all the industries even those that don't have a salary associated with
         # Get number of job posts for each industry
-        results = count_location_occurences(conn)
+        # TODO: specify that the results are already sorted in decreasing order of industry's count, i.e.
+        # from the most popular industry to the least one
+        results = count_industry_occurences(conn)
+        # TODO: Process the results by summing the similar industries (e.g. Software Development with
+        # Software Development / Engineering or eCommerce with E-Commerce)
+        results = np.array(results)
         # TODO: maybe take the first top 20 tags because there are so many industries they will not all fit
         # TODO: we only have to call it once
+        ipdb.set_trace()
         ax = plt.gca()
         # TODO: the top X should be a param
-        index = np.arange(len(sorted_tags[:20, 0]))
-        plt.bar(index, sorted_tags[:20, 1].astype(np.int64))
-        plt.xticks(index, sorted_tags[:20, 0])
-        ax.set_xlabel('Skills (tags)')
+        index = np.arange(len(results[:20, 0]))
+        plt.bar(index, results[:20, 1].astype(np.int64))
+        plt.xticks(index, results[:20, 0])
+        ax.set_xlabel('Industries')
         ax.set_ylabel('Number of jobs')
-        ax.set_title('Top 20 most popular skills')
+        ax.set_title('Top 20 most popular industries')
         labels = ax.get_xticklabels()
         plt.setp(labels, rotation=270.)
         ax.yaxis.set_major_locator(ticker.MultipleLocator(20))
@@ -798,6 +804,8 @@ if __name__ == '__main__':
         plt.tight_layout()
         # TODO: uncomment
         #plt.show()
+
+        # Histogram:
 
 
 # 3. Frequency analysis
