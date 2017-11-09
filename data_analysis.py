@@ -765,15 +765,18 @@ if __name__ == '__main__':
         # tag
         # TODO: specify that this is only for tags that have a salary, there are alot more tags that don't have a salary
         # TODO: uncomment
-        """
+        #"""
+        ipdb.set_trace()
         plotly.offline.plot({
             "data": [Scatter(x=list(counts_of_tags.flatten()),
                              y=list(salary_of_tags.flatten()),
                              mode='markers',
                              text=list(tags_with_salary.flatten()))],
-            "layout": Layout(title="Average mid-range salary of programming skills", hovermode='closest')
+            "layout": Layout(title="Average mid-range salary of programming skills", hovermode='closest',
+                             yaxis=dict(tickformat="$0.0f"))
         })
-        """
+        #"""
+        ipdb.set_trace()
 
         # 3.X Industries analysis
         # Bar chart: industries vs number of job posts
@@ -784,6 +787,7 @@ if __name__ == '__main__':
         results = count_industry_occurences(conn)
         # TODO: Process the results by summing the similar industries (e.g. Software Development with
         # Software Development / Engineering or eCommerce with E-Commerce)
+        # TODO: use Software Development instead of the longer Software Development / Engineering
         results = np.array(results)
         # TODO: maybe take the first top 20 tags because there are so many industries they will not all fit
         # TODO: we only have to call it once
@@ -805,18 +809,21 @@ if __name__ == '__main__':
         # TODO: uncomment
         #plt.show()
 
-        # Histogram:
+        ipdb.set_trace()
+
+        # Scatter plot:
 
 
-# 3. Frequency analysis
-# TODO: bring all code here
 
-# 4. Analysis of industries and tags
-# For each industries, get all tags that are related to the given industry
+        # 3. Frequency analysis
+        # TODO: bring all code here
 
-# 5. Add locations on a map of the World
-# TODO; bring all code here
-# Case 1: US states
+        # 4. Analysis of industries and tags
+        # For each industries, get all tags that are related to the given industry
+
+        # 5. Add locations on a map of the World
+        # TODO; bring all code here
+        # Case 1: US states
 
 
-# Case 2: Countries
+        # Case 2: Countries
