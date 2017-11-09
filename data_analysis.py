@@ -1,9 +1,14 @@
 import os
+import pickle
 import sqlite3
+import time
 import ipdb
 
+import geopy
+from geopy.geocoders import Nominatim
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from mpl_toolkits.basemap import Basemap
 import numpy as np
 
 
@@ -247,13 +252,147 @@ if __name__ == '__main__':
 
         # TODO: don't forget that we removed the 'No office location' and Null values
 
-
         # 5. Add locations on a map of the World
+        f = open("cached_locations.pkl", "rb")
+        cached_locations = pickle.load(f)
+        f.close()
+        geolocator = Nominatim()
+
+        # TODO: annotate the top 5 regions for example when in a specific part of the world (not worldwide case
+        # because not enough space, but in the Europe or USA case, yes)
+
         # Case 1: US states
+        # TODO: do map for EUROPE
+        # TODO: only draw markers on US soil, not Canada
+        # TODO: uncomment
+        """
+        scale = 5
+        map = Basemap(llcrnrlon=-119, llcrnrlat=22, urcrnrlon=-64, urcrnrlat=49,
+                      projection='lcc', lat_1=32, lat_2=45, lon_0=-95)
+        map.readshapefile(os.path.expanduser("~/data/basemap/st99_d00"), name="states", drawbounds=True)
+
+        n_result = 1
+        ipdb.set_trace()
+        for (city, count) in results:
+            print("{}/{}".format(n_result, len(results)))
+            n_result += 1
+            if city in [None, "No office location"]:
+                continue
+            elif city in cached_locations:
+                loc = cached_locations[city]
+            else:
+                # Is it a US state?
+                last_part = city.split(",")[-1].strip()
+                if len(last_part) == 2 and last_part != "UK":
+                    # It is a US state
+                    # Add USA at the end, so the US state doesn't get confused with other regions, such as
+                    # Westlake Village, CA' which might get linked to 'Westlake Village, Hamlet of Clairmont, Grande Prairie, Alberta'
+                    # It should be linked to a region in California, not Canada
+                    city += ", USA"
+                try:
+                    loc = geolocator.geocode(city)
+                except geopy.exc.GeocoderTimedOut:
+                    f = open("cached_locations.pkl", "wb")
+                    pickle.dump(cached_locations, f)
+                    f.close()
+                    ipdb.set_trace()
+                if loc is None:
+                    ipdb.set_trace()
+                    # TODO: Khwaeng Phra Khanong Nuea, Thailand not found, used Thailand onlycity
+                    # TODO:the city 'Teunz, Germany; Kastl, Germany' causes problems because it is two cities, fix it at the source
+                    # TODO: get the country only (split by ',')
+                    # TODO: remove this hack, it should be done at the source
+                    # TODO: factorization, we are re-doing what we just did, should call a function that does all that
+                    if ";" in city:
+                        cities = city.split(";")
+                        for c in cities:
+                            c = c.strip()
+                            if c in cached_locations:
+                                loc = cached_locations[c]
+                            else:
+                                loc = geolocator.geocode(c)
+                                cached_locations[c] = loc
+                                time.sleep(1)
+                            x, y = map(loc.longitude, loc.latitude)
+                            map.plot(x, y, marker='o', color='Red', markersize=int(np.sqrt(count)) * scale)
+                        continue
+                    else:
+                        # Take the last part (country) since the first part is not recognized
+                        if last_part in cached_locations:
+                            loc = cached_locations[last_part]
+                        else:
+                            time.sleep(1)
+                            loc = geolocator.geocode(last_part)
+                time.sleep(2)
+                # TODO: we should not add city with USA at the end, since we have to add USA at the end everytime 
+                # we are dealing with a US state like in the country case 2 below
+                cached_locations[city] = loc
+            x, y = map(loc.longitude, loc.latitude)
+            map.plot(x, y, marker='o', color='Red', markersize=int(np.sqrt(count)) * scale)
+        ipdb.set_trace()
+        plt.show()
+        """
 
 
         # Case 2: Countries
+        # the map, a Miller Cylindrical projection
+        # TODO: uncomment
+        """
+        scale = 1.2
+        map = Basemap(projection='mill',
+                    llcrnrlon=-180., llcrnrlat=-60,
+                    urcrnrlon=180., urcrnrlat=80.)
 
+        # draw coast lines and fill the continents
+        map.drawcoastlines()
+        map.drawcountries()
+        map.drawstates()
+        map.fillcontinents()
+        map.drawmapboundary()
+
+        n_result = 1
+        # TODO: factorization code already used for case 1: US states
+        for (city, count) in results:
+            print("{}/{}".format(n_result, len(results)))
+            n_result += 1
+            if city in [None, "No office location"]:
+                continue
+            elif city in cached_locations:
+                loc = cached_locations[city]
+            else:
+                # Is it a US state?
+                last_part = city.split(",")[-1].strip()
+                if len(last_part) == 2 and last_part != "UK":
+                    # It is a US state
+                    # Add USA at the end, so the US state doesn't get confused with other regions, such as
+                    # Westlake Village, CA' which might get linked to 'Westlake Village, Hamlet of Clairmont, Grande Prairie, Alberta'
+                    # It should be linked to a region in California, not Canada
+                    city += ", USA"
+                if city in cached_locations:
+                    loc = cached_locations[city]
+                else:
+                    if ";" in city:
+                        cities = city.split(";")
+                        for c in cities:
+                            c = c.strip()
+                            if c in cached_locations:
+                                loc = cached_locations[c]
+                            else:
+                                ipdb.set_trace()
+                            x, y = map(loc.longitude, loc.latitude)
+                            map.plot(x, y, marker='o', color='Blue', markersize=1.5)
+                        continue
+                    else:
+                        # Take the last part (country) since the first part is not recognized
+                        if last_part in cached_locations:
+                            loc = cached_locations[last_part]
+                        else:
+                            ipdb.set_trace()
+            x, y = map(loc.longitude, loc.latitude)
+            map.plot(x, y, marker='o', color='Blue', markersize=1.5)
+        plt.show()
+        ipdb.set_trace()
+        """
 
         # Bar chart: countries vs number of job posts
         # TODO: uncomment to plot bar chart
@@ -285,8 +424,6 @@ if __name__ == '__main__':
         plt.show()
         """
 
-        ipdb.set_trace()
-
         # Bar chart: us states vs number of job posts
         ax = plt.gca()
         index = np.arange(len(sorted_us_states_count))
@@ -298,9 +435,9 @@ if __name__ == '__main__':
         labels = ax.get_xticklabels()
         plt.setp(labels, rotation=270.)
         plt.tight_layout()
-        plt.show()
+        # TODO: uncomment
+        #plt.show()
 
-        ipdb.set_trace()
 
         # Pie chart: US states vs number of jobs
         # TODO: add other US states for US states with few job posts
@@ -311,14 +448,13 @@ if __name__ == '__main__':
         plt.pie(values, labels=labels, autopct='%1.1f%%')
         ax.set_title("US states popularity by number of job posts")
         plt.axis('equal')
-        plt.show()
+        # TODO: uncomment
+        #plt.show()
 
-        ipdb.set_trace()
 
         # 3.2 tags analysis
         # Bar chart: tags vs number of job posts
         # TODO: maybe take the first top 20 tags because there are so many tags they will not all fit
-        ipdb.set_trace()
         # TODO: we only have to call it once
         ax = plt.gca()
         # TODO: the top X should be a param
@@ -334,8 +470,9 @@ if __name__ == '__main__':
         ax.yaxis.set_minor_locator(ticker.MultipleLocator(10))
         plt.grid(True, which="major")
         plt.tight_layout()
-        plt.show()
-        ipdb.set_trace()
+        # TODO: uncomment
+        #plt.show()
+
 
         # 2. Analysis of salary
         # Average, Max, Min salary, STD (mode, median)
@@ -593,6 +730,8 @@ if __name__ == '__main__':
         salary_of_tags = salary_of_tags.reshape((len(salary_of_tags), 1))
         counts_of_tags = counts_of_tags.reshape((len(counts_of_tags), 1))
         tags_salaries = np.hstack((tags_with_salary, salary_of_tags, counts_of_tags))
+
+        ipdb.set_trace()
 
         # 3. Frequency analysis
         # TODO: bring all code here
