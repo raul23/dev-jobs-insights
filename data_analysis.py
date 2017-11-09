@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from mpl_toolkits.basemap import Basemap
 import numpy as np
+import plotly
+from plotly.graph_objs import Scatter, Figure, Layout
 
 
 DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
@@ -425,6 +427,8 @@ if __name__ == '__main__':
         """
 
         # Bar chart: us states vs number of job posts
+        # TODO: uncomment
+        """
         ax = plt.gca()
         index = np.arange(len(sorted_us_states_count))
         plt.bar(index, sorted_us_states_count[:, 1].astype(np.int64))
@@ -437,11 +441,14 @@ if __name__ == '__main__':
         plt.tight_layout()
         # TODO: uncomment
         #plt.show()
+        """
 
 
         # Pie chart: US states vs number of jobs
         # TODO: add other US states for US states with few job posts
         # TODO: add % for each US state
+        # TODO: uncomment
+        """
         ax = plt.gca()
         values = sorted_us_states_count[:, 1].astype(np.int64)
         labels = sorted_us_states_count[:, 0]
@@ -450,12 +457,15 @@ if __name__ == '__main__':
         plt.axis('equal')
         # TODO: uncomment
         #plt.show()
+        """
 
 
         # 3.2 tags analysis
         # Bar chart: tags vs number of job posts
         # TODO: maybe take the first top 20 tags because there are so many tags they will not all fit
         # TODO: we only have to call it once
+        # TODO: uncomment
+        """
         ax = plt.gca()
         # TODO: the top X should be a param
         index = np.arange(len(sorted_tags[:20, 0]))
@@ -472,6 +482,7 @@ if __name__ == '__main__':
         plt.tight_layout()
         # TODO: uncomment
         #plt.show()
+        """
 
 
         # 2. Analysis of salary
@@ -543,6 +554,8 @@ if __name__ == '__main__':
         # Compute number of bins
         # TODO: get the second highest salary since the highest one is an outlier
         # TODO: do we use np.int32 or np.int64?
+        # TODO: uncomment
+        """
         n_bins = np.ceil((salary_mid_ranges_sorted[-2] - global_min_salary)/10000.).astype(np.int64)
         ax = plt.gca()
         # TODO: we remove the outlier corresponding to the highest value
@@ -561,6 +574,7 @@ if __name__ == '__main__':
         plt.tight_layout()
         # TODO: add function to save image instead of showing it
         #plt.show()
+        """
 
         # Salary by country: location (job_posts), job post might not have location; lots
         #                    of similar locations (e.g. Barcelona, Spanien and Barcelona, Spain or
@@ -729,9 +743,22 @@ if __name__ == '__main__':
         tags_with_salary = tags_with_salary.reshape((len(tags_with_salary), 1))
         salary_of_tags = salary_of_tags.reshape((len(salary_of_tags), 1))
         counts_of_tags = counts_of_tags.reshape((len(counts_of_tags), 1))
-        tags_salaries = np.hstack((tags_with_salary, salary_of_tags, counts_of_tags))
+        #tags_salaries = np.hstack((tags_with_salary, salary_of_tags, counts_of_tags))
 
         ipdb.set_trace()
+
+        # Scatter plot: on the x-axis we have the number of job posts for a given
+        # tag and on the y-axis we have the average mid-range salary for the given
+        # tag
+        # TODO: specify that this is only for tags that have a salary, there are alot more tags that don't have a salary
+        plotly.offline.plot({
+            "data": [Scatter(x=list(counts_of_tags.flatten()),
+                             y=list(salary_of_tags.flatten()),
+                             mode='markers',
+                             text=list(tags_with_salary.flatten()))],
+            "layout": Layout(title="Average mid-range salary of programming skills", hovermode='closest')
+        })
+
 
         # 3. Frequency analysis
         # TODO: bring all code here
