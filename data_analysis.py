@@ -169,6 +169,19 @@ def count_location_occurences(conn):
     return cur.fetchall()
 
 
+def count_industry_occurences(conn):
+    """
+    For a given industry, count the number of its occurrences in the `job_overview` table
+
+    :param conn:
+    :return:
+    """
+    sql = '''SELECT value, COUNT(*) as CountOf from job_overview WHERE name='Industry' GROUP BY value ORDER BY CountOf DESC'''
+    cur = conn.cursor()
+    cur.execute(sql)
+    return cur.fetchall()
+
+
 if __name__ == '__main__':
     # TODO: don't forget to delete big variables if you don't use it anymore
     ipdb.set_trace()
@@ -463,9 +476,9 @@ if __name__ == '__main__':
         # 3.2 tags analysis
         # Bar chart: tags vs number of job posts
         # TODO: maybe take the first top 20 tags because there are so many tags they will not all fit
-        # TODO: we only have to call it once
         # TODO: uncomment
         """
+        # TODO: we only have to call it once
         ax = plt.gca()
         # TODO: the top X should be a param
         index = np.arange(len(sorted_tags[:20, 0]))
@@ -661,6 +674,7 @@ if __name__ == '__main__':
         # Get salary by industry (e.g. Animation, Cloud Computing, Finance)
         # Select industries associated to job_id's with salaries
         # TODO: factorization same code as for 'Salary by tags' and other parts
+        # TODO: specify that we are selecting industries that have a salary with it
         results = select_industries(conn, tuple(job_ids))
         results = np.array(results)
         industries_salaries = {}
@@ -743,14 +757,15 @@ if __name__ == '__main__':
         tags_with_salary = tags_with_salary.reshape((len(tags_with_salary), 1))
         salary_of_tags = salary_of_tags.reshape((len(salary_of_tags), 1))
         counts_of_tags = counts_of_tags.reshape((len(counts_of_tags), 1))
+        # TODO: `tags_salaries` not used
         #tags_salaries = np.hstack((tags_with_salary, salary_of_tags, counts_of_tags))
-
-        ipdb.set_trace()
 
         # Scatter plot: on the x-axis we have the number of job posts for a given
         # tag and on the y-axis we have the average mid-range salary for the given
         # tag
         # TODO: specify that this is only for tags that have a salary, there are alot more tags that don't have a salary
+        # TODO: uncomment
+        """
         plotly.offline.plot({
             "data": [Scatter(x=list(counts_of_tags.flatten()),
                              y=list(salary_of_tags.flatten()),
@@ -758,17 +773,42 @@ if __name__ == '__main__':
                              text=list(tags_with_salary.flatten()))],
             "layout": Layout(title="Average mid-range salary of programming skills", hovermode='closest')
         })
+        """
+
+        # 3.X Industries analysis
+        # Bar chart: industries vs number of job posts
+        # NOTE: these are all the industries even those that don't have a salary associated with
+        # Get number of job posts for each industry
+        results = count_location_occurences(conn)
+        # TODO: maybe take the first top 20 tags because there are so many industries they will not all fit
+        # TODO: we only have to call it once
+        ax = plt.gca()
+        # TODO: the top X should be a param
+        index = np.arange(len(sorted_tags[:20, 0]))
+        plt.bar(index, sorted_tags[:20, 1].astype(np.int64))
+        plt.xticks(index, sorted_tags[:20, 0])
+        ax.set_xlabel('Skills (tags)')
+        ax.set_ylabel('Number of jobs')
+        ax.set_title('Top 20 most popular skills')
+        labels = ax.get_xticklabels()
+        plt.setp(labels, rotation=270.)
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(20))
+        ax.yaxis.set_minor_locator(ticker.MultipleLocator(10))
+        plt.grid(True, which="major")
+        plt.tight_layout()
+        # TODO: uncomment
+        #plt.show()
 
 
-        # 3. Frequency analysis
-        # TODO: bring all code here
+# 3. Frequency analysis
+# TODO: bring all code here
 
-        # 4. Analysis of industries and tags
-        # For each industries, get all tags that are related to the given industry
+# 4. Analysis of industries and tags
+# For each industries, get all tags that are related to the given industry
 
-        # 5. Add locations on a map of the World
-        # TODO; bring all code here
-        # Case 1: US states
+# 5. Add locations on a map of the World
+# TODO; bring all code here
+# Case 1: US states
 
 
-        # Case 2: Countries
+# Case 2: Countries
