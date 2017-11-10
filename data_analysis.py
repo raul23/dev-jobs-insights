@@ -21,7 +21,9 @@ from plotly.graph_objs import Scatter, Figure, Layout
 DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
 SHAPE_FILENAME = os.path.expanduser("~/data/basemap/st99_d00")
 # Number of seconds to wait between two requests to the geocoding service
-SLEEP_TIME = 1
+WAIT_TIME = 1
+# The marker to be drawn on a map is scaled by a factor
+MARKER_SCALE = 5
 
 
 # TODO: utility function
@@ -252,7 +254,7 @@ def dump_pickle(path, data):
     """
     try:
         with open(path, "wb") as f:
-            data = pickle.dump(path, f)
+            pickle.dump(data, f)
     except FileNotFoundError as e:
         print(e)
         return None
@@ -274,7 +276,8 @@ def is_a_us_state(location):
     :param location: string of the location to check
     :return bool: True if it is a US state or False otherwise
     """
-    # Sanity check
+    # Sanity check to make sure it is not a raw location directly retrieved
+    # from the database
     assert location.find(",") == -1, "The location ({}) given to is_a_us_state() " \
                                      "contains a comma"
     # NOTE: the location can refer to a country (e.g. Seongnam-si, South Korea)
@@ -307,8 +310,8 @@ def is_location_present(location):
 
 
 # Translation of a location to english
-# NOTE: some locations are not given in English and we work with its english
-# counterpart only
+# NOTE: some locations are not provided in English and we must work with its
+# english counterpart only
 location_english_translation = {"Deutschland": "Germany",
                                 "Spanien": "Spain",
                                 "Österreich": "Austria",
@@ -351,7 +354,6 @@ if __name__ == '__main__':
                 last_part = location.split(",")[-1].strip()
                 location = last_part
                 # Is the location referring to a country or a US state?
-                ipdb.set_trace()
                 if is_a_us_state(last_part):
                     # The location string refers to a US state
                     # Save the location and its count (i.e. number of occurrences
@@ -394,7 +396,6 @@ if __name__ == '__main__':
         # Delete the two dicts that we will not use anymore afterward
         del countries_to_count
         del us_states_to_count
-        ipdb.set_trace()
 
         # MAP: Add locations on a map of the World
         # Load the cached locations' longitude and latitude if they were already
@@ -415,8 +416,6 @@ if __name__ == '__main__':
         # Case 1: US states
         # TODO: also do map for Europe
         # TODO: only draw markers on US territory, not in Canada
-        # `scale` should be set in a config file
-        scale = 5
         # TODO: find out the complete name of the map projection used
         # We are using the Lambert ... map projection and cropping the map to
         # display the USA territory
@@ -426,13 +425,29 @@ if __name__ == '__main__':
 
         # Used to display progress on the terminal
         n_result = 1
+        ipdb.set_trace()
         for location, count in results:
             print("{}/{}".format(n_result, len(results)))
             n_result += 1
-            # Check if we aleady computed the
+            # Check if we already computed the location's longitude and latitude
+            # with the geocoding service
             if location in cached_locations:
                 loc = cached_locations[location]
+            # TODO: remove this hack
+            elif "{}, USA".format(location) in cached_locations:
+                loc = cached_locations["{}, USA".format(location)]
+            # TODO: remove this hack
+            elif location == "Teunz, Germany; Kastl, Germany":
+                locations = ["Teunz, Germany", "Kastl, Germany"]
+                for l in locations:
+                    loc = cached_locations[l]
+                    x, y = map(loc.longitude, loc.latitude)
+                    map.plot(x, y, marker='o', color='Red', markersize=int(np.sqrt(count)) * MARKER_SCALE)
+                continue
+            # TODO: remove this hack
             elif is_location_present(location):
+                # TODO: remove this ipdb after you made sure the part inside this if is working fine
+                ipdb.set_trace()
                 # Get country or US state from the location string
                 # NOTE: in most cases, location is of the form 'Berlin, Germany'
                 # where country is given at the end after the comma
@@ -445,15 +460,15 @@ if __name__ == '__main__':
                     # which might get linked to 'Westlake Village, Hamlet of Clairmont, Grande Prairie, Alberta'
                     # It should be linked to a region in California, not in Canada
                     location += ", USA"
-                # Get the location's longitude and latitude coordinates
+                # Get the location's longitude and latitude
                 try:
                     loc = geolocator.geocode(location)
                 except geopy.exc.GeocoderTimedOut:
+                    ipdb.set_trace()
                     if dump_pickle("cached_locations.pkl", cached_locations) is None:
                         # TODO: replace pass with logging
                         pass
                     # TODO: do something when there is a connection error with the geocoding service
-                    ipdb.set_trace()
                 # Check if error with the geocoding service
                 if loc is None:
                     # Could not retrieve the location's longitude and latitude coordinates
@@ -462,7 +477,7 @@ if __name__ == '__main__':
                     # with the country only (e.g. 'Thailand')
                     # TODO: factorization, we are re-doing what we just did, should call a function that does all that
                     if ";" in location:
-                        # The city 'Teunz, Germany; Kastl, Germany' causes problems
+                        # The city 'Teunz, Germany; Kastl, Germany' causes problem
                         # because it is two cities; we must fix it at the source
                         # TODO: remove this hack, it should be done at the source
                         cities = location.split(";")
@@ -473,29 +488,35 @@ if __name__ == '__main__':
                             else:
                                 loc = geolocator.geocode(c)
                                 cached_locations[c] = loc
-                                time.sleep(SLEEP_TIME)
+                                time.sleep(WAIT_TIME)
                             x, y = map(loc.longitude, loc.latitude)
-                            map.plot(x, y, marker='o', color='Red', markersize=int(np.sqrt(count)) * scale)
+                            map.plot(x, y, marker='o', color='Red', markersize=int(np.sqrt(count)) * MARKER_SCALE)
                         continue
                     else:
-                        # Take the last part (country) since the first part is not recognized
+                        # Take the last part (i.e. country) since the whole location
+                        # string is not recognized by the geocoding service
                         if last_part in cached_locations:
                             loc = cached_locations[last_part]
                         else:
-                            time.sleep(SLEEP_TIME)
+                            time.sleep(WAIT_TIME)
                             loc = geolocator.geocode(last_part)
-                time.sleep(SLEEP_TIME)
-                # TODO: we should not add city with USA at the end, since we have to add USA at the end everytime 
-                # we are dealing with a US state like in the country case 2 below
+                time.sleep(WAIT_TIME)
+                # TODO: we should not append "USA" to the location string
+                # since we have to add "USA" at the end everytime we want to
+                # use `cached_locations`
                 cached_locations[location] = loc
             else:
                 # NOTE: We ignore the case where the location string is empty (None)
                 # or refers to "No office location"
-                # TODO: replace pass with logging
-                pass
+                continue
+            # Transform the location's longitude and latitude to projection
+            # map coordinates
             x, y = map(loc.longitude, loc.latitude)
-            map.plot(x, y, marker='o', color='Red', markersize=int(np.sqrt(count)) * scale)
+            # Plot the map coordinates on the map; the size of the marker is
+            # proportional to the number of occurrences of the location in job posts
+            map.plot(x, y, marker='o', color='Red', markersize=int(np.sqrt(count)) * MARKER_SCALE)
         plt.show()
+        ipdb.set_trace()
 
         # Case 2: Countries
         # the map, a Miller Cylindrical projection
