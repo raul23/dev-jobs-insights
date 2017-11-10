@@ -17,7 +17,11 @@ import plotly
 from plotly.graph_objs import Scatter, Figure, Layout
 
 
+# TODO: the following variables should be set in a config file
 DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
+SHAPE_FILENAME = os.path.expanduser("~/data/basemap/st99_d00")
+# Number of seconds to wait between two requests to the geocoding service
+SLEEP_TIME = 1
 
 
 # TODO: utility function
@@ -203,6 +207,114 @@ def process_locations():
     pass
 
 
+def analyze_tags(conn):
+    pass
+
+
+def analyze_locations(conn):
+    pass
+
+
+def analyze_industries(conn):
+    pass
+
+
+def analyze_roles(conn):
+    pass
+
+
+# TODO: add in Utility
+def open_pickle(path):
+    """
+    Opens a pickle file and returns its contents or None if file not found.
+
+    :param path: path to the pickle file
+    :return: content of the pickle file or None if error
+    """
+    try:
+        with open(path, "rb") as f:
+            data = pickle.load(f)
+    except FileNotFoundError as e:
+        print(e)
+        return None
+    return data
+
+
+# TODO: add in Utility
+def dump_pickle(path, data):
+    """
+    Dumps a pickle file on disk and returns 0 if everything went right or None
+    if file not found.
+
+    :param path: path to the pickle file where data will be written
+    :param data: data to be saved on disk
+    :return: 0 if success or None if error
+    """
+    try:
+        with open(path, "wb") as f:
+            data = pickle.dump(path, f)
+    except FileNotFoundError as e:
+        print(e)
+        return None
+    return 0
+
+
+def is_a_us_state(location):
+    """
+    Returns True if the location refers to a US state and False otherwise.
+    NOTE: the US state must be in the form of two letters, i.e. it follows the
+    ISO-? format TODO: add the correct ISO number
+    NOTE: it is an extremely simple parsing method where we assume that the
+    locations in Stackoverflow job posts provide two letters for US states only
+    (except for UK) but it is good enough for our needs; thus it is not robust
+    if we use with other job sites for instance
+    TODO: make it more robust by retrieving a list of US states in the ISO-?
+    format and comparing `location` against the list
+
+    :param location: string of the location to check
+    :return bool: True if it is a US state or False otherwise
+    """
+    # Sanity check
+    assert location.find(",") == -1, "The location ({}) given to is_a_us_state() " \
+                                     "contains a comma"
+    # NOTE: the location can refer to a country (e.g. Seongnam-si, South Korea)
+    # or to a US state (e.g. Portland, OR). Usually, if the last part of the
+    # location string consist of two letter in capital, it refers to a US
+    # state; however we must take into account 'UK'
+    if len(location) == 2 and location != "UK":
+        return True
+    else:
+        return False
+
+
+def is_location_present(location):
+    """
+    Returns True if `location` refers to a location or False otherwise.
+    A valid location is one that doesn't refer to `None` or "No office location"
+    which are the two options in Stackoverflow job posts for cases where there is
+    no location given for a job post.
+
+    TODO: Does No office location only refers to the case where the job post is
+    for a remote job?
+
+    :param location: string of the location to check
+    :return bool: True if it is a valid location or False otherwise
+    """
+    if location in [None, "No office location"]:
+        return False
+    else:
+        return True
+
+
+# Translation of a location to english
+# NOTE: some locations are not given in English and we work with its english
+# counterpart only
+location_english_translation = {"Deutschland": "Germany",
+                                "Spanien": "Spain",
+                                "Österreich": "Austria",
+                                "Schweiz": "Switzerland"}
+
+
 if __name__ == '__main__':
     # TODO: don't forget to delete big variables if you don't use them anymore
     conn = create_connection(DB_FILENAME)
@@ -217,124 +329,143 @@ if __name__ == '__main__':
         # popular at first)
         # NOTE: these are all the tags (even those that don't a salary associated
         # with), i.e. do not confuse `all_tags_sorted` with `tags_with_salary`
+        # TODO: is it efficient to sort the dict or a numpy array? Check also
+        # other places where a dict is sorted instead of a numpy array
         all_tags_sorted_tags = sorted(results.items(), key=lambda x: x[1], reverse=True)
         all_tags_sorted_tags = np.array(all_tags_sorted_tags)
 
         # 2. Locations analysis
-        # Get counts of job posts for each location
+        # Get counts of job posts for each location, i.e. for each tag we want
+        # to know its number of occurrences in job postings
         results = count_location_occurrences(conn)
         # Process the results
         countries_to_count = {}
         us_states_to_count = {}
-        # TODO: make sure that all US states are valid
-        ipdb.set_trace()
         for location, count in results:
             # TODO: factorization, same code as in location-salary case
             # Check if 'No location' or empty for the location
-            if location in [None, "No office location"]:
-                continue
-            else:
-                # Get country or US state the location string
+            if is_location_present(location):
+                # Get country or US state from the location string
                 # NOTE: in most cases, location is of the form 'Berlin, Germany'
                 # where country is given at the end after the comma
                 last_part = location.split(",")[-1].strip()
                 location = last_part
-                # Is the location refers to a country or a US state?
-                # NOTE: the location can refer to a country (e.g. Seongnam-si, South Korea)
-                # or to a US state (e.g. Portland, OR). Usually, if the last
-                # part of the location string consist of two letter in capital,
-                # it refers to a US state; however must take into account 'UK'
-                if len(last_part) > 2 or last_part == "UK":
-                    # The location string refers to a country
-                    # Check for similar countries written in other languages,
-                    # and keep only the english version only
-                    # NOTE: sometimes, a country is given in English or another
-                    # language, e.g. Deutschland and Germany
-                    if location == "Deutschland":
-                        location = "Germany"
-                    elif location == "Spanien":
-                        location = "Spain"
-                    elif location == "Österreich":
-                        location = "Austria"
-                    elif location == "Schweiz":
-                        location = "Switzerland"
-                    else:
-                        # TODO: Add an assert to test that you are not getting a never seen location
-                        # maybe retrieve a list
-                        pass
-                    countries_to_count.setdefault(location, 0)
-                    countries_to_count[location] += count
-                else:
-                    # It is a US state
-                    # TODO: factorization, same code as for the if case (the countries case)
+                # Is the location referring to a country or a US state?
+                ipdb.set_trace()
+                if is_a_us_state(last_part):
+                    # The location string refers to a US state
+                    # Save the location and its count (i.e. number of occurrences
+                    # in job posts)
                     us_states_to_count.setdefault(location, 0)
                     us_states_to_count[location] += count
-
-                    # Add the US state to the countries dict also
-                    # TODO: factorization, same code as for the US states (see previously)
+                    # Also since it is a US state, save the 'USA' and its count
+                    # (i.e. number of occurrences in job posts)
+                    # NOTE: the location string for a US state is given
+                    # without the country at the end, e.g. Fort Meade, MD
                     location = "USA"
                     countries_to_count.setdefault(location, 0)
                     countries_to_count[location] += count
+                else:
+                    # The location string refers to a country
+                    # Check for countries written in other languages, and keep
+                    # only the english translation only
+                    # NOTE: sometimes, a country is given in English or another
+                    # language, e.g. Deutschland and Germany
+                    if location in location_english_translation:
+                        # Get the english translation of the given location
+                        location = location_english_translation[location]
+                    # Save the location and its count (i.e. number of occurences
+                    # in job posts)
+                    countries_to_count.setdefault(location, 0)
+                    countries_to_count[location] += count
+            else:
+                # NOTE: We ignore the case where the location string is empty (None)
+                # or refers to "No office location"
+                # TODO: replace pass with logging
+                pass
+
+        # Sort the countries and USA-states dict based on the number of
+        # occurrences, i.e. the dict's values. And convert the sorted dicts
+        # into a numpy array
         sorted_countries_count = sorted(countries_to_count.items(), key=lambda x: x[1], reverse=True)
         sorted_countries_count = np.array(sorted_countries_count)
         sorted_us_states_count = sorted(us_states_to_count.items(), key=lambda x: x[1], reverse=True)
         sorted_us_states_count = np.array(sorted_us_states_count)
+        # Delete the two dicts that we will not use anymore afterward
+        del countries_to_count
+        del us_states_to_count
+        ipdb.set_trace()
 
-        # TODO: don't forget that we removed the 'No office location' and Null values
-
-        # 5. Add locations on a map of the World
-        f = open("cached_locations.pkl", "rb")
-        cached_locations = pickle.load(f)
-        f.close()
+        # MAP: Add locations on a map of the World
+        # Load the cached locations' longitude and latitude if they were already
+        # computed in a previous session with the geocoding service
+        cached_locations = open_pickle("cached_locations.pkl")
+        if cached_locations is None:
+            # No cached location computations found
+            cached_locations = {}
+        # We are using the module `geopy` to get the longitude and latitude of
+        # locations which will then be transformed into map coordinates so we can
+        # draw markers on a map with `basemap`
         geolocator = Nominatim()
 
-        # TODO: annotate the top 5 regions for example when in a specific part of the world (not worldwide case
-        # because not enough space, but in the Europe or USA case, yes)
+        # TODO: Annotate the top 5 locations (display the location names) for
+        # example in the Europe and USA cases (not the Worldwide case because not
+        # enough space to annotate)
 
         # Case 1: US states
-        # TODO: do map for EUROPE
-        # TODO: only draw markers on US soil, not Canada
-        # TODO: uncomment
-        """
+        # TODO: also do map for Europe
+        # TODO: only draw markers on US territory, not in Canada
+        # `scale` should be set in a config file
         scale = 5
+        # TODO: find out the complete name of the map projection used
+        # We are using the Lambert ... map projection and cropping the map to
+        # display the USA territory
         map = Basemap(llcrnrlon=-119, llcrnrlat=22, urcrnrlon=-64, urcrnrlat=49,
                       projection='lcc', lat_1=32, lat_2=45, lon_0=-95)
-        map.readshapefile(os.path.expanduser("~/data/basemap/st99_d00"), name="states", drawbounds=True)
+        map.readshapefile(SHAPE_FILENAME, name="states", drawbounds=True)
 
+        # Used to display progress on the terminal
         n_result = 1
-        ipdb.set_trace()
-        for (city, count) in results:
+        for location, count in results:
             print("{}/{}".format(n_result, len(results)))
             n_result += 1
-            if city in [None, "No office location"]:
-                continue
-            elif city in cached_locations:
-                loc = cached_locations[city]
-            else:
-                # Is it a US state?
-                last_part = city.split(",")[-1].strip()
-                if len(last_part) == 2 and last_part != "UK":
-                    # It is a US state
-                    # Add USA at the end, so the US state doesn't get confused with other regions, such as
-                    # Westlake Village, CA' which might get linked to 'Westlake Village, Hamlet of Clairmont, Grande Prairie, Alberta'
-                    # It should be linked to a region in California, not Canada
-                    city += ", USA"
+            # Check if we aleady computed the
+            if location in cached_locations:
+                loc = cached_locations[location]
+            elif is_location_present(location):
+                # Get country or US state from the location string
+                # NOTE: in most cases, location is of the form 'Berlin, Germany'
+                # where country is given at the end after the comma
+                last_part = location.split(",")[-1].strip()
+                # Is the location referring to a country or a US state?
+                if is_a_us_state(last_part):
+                    # The location string refers to a US state
+                    # Add 'USA' at the end of `location`, so the US state doesn't
+                    # get confused with other regions, such as 'Westlake Village, CA'
+                    # which might get linked to 'Westlake Village, Hamlet of Clairmont, Grande Prairie, Alberta'
+                    # It should be linked to a region in California, not in Canada
+                    location += ", USA"
+                # Get the location's longitude and latitude coordinates
                 try:
-                    loc = geolocator.geocode(city)
+                    loc = geolocator.geocode(location)
                 except geopy.exc.GeocoderTimedOut:
-                    f = open("cached_locations.pkl", "wb")
-                    pickle.dump(cached_locations, f)
-                    f.close()
+                    if dump_pickle("cached_locations.pkl", cached_locations) is None:
+                        # TODO: replace pass with logging
+                        pass
+                    # TODO: do something when there is a connection error with the geocoding service
                     ipdb.set_trace()
+                # Check if error with the geocoding service
                 if loc is None:
-                    ipdb.set_trace()
-                    # TODO: Khwaeng Phra Khanong Nuea, Thailand not found, used Thailand onlycity
-                    # TODO:the city 'Teunz, Germany; Kastl, Germany' causes problems because it is two cities, fix it at the source
-                    # TODO: get the country only (split by ',')
-                    # TODO: remove this hack, it should be done at the source
+                    # Could not retrieve the location's longitude and latitude coordinates
+                    # For example, 'Khwaeng Phra Khanong Nuea, Thailand' returns
+                    # nothing. Thus in this case we call the geocoder again but
+                    # with the country only (e.g. 'Thailand')
                     # TODO: factorization, we are re-doing what we just did, should call a function that does all that
-                    if ";" in city:
-                        cities = city.split(";")
+                    if ";" in location:
+                        # The city 'Teunz, Germany; Kastl, Germany' causes problems
+                        # because it is two cities; we must fix it at the source
+                        # TODO: remove this hack, it should be done at the source
+                        cities = location.split(";")
                         for c in cities:
                             c = c.strip()
                             if c in cached_locations:
@@ -342,7 +473,7 @@ if __name__ == '__main__':
                             else:
                                 loc = geolocator.geocode(c)
                                 cached_locations[c] = loc
-                                time.sleep(1)
+                                time.sleep(SLEEP_TIME)
                             x, y = map(loc.longitude, loc.latitude)
                             map.plot(x, y, marker='o', color='Red', markersize=int(np.sqrt(count)) * scale)
                         continue
@@ -351,18 +482,20 @@ if __name__ == '__main__':
                         if last_part in cached_locations:
                             loc = cached_locations[last_part]
                         else:
-                            time.sleep(1)
+                            time.sleep(SLEEP_TIME)
                             loc = geolocator.geocode(last_part)
-                time.sleep(2)
+                time.sleep(SLEEP_TIME)
                 # TODO: we should not add city with USA at the end, since we have to add USA at the end everytime 
                 # we are dealing with a US state like in the country case 2 below
-                cached_locations[city] = loc
+                cached_locations[location] = loc
+            else:
+                # NOTE: We ignore the case where the location string is empty (None)
+                # or refers to "No office location"
+                # TODO: replace pass with logging
+                pass
             x, y = map(loc.longitude, loc.latitude)
             map.plot(x, y, marker='o', color='Red', markersize=int(np.sqrt(count)) * scale)
-        ipdb.set_trace()
         plt.show()
-        """
-
 
         # Case 2: Countries
         # the map, a Miller Cylindrical projection
@@ -830,6 +963,7 @@ if __name__ == '__main__':
         # TODO: specify that this is only for tags that have a salary, there are alot more tags that don't have a salary
         # TODO: uncomment
         # TODO: removed the outlier, salary_of_industries[1:]
+        # TODO: do also a scatter plot for job role vs number of job posts
         """
         plotly.offline.plot({
             "data": [Scatter(x=list(counts_of_industries[1:].flatten()),

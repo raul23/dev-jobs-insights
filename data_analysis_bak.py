@@ -728,6 +728,8 @@ if __name__ == '__main__':
         counts_of_roles = counts_of_roles.reshape((len(counts_of_roles), 1))
         roles_salaries = np.hstack((roles_with_salary, salary_of_roles, counts_of_roles))
 
+        ipdb.set_trace()
+
         # Salary by tags: e.g. android, java, python
         # Select tags associated to job_id's with salaries
         # TODO: factorization
