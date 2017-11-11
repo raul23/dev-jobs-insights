@@ -26,6 +26,131 @@ WAIT_TIME = 1
 MARKER_SCALE = 5
 
 
+class DataAnalyzer:
+    def __init__(self, config):
+        # Sanity check
+        assert "db_filename" in config, "No db_filename provided in config"
+        self.conn = create_connection(config["db_filename"])
+        # These are all the data that will be saved while performing the various
+        # analyses
+        self.sorted_tags_count = None
+        self.sorted_countries_count = None
+        self.sorted_us_states_count = None
+
+    def run_analysis(self):
+        with self.conn:
+            if config["analyze_tag"]:
+                self.analyze_tags()
+            if config["analyze_locations"]:
+                self.analyze_locations()
+
+    def analyze_tags(self):
+        """
+        Analysis of tags (i.e. technologies such as java, python) which consist in
+        ... TODO complete description
+
+        :return:
+        """
+        # Get counts of tags, i.e. for each tag we want to know its number of
+        # occurrences in job posts
+        results = self.count_tag_occurrences()
+        # NOTE: these are all the tags (even those that don't have a salary
+        # associated with) and they are sorted in order of decreasing
+        # number of occurrences (i.e. most popular tag at first)
+        self.sorted_tags_count = np.array(results)
+
+    def analyze_locations(self):
+        """
+        Analysis of locations which consists in ... TODO: complete description
+
+        :return:
+        """
+        # Get counts of job posts for each location, i.e. for each location we
+        # want to know its number of occurrences in job posts
+        results = self.count_location_occurrences()
+        # Process the results
+        self.process_locations(results)
+
+    def count_tag_occurrences(self):
+        """
+        Returns tags sorted in decreasing order of their occurrences in job posts.
+        A list of tuples is returned where a tuple is of the form (tag_name, count).
+
+        :param conn: sqlite3.Connection object
+        :return: list of tuples of the form (tag_name, count)
+        """
+        sql = '''SELECT name, COUNT(name) as CountOf FROM entries_tags GROUP BY name ORDER BY CountOf DESC'''
+        cur = self.conn.cursor()
+        cur.execute(sql)
+        return cur.fetchall()
+
+    def count_location_occurrences(self):
+        """
+        Returns locations sorted in decreasing order of their occurrences in job posts.
+        A list of tuples is returned where a tuple is of the form (location, count).
+
+        :param conn: sqlite3.Connection object
+        :return: list of tuples of the form (location, count)
+        """
+        sql = '''SELECT location, COUNT(*) as CountOf FROM job_posts GROUP BY location ORDER BY CountOf DESC'''
+        cur = self.conn.cursor()
+        cur.execute(sql)
+        return cur.fetchall()
+
+    def process_locations(self, locations):
+        # Temp dicts
+        ipdb.set_trace()
+        countries_to_count = {}
+        us_states_to_count = {}
+        for location, count in locations:
+            # Check if valid location
+            if is_valid_location(location):
+                # Get country or US state from `location`
+                # NOTE: in most cases, location is of the form 'Berlin, Germany'
+                # where country is given at the end after the comma
+                last_part_loc = location.split(",")[-1].strip()
+                # Is the location referring to a country or a US state?
+                if is_a_us_state(last_part_loc):
+                    # `location` refers to a US state
+                    # Save last part of `location` and its count (i.e. number of
+                    # occurrences in job posts)
+                    us_states_to_count.setdefault(last_part_loc, 0)
+                    us_states_to_count[last_part_loc] += count
+                    # Also since it is a US state, save 'USA' and its count
+                    # (i.e. number of occurrences in job posts)
+                    # NOTE: the location for a US state is given without the
+                    # country at the end, e.g. Fort Meade, MD
+                    countries_to_count.setdefault("USA", 0)
+                    countries_to_count["USA"] += count
+                else:
+                    # `location` refers to a country
+                    # Check for countries written in other languages, and keep
+                    # only the english translation
+                    # NOTE: sometimes, a country is not given in English e.g.
+                    # Deutschland and Germany
+                    # Save the location and its count (i.e. number of occurrences
+                    # in job posts)
+                    last_part_loc = get_english_loc_transl(last_part_loc)
+                    countries_to_count.setdefault(last_part_loc, 0)
+                    countries_to_count[last_part_loc] += count
+            else:
+                # NOTE: We ignore the case where the `location` is empty (None)
+                # or refers to "No office location"
+                # TODO: replace pass with logging
+                pass
+        ipdb.set_trace()
+        # Sort the countries and US-states dicts based on the number of
+        # occurrences, i.e. the dict's values. And convert the sorted dicts
+        # into a numpy array
+        self.sorted_countries_count = sorted(countries_to_count.items(), key=lambda x: x[1], reverse=True)
+        self.sorted_countries_count = np.array(self.sorted_countries_count)
+        self.sorted_us_states_count = sorted(us_states_to_count.items(), key=lambda x: x[1], reverse=True)
+        self.sorted_us_states_count = np.array(self.sorted_us_states_count)
+        # Delete the two temp dicts
+        del countries_to_count
+        del us_states_to_count
+
+
 # TODO: utility function
 def create_connection(db_file, autocommit=False):
     """
@@ -166,32 +291,6 @@ def count_tag(conn, tag):
     return cur.fetchone()
 
 
-def count_tag_occurrences(conn):
-    """
-    For a given tag, count the number of its occurrences in the `entries_tags` table
-
-    :param conn: sqlite3.Connection object
-    :return: list of tuples of the form (tag_name, count)
-    """
-    sql = '''SELECT name, COUNT(name) as CountOf FROM entries_tags GROUP BY name ORDER BY CountOf DESC'''
-    cur = conn.cursor()
-    cur.execute(sql)
-    return cur.fetchall()
-
-
-def count_location_occurrences(conn):
-    """
-    For a given location, count the number of its occurrences in the `job_posts` table
-
-    :param conn: sqlite3.Connection object
-    :return: list of tuples of the form (location, count)
-    """
-    sql = '''SELECT location, COUNT(*) as CountOf FROM job_posts GROUP BY location ORDER BY CountOf DESC'''
-    cur = conn.cursor()
-    cur.execute(sql)
-    return cur.fetchall()
-
-
 def count_industry_occurrences(conn):
     """
     For a given industry, count the number of its occurrences in the `job_overview` table
@@ -203,26 +302,6 @@ def count_industry_occurrences(conn):
     cur = conn.cursor()
     cur.execute(sql)
     return cur.fetchall()
-
-
-def process_locations():
-    pass
-
-
-def analyze_tags(conn):
-    pass
-
-
-def analyze_locations(conn):
-    pass
-
-
-def analyze_industries(conn):
-    pass
-
-
-def analyze_roles(conn):
-    pass
 
 
 # TODO: add in Utility
@@ -290,7 +369,7 @@ def is_a_us_state(location):
         return False
 
 
-def is_location_present(location):
+def is_valid_location(location):
     """
     Returns True if `location` refers to a location or False otherwise.
     A valid location is one that doesn't refer to `None` or "No office location"
@@ -309,16 +388,39 @@ def is_location_present(location):
         return True
 
 
-# Translation of a location to english
-# NOTE: some locations are not provided in English and we must work with its
-# english counterpart only
-location_english_translation = {"Deutschland": "Germany",
-                                "Spanien": "Spain",
-                                "Österreich": "Austria",
-                                "Schweiz": "Switzerland"}
+def get_english_loc_transl(location):
+    """
+    Returns the translation of a location in english
+
+    NOTE: in the Stackoverflow job posts, some locations are not provided in
+    English and we must only work with their english translations
+
+    TODO: this extremely simple translation heuristic is not robust at all; use
+    instead a translation service
+
+    :return:
+    """
+    location_english_translation = {"Deutschland": "Germany",
+                                    "Spanien": "Spain",
+                                    "Österreich": "Austria",
+                                    "Schweiz": "Switzerland"}
+    if location in location_english_translation:
+        return location_english_translation[location]
+    else:
+        # We assume the location is already in english
+        return location
 
 
 if __name__ == '__main__':
+    config = {"db_filename": DB_FILENAME,
+              "analyze_tag": True,
+              "analyze_locations": True}
+    ipdb.set_trace()
+    data_analyzer = DataAnalyzer(config)
+    data_analyzer.run_analysis()
+
+    ipdb.set_trace()
+
     # TODO: don't forget to delete big variables if you don't use them anymore
     conn = create_connection(DB_FILENAME)
     with conn:
