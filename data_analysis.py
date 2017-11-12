@@ -7,8 +7,10 @@ import sqlite3
 import time
 import ipdb
 
+import enchant
 import geopy
 from geopy.geocoders import Nominatim
+from googletrans import Translator
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from mpl_toolkits.basemap import Basemap
@@ -400,6 +402,8 @@ def get_english_loc_transl(location):
 
     :return:
     """
+
+    """
     location_english_translation = {"Deutschland": "Germany",
                                     "Spanien": "Spain",
                                     "Österreich": "Austria",
@@ -409,6 +413,13 @@ def get_english_loc_transl(location):
     else:
         # We assume the location is already in english
         return location
+    """
+    translator = Translator()
+    dictionary = enchant.Dict("en_US")
+    if dictionary.check(location):
+        return location
+    else:
+        return translator.translate(location, dest='en').text
 
 
 if __name__ == '__main__':
