@@ -1,16 +1,17 @@
 """
 Data analysis of Stackoverflow developer jobs postings
 """
+import json
 import os
 import pickle
 import sqlite3
 import time
 import ipdb
 
-import enchant
 import geopy
 from geopy.geocoders import Nominatim
 from googletrans import Translator
+import iso3166
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from mpl_toolkits.basemap import Basemap
@@ -33,6 +34,8 @@ class DataAnalyzer:
         # Sanity check
         assert "db_filename" in config, "No db_filename provided in config"
         self.conn = create_connection(config["db_filename"])
+        self.countries = load_countries()
+        self.us_states = load_us_states()
         # These are all the data that will be saved while performing the various
         # analyses
         self.sorted_tags_count = None
@@ -151,6 +154,14 @@ class DataAnalyzer:
         # Delete the two temp dicts
         del countries_to_count
         del us_states_to_count
+
+
+def load_countries():
+    pass
+
+
+def load_us_states():
+    pass
 
 
 # TODO: utility function
@@ -363,8 +374,9 @@ def is_a_us_state(location):
                                      "contains a comma"
     # NOTE: the location can refer to a country (e.g. Seongnam-si, South Korea)
     # or to a US state (e.g. Portland, OR). Usually, if the last part of the
-    # location string consist of two letter in capital, it refers to a US
+    # location string consist of two letters in capital, it refers to a US
     # state; however we must take into account 'UK'
+
     if len(location) == 2 and location != "UK":
         return True
     else:
@@ -402,23 +414,14 @@ def get_english_loc_transl(location):
 
     :return:
     """
-
-    """
-    location_english_translation = {"Deutschland": "Germany",
-                                    "Spanien": "Spain",
-                                    "Österreich": "Austria",
-                                    "Schweiz": "Switzerland"}
-    if location in location_english_translation:
-        return location_english_translation[location]
-    else:
-        # We assume the location is already in english
-        return location
-    """
     translator = Translator()
-    dictionary = enchant.Dict("en_US")
-    if dictionary.check(location):
+    countries = iso3166.countries_by_name
+    # TODO: countries not found: UK (it is found as UNITED KINGDOM OF GREAT BRITAIN AND NORTHERN IRELAND),
+    # South Korea (it is found as REPUBLIC OF KOREA), IRAN (it is found as REPUBLIC OF IRAN)
+    if location.upper() in countries:
         return location
     else:
+        # TODO: google translation service has problems with Suisse->Suisse
         return translator.translate(location, dest='en').text
 
 
