@@ -23,6 +23,8 @@ from plotly.graph_objs import Scatter, Figure, Layout
 # TODO: the following variables should be set in a config file
 DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
 SHAPE_FILENAME = os.path.expanduser("~/data/basemap/st99_d00")
+US_STATES_FILENAME = "states_hash.json"
+TRANSL_COUNTRIES_FILENAME = "cached_transl_countries.json"
 # Number of seconds to wait between two requests to the geocoding service
 WAIT_TIME = 1
 # The marker to be drawn on a map is scaled by a factor
@@ -34,8 +36,16 @@ class DataAnalyzer:
         # Sanity check
         assert "db_filename" in config, "No db_filename provided in config"
         self.conn = create_connection(config["db_filename"])
+        # NOTE: `countries` and `us_states` must not be empty when starting the
+        # data analysis. However, `translated_countries` can be empty when starting
+        # because it will be updated while performing the data analysis
         self.countries = load_countries()
-        self.us_states = load_us_states()
+        assert self.countries is not None, "Error in loading countries"
+        self.us_states = load_json(US_STATES_FILENAME)
+        assert self.us_states is not None, "Error in loading us_states"
+        self.translated_countries = load_json(TRANSL_COUNTRIES_FILENAME)
+        if self.translated_countries is None:
+            self.translated_countries = {}
         # These are all the data that will be saved while performing the various
         # analyses
         self.sorted_tags_count = None
@@ -107,7 +117,8 @@ class DataAnalyzer:
         ipdb.set_trace()
         countries_to_count = {}
         us_states_to_count = {}
-        for location, count in locations:
+        for (i, (location, count)) in enumerate(locations):
+            print("[{}]".format(i))
             # Check if valid location
             if is_valid_location(location):
                 # Get country or US state from `location`
@@ -115,7 +126,7 @@ class DataAnalyzer:
                 # where country is given at the end after the comma
                 last_part_loc = location.split(",")[-1].strip()
                 # Is the location referring to a country or a US state?
-                if is_a_us_state(last_part_loc):
+                if self.is_a_us_state(last_part_loc):
                     # `location` refers to a US state
                     # Save last part of `location` and its count (i.e. number of
                     # occurrences in job posts)
@@ -135,7 +146,7 @@ class DataAnalyzer:
                     # Deutschland and Germany
                     # Save the location and its count (i.e. number of occurrences
                     # in job posts)
-                    last_part_loc = get_english_loc_transl(last_part_loc)
+                    last_part_loc = self.get_english_country_transl(last_part_loc)
                     countries_to_count.setdefault(last_part_loc, 0)
                     countries_to_count[last_part_loc] += count
             else:
@@ -143,7 +154,6 @@ class DataAnalyzer:
                 # or refers to "No office location"
                 # TODO: replace pass with logging
                 pass
-        ipdb.set_trace()
         # Sort the countries and US-states dicts based on the number of
         # occurrences, i.e. the dict's values. And convert the sorted dicts
         # into a numpy array
@@ -154,14 +164,100 @@ class DataAnalyzer:
         # Delete the two temp dicts
         del countries_to_count
         del us_states_to_count
+        ipdb.set_trace()
+
+    def is_a_us_state(self, location):
+        """
+        Returns True if the location refers to a US state and False otherwise.
+        NOTE: the US state must be in the form of two letters, i.e. it follows the
+        ISO-? format TODO: add the correct ISO number
+        NOTE: it is an extremely simple parsing method where we assume that the
+        locations in Stackoverflow job posts provide two letters for US states only
+        (except for UK) but it is good enough for our needs; thus it is not robust
+        if we use with other job sites for instance
+        TODO: make it more robust by retrieving a list of US states in the ISO-?
+        format and comparing `location` against the list
+
+        :param location: string of the location to check
+        :return bool: True if it is a US state or False otherwise
+        """
+        # Sanity check to make sure it is not a raw location directly retrieved
+        # from the database
+        assert location.find(",") == -1, "The location ({}) given to is_a_us_state() " \
+                                         "contains a comma"
+        # NOTE: the location can refer to a country (e.g. Seongnam-si, South Korea)
+        # or to a US state (e.g. Portland, OR). Usually, if the last part of the
+        # location string consist of two letters in capital, it refers to a US
+        # state; however we must take into account 'UK'
+
+        if location != "UK" and len(location) == 2:
+            if location in self.us_states:
+                return True
+            else:
+                raise KeyError("The two-letters location '{}' is not recognized"
+                               "as a US state".format(location))
+        else:
+            return False
+
+    def get_english_country_transl(self, country):
+        """
+        Returns the translation of a country in english
+
+        NOTE: in the Stackoverflow job posts, some countries are not provided in
+        English and we must only work with their english translations
+
+        :return:
+        """
+        translator = Translator()
+        # TODO: countries not found: UK (it is found as UNITED KINGDOM OF GREAT BRITAIN AND NORTHERN IRELAND),
+        # South Korea (it is found as REPUBLIC OF KOREA), IRAN (it is found as REPUBLIC OF IRAN)
+        if country.upper() in self.countries:
+            return country
+        elif country in self.translated_countries:
+            return self.translated_countries[country]
+        else:
+            # TODO: google translation service has problems with Suisse->Suisse
+            transl_country = translator.translate(country, dest='en').text
+            # Save the translation
+            temp = {country: transl_country}
+            self.translated_countries.update(temp)
+            dump_json(temp, TRANSL_COUNTRIES_FILENAME, update=True)
+            return transl_country
 
 
 def load_countries():
-    pass
+    return iso3166.countries_by_name
 
 
-def load_us_states():
-    pass
+def load_json(path):
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+    except FileNotFoundError as e:
+        print(e)
+        return None
+    return data
+
+
+def dump_json(data, path, update=False):
+    def dump_data(data, path):
+        try:
+            with open(path, "w") as f:
+                json.dump(data, f)
+        except FileNotFoundError as e:
+            print(e)
+            return None
+        return 0
+    if os.path.isfile(path) and update:
+        retval = load_json(path)
+        if retval is None:
+            return None
+        else:
+            assert type(data) == dict, "Type of '{}' is not a dict".format(data)
+            retval.update(data)
+            return dump_data(retval, path)
+    else:
+        return dump_data(data, path)
 
 
 # TODO: utility function
@@ -318,7 +414,7 @@ def count_industry_occurrences(conn):
 
 
 # TODO: add in Utility
-def open_pickle(path):
+def load_pickle(path):
     """
     Opens a pickle file and returns its contents or None if file not found.
 
@@ -353,36 +449,6 @@ def dump_pickle(path, data):
     return 0
 
 
-def is_a_us_state(location):
-    """
-    Returns True if the location refers to a US state and False otherwise.
-    NOTE: the US state must be in the form of two letters, i.e. it follows the
-    ISO-? format TODO: add the correct ISO number
-    NOTE: it is an extremely simple parsing method where we assume that the
-    locations in Stackoverflow job posts provide two letters for US states only
-    (except for UK) but it is good enough for our needs; thus it is not robust
-    if we use with other job sites for instance
-    TODO: make it more robust by retrieving a list of US states in the ISO-?
-    format and comparing `location` against the list
-
-    :param location: string of the location to check
-    :return bool: True if it is a US state or False otherwise
-    """
-    # Sanity check to make sure it is not a raw location directly retrieved
-    # from the database
-    assert location.find(",") == -1, "The location ({}) given to is_a_us_state() " \
-                                     "contains a comma"
-    # NOTE: the location can refer to a country (e.g. Seongnam-si, South Korea)
-    # or to a US state (e.g. Portland, OR). Usually, if the last part of the
-    # location string consist of two letters in capital, it refers to a US
-    # state; however we must take into account 'UK'
-
-    if len(location) == 2 and location != "UK":
-        return True
-    else:
-        return False
-
-
 def is_valid_location(location):
     """
     Returns True if `location` refers to a location or False otherwise.
@@ -400,29 +466,6 @@ def is_valid_location(location):
         return False
     else:
         return True
-
-
-def get_english_loc_transl(location):
-    """
-    Returns the translation of a location in english
-
-    NOTE: in the Stackoverflow job posts, some locations are not provided in
-    English and we must only work with their english translations
-
-    TODO: this extremely simple translation heuristic is not robust at all; use
-    instead a translation service
-
-    :return:
-    """
-    translator = Translator()
-    countries = iso3166.countries_by_name
-    # TODO: countries not found: UK (it is found as UNITED KINGDOM OF GREAT BRITAIN AND NORTHERN IRELAND),
-    # South Korea (it is found as REPUBLIC OF KOREA), IRAN (it is found as REPUBLIC OF IRAN)
-    if location.upper() in countries:
-        return location
-    else:
-        # TODO: google translation service has problems with Suisse->Suisse
-        return translator.translate(location, dest='en').text
 
 
 if __name__ == '__main__':
@@ -516,7 +559,7 @@ if __name__ == '__main__':
         # MAP: Add locations on a map of the World
         # Load the cached locations' longitude and latitude if they were already
         # computed in a previous session with the geocoding service
-        cached_locations = open_pickle("cached_locations.pkl")
+        cached_locations = load_pickle("cached_locations.pkl")
         if cached_locations is None:
             # No cached location computations found
             cached_locations = {}
