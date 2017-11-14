@@ -11,6 +11,7 @@ import ipdb
 import geopy
 from geopy.geocoders import Nominatim
 from googletrans import Translator
+import iso3166
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from mpl_toolkits.basemap import Basemap
@@ -95,13 +96,32 @@ class DataAnalyzer:
         self.process_locations(results)
         # Generate map with markers added on US states that have job posts
         # associated with
-        self.generate_map_us_states()
+        #self.generate_map_us_states()
         # Generate map with markers added on countries that have job posts
         # associated with
-        self.generate_map_world_countries()
+        #self.generate_map_world_countries()
         # Generate map with markers added on european countries that have job
         # posts associated with
-        self.generate_map_europe_countries()
+        #self.generate_map_europe_countries()
+        # NOTE: bar charts are for categorical data
+        # Generate bar chart of countries vs number of job posts
+        # TODO: should be set in a config
+        top_k = 10
+        country_names = self.format_country_names(self.sorted_countries_count[:top_k, 0])
+        config = {"x": country_names,
+                  "y": self.sorted_countries_count[:top_k, 1].astype(np.int32),
+                  "xlabel": "Countries",
+                  "ylabel": "Number of job posts",
+                  "title": "Top {} most popular countries".format(top_k),
+                  "grid_which": "boths"}
+        self.generate_bar_chart(config)
+
+    def format_country_names(self, country_names, max_n_char=20):
+        for i, name in enumerate(country_names):
+            if len(name) > max_n_char:
+                alpha2 = self.countries[name]["alpha2"]
+                country_names[i] = alpha2
+        return country_names
 
     def count_tag_occurrences(self):
         """
@@ -190,6 +210,7 @@ class DataAnalyzer:
                     # Save the location and its count (i.e. number of occurrences
                     # in job posts)
                     transl_country = self.get_english_country_transl(last_part_loc)
+                    assert transl_country in self.countries, "The country '{}' is not found".format(transl_country)
                     countries_to_count.setdefault(transl_country, 0)
                     countries_to_count[transl_country] += count
                     locations_info.setdefault(location, {"country": transl_country,
@@ -314,6 +335,35 @@ class DataAnalyzer:
         # coordinates computed
         if new_cached_locations:
             dump_pickle(self.cached_locations, CACHED_LOCATIONS_FILENAME)
+        plt.show()
+
+    @staticmethod
+    def generate_bar_chart(plt_config):
+        ipdb.set_trace()
+        x = plt_config["x"]
+        y = plt_config["y"]
+        grid_which = plt_config["grid_which"]
+        # Sanity check on the input arrays
+        assert type(x) == type(np.array([])), "generate_bar_chart(): wrong type on input array 'x'"
+        assert type(y) == type(np.array([])), "generate_bar_chart(): wrong type on input array 'y'"
+        assert x.shape == y.shape, "generate_bar_chart(): wrong shape with 'x' and 'y'"
+        assert grid_which in ["minor", "major", "both"], "generate_bar_chart(): " \
+                                                         "wrong value for grid_which='{}'".format(grid_which)
+        xlabel = plt_config["xlabel"]
+        ylabel = plt_config["ylabel"]
+        title = plt_config["title"]
+        ax = plt.gca()
+        index = np.arange(len(x))
+        plt.bar(index, y)
+        plt.xticks(index, x)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        labels = ax.get_xticklabels()
+        plt.setp(labels, rotation=270.)
+        plt.minorticks_on()
+        plt.grid(which=grid_which)
+        plt.tight_layout()
         plt.show()
         ipdb.set_trace()
 
