@@ -134,17 +134,27 @@ class DataAnalyzer:
         locations_info = {}
         countries_to_count = {}
         us_states_to_count = {}
+        ipdb.set_trace()
         for (i, (location, count)) in enumerate(locations):
             print("[{}/{}]".format((i + 1), len(locations)))
-            # Get country or US state from `location`
-            last_part_loc = get_last_part_loc(location)
+            if i == 229:
+                ipdb.set_trace()
             # Check if valid location
             if not is_valid_location(location):
                 # NOTE: We ignore the case where `location` is empty (None)
                 # or refers to "No office location"
                 # TODO: add logging
                 continue
+            # Sanitize input: this should be done at the source, i.e. in the
+            # script that is loading data into the database
+            elif ";" in location:
+                new_locations = location.split(";")
+                for new_loc in new_locations:
+                    locations.append((new_loc.strip(), 1))
+                continue
             else:
+                # Get country or US state from `location`
+                last_part_loc = get_last_part_loc(location)
                 # Sanity check
                 assert last_part_loc is not None, "last_part_loc is None"
                 # Is the location referring to a country or a US state?
@@ -188,6 +198,7 @@ class DataAnalyzer:
                     locations_info.setdefault(location, {"country": transl_country,
                                                          "count": 0})
                     locations_info[location]["count"] += count
+        ipdb.set_trace()
         # NOTE: `locations_info` is already sorted based on the location's count
         # because it is almost a copy of `locations` which is already sorted
         # (based on the location's count) from the returned database request
@@ -224,7 +235,9 @@ class DataAnalyzer:
         map.readshapefile(SHAPE_FILENAME, name="states", drawbounds=True)
         locations = self.filter_locations(include_continents=["North America"],
                                           exclude_countries=["Canada", "Mexico"])
-        self.generate_map(map, locations, top_k=3)
+        self.generate_map(map, locations,
+                          markersize=lambda count: int(np.sqrt(count)) * MARKER_SCALE,
+                          top_k=3)
 
     def generate_map_world_countries(self):
         scale = 1.2
@@ -239,12 +252,12 @@ class DataAnalyzer:
         map.fillcontinents()
         map.drawmapboundary()
         locations = self.filter_locations(include_continents=["All"])
-        self.generate_map(map, locations)
+        self.generate_map(map, locations, markersize=lambda count: 1.5)
 
     def generate_map_europe_countries(self):
         pass
 
-    def generate_map(self, map, locations, top_k=None):
+    def generate_map(self, map, locations, markersize, top_k=None):
         new_cached_locations = False
         top_k_locations = []
         if top_k is not None:
@@ -295,7 +308,7 @@ class DataAnalyzer:
             x, y = map(loc.longitude, loc.latitude)
             # Plot the map coordinates on the map; the size of the marker is
             # proportional to the number of occurrences of the location in job posts
-            map.plot(x, y, marker='o', color='Red', markersize=int(np.sqrt(count)) * MARKER_SCALE)
+            map.plot(x, y, marker='o', color='Red', markersize=markersize(count))
             # Annotate topk locations, i.e.the topk locations with the most job posts
             if location in top_k_locations:
                 plt.text(x, y, location, fontsize=5, fontweight='bold',
@@ -304,6 +317,7 @@ class DataAnalyzer:
         # coordinates computed
         if new_cached_locations:
             dump_pickle(self.cached_locations, CACHED_LOCATIONS_FILENAME)
+        ipdb.set_trace()
         plt.show()
 
     def is_a_us_state(self, location):
