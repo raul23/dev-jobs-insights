@@ -1,5 +1,5 @@
 """
-Data analysis of Stackoverflow developer jobs postings
+Data analysis of Stackoverflow developer job posts
 """
 import json
 import os
@@ -134,11 +134,8 @@ class DataAnalyzer:
         locations_info = {}
         countries_to_count = {}
         us_states_to_count = {}
-        ipdb.set_trace()
         for (i, (location, count)) in enumerate(locations):
             print("[{}/{}]".format((i + 1), len(locations)))
-            if i == 229:
-                ipdb.set_trace()
             # Check if valid location
             if not is_valid_location(location):
                 # NOTE: We ignore the case where `location` is empty (None)
@@ -198,7 +195,6 @@ class DataAnalyzer:
                     locations_info.setdefault(location, {"country": transl_country,
                                                          "count": 0})
                     locations_info[location]["count"] += count
-        ipdb.set_trace()
         # NOTE: `locations_info` is already sorted based on the location's count
         # because it is almost a copy of `locations` which is already sorted
         # (based on the location's count) from the returned database request
@@ -215,7 +211,6 @@ class DataAnalyzer:
     def filter_locations(self, include_continents=[], exclude_countries=[]):
         # TODO: Sanity check on `include_continents` and `exclude_countries`
         filtered_locations = []
-        ipdb.set_trace()
         for loc, country_info in self.locations_info.items():
             country = country_info["country"]
             count = country_info["count"]
@@ -223,7 +218,6 @@ class DataAnalyzer:
                         self.get_continent(country) in include_continents) \
                     and country not in exclude_countries:
                 filtered_locations.append((loc, count))
-        ipdb.set_trace()
         return filtered_locations
 
     def generate_map_us_states(self):
@@ -275,7 +269,7 @@ class DataAnalyzer:
             elif location in self.cached_locations:
                 loc = self.cached_locations[location]
             else:
-                # TODO: else to be checked
+                # TODO: else clause to be checked
                 ipdb.set_trace()
                 # Get the location's longitude and latitude
                 # We are using the module `geopy` to get the longitude and latitude of
@@ -323,14 +317,10 @@ class DataAnalyzer:
     def is_a_us_state(self, location):
         """
         Returns True if the location refers to a US state and False otherwise.
-        NOTE: the US state must be in the form of two letters, i.e. it follows the
-        ISO-? format TODO: add the correct ISO number
-        NOTE: it is an extremely simple parsing method where we assume that the
-        locations in Stackoverflow job posts provide two letters for US states only
-        (except for UK) but it is good enough for our needs; thus it is not robust
-        if we use with other job sites for instance
-        TODO: make it more robust by retrieving a list of US states in the ISO-?
-        format and comparing `location` against the list
+
+        NOTE: we assume that the locations in Stackoverflow job posts provide two
+        letters for US states only (except for UK) but it is good enough for our
+        needs
 
         :param location: string of the location to check
         :return bool: True if it is a US state or False otherwise
@@ -340,10 +330,9 @@ class DataAnalyzer:
         assert location.find(",") == -1, "The location ({}) given to is_a_us_state() " \
                                          "contains a comma"
         # NOTE: the location can refer to a country (e.g. Seongnam-si, South Korea)
-        # or to a US state (e.g. Portland, OR). Usually, if the last part of the
-        # location string consist of two letters in capital, it refers to a US
+        # or a US state (e.g. Portland, OR). Usually, if the last part of the
+        # location string consists of two capital letters, it refers to a US
         # state; however we must take into account 'UK'
-
         if location != "UK" and len(location) == 2:
             if location in self.us_states:
                 return True
