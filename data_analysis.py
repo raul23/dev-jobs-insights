@@ -11,7 +11,6 @@ import ipdb
 import geopy
 from geopy.geocoders import Nominatim
 from googletrans import Translator
-import iso3166
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from mpl_toolkits.basemap import Basemap
@@ -23,8 +22,10 @@ from plotly.graph_objs import Scatter, Figure, Layout
 # TODO: the following variables should be set in a config file
 DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
 SHAPE_FILENAME = os.path.expanduser("~/data/basemap/st99_d00")
+COUNTRIES_FILENAME = "countries_info.json"
 US_STATES_FILENAME = "states_hash.json"
 TRANSL_COUNTRIES_FILENAME = "cached_transl_countries.json"
+CACHED_LOCATIONS_FILENAME = "cached_locations.pkl"
 # Number of seconds to wait between two requests to the geocoding service
 WAIT_TIME = 1
 # The marker to be drawn on a map is scaled by a factor
@@ -38,23 +39,30 @@ class DataAnalyzer:
         self.conn = create_connection(config["db_filename"])
         # NOTE: `countries` and `us_states` must not be empty when starting the
         # data analysis. However, `translated_countries` can be empty when starting
-        # because it will be updated while performing the data analysis
-        self.countries = load_countries()
+        # because it will be updated while performing the data analysis; same
+        # for `cached_locations`.
+        self.countries = load_json(COUNTRIES_FILENAME)
         assert self.countries is not None, "Error in loading countries"
         self.us_states = load_json(US_STATES_FILENAME)
         assert self.us_states is not None, "Error in loading us_states"
         self.translated_countries = load_json(TRANSL_COUNTRIES_FILENAME)
         if self.translated_countries is None:
             self.translated_countries = {}
+        self.cached_locations = load_pickle(CACHED_LOCATIONS_FILENAME)
+        if self.cached_locations is None:
+            self.cached_locations = {}
         # These are all the data that will be saved while performing the various
         # analyses
+        # TODO: specify that they are all unique, e.g. no two locations/tags/countries/us states
+        # TODO: locations_info is a dict and the rest are np.array
+        self.locations_info = None
         self.sorted_tags_count = None
         self.sorted_countries_count = None
         self.sorted_us_states_count = None
 
     def run_analysis(self):
         with self.conn:
-            if config["analyze_tag"]:
+            if config["analyze_tags"]:
                 self.analyze_tags()
             if config["analyze_locations"]:
                 self.analyze_locations()
@@ -85,6 +93,15 @@ class DataAnalyzer:
         results = self.count_location_occurrences()
         # Process the results
         self.process_locations(results)
+        # Generate map with markers added on US states that have job posts
+        # associated with
+        self.generate_map_us_states()
+        # Generate map with markers added on countries that have job posts
+        # associated with
+        self.generate_map_world_countries()
+        # Generate map with markers added on european countries that have job
+        # posts associated with
+        self.generate_map_europe_countries()
 
     def count_tag_occurrences(self):
         """
@@ -114,17 +131,22 @@ class DataAnalyzer:
 
     def process_locations(self, locations):
         # Temp dicts
-        ipdb.set_trace()
+        locations_info = {}
         countries_to_count = {}
         us_states_to_count = {}
         for (i, (location, count)) in enumerate(locations):
-            print("[{}]".format(i))
+            print("[{}/{}]".format((i + 1), len(locations)))
+            # Get country or US state from `location`
+            last_part_loc = get_last_part_loc(location)
             # Check if valid location
-            if is_valid_location(location):
-                # Get country or US state from `location`
-                # NOTE: in most cases, location is of the form 'Berlin, Germany'
-                # where country is given at the end after the comma
-                last_part_loc = location.split(",")[-1].strip()
+            if not is_valid_location(location):
+                # NOTE: We ignore the case where `location` is empty (None)
+                # or refers to "No office location"
+                # TODO: add logging
+                continue
+            else:
+                # Sanity check
+                assert last_part_loc is not None, "last_part_loc is None"
                 # Is the location referring to a country or a US state?
                 if self.is_a_us_state(last_part_loc):
                     # `location` refers to a US state
@@ -132,12 +154,26 @@ class DataAnalyzer:
                     # occurrences in job posts)
                     us_states_to_count.setdefault(last_part_loc, 0)
                     us_states_to_count[last_part_loc] += count
-                    # Also since it is a US state, save 'USA' and its count
-                    # (i.e. number of occurrences in job posts)
-                    # NOTE: the location for a US state is given without the
-                    # country at the end, e.g. Fort Meade, MD
-                    countries_to_count.setdefault("USA", 0)
-                    countries_to_count["USA"] += count
+                    # Also since it is a US state, save 'United States' and it
+                    # count (i.e. number of occurrences in job posts)
+                    # NOTE: in the job posts, the location for a US state is
+                    # given without the country at the end, e.g. Fort Meade, MD
+                    countries_to_count.setdefault("United States", 0)
+                    countries_to_count["United States"] += count
+                    # Add ', United States' at the end of `location` since the
+                    # location for US states in job posts don't specify the country
+                    # and we might need this extra info when using the geocoding
+                    # service to retrieve map coordinates to distinguish places
+                    # from Canada and USA that might have the similar name for
+                    # the location
+                    # Example: 'Westlake Village, CA' might get linked to
+                    # 'Westlake Village, Hamlet of Clairmont, Grande Prairie, Alberta'
+                    # In this case, it should be linked to a region in California,
+                    # not in Canada
+                    formatted_location = "{}, United States".format(location)
+                    locations_info.setdefault(formatted_location, {"country": "United States",
+                                                         "count": 0})
+                    locations_info[formatted_location]["count"] += count
                 else:
                     # `location` refers to a country
                     # Check for countries written in other languages, and keep
@@ -146,25 +182,129 @@ class DataAnalyzer:
                     # Deutschland and Germany
                     # Save the location and its count (i.e. number of occurrences
                     # in job posts)
-                    last_part_loc = self.get_english_country_transl(last_part_loc)
-                    countries_to_count.setdefault(last_part_loc, 0)
-                    countries_to_count[last_part_loc] += count
-            else:
-                # NOTE: We ignore the case where the `location` is empty (None)
-                # or refers to "No office location"
-                # TODO: replace pass with logging
-                pass
+                    transl_country = self.get_english_country_transl(last_part_loc)
+                    countries_to_count.setdefault(transl_country, 0)
+                    countries_to_count[transl_country] += count
+                    locations_info.setdefault(location, {"country": transl_country,
+                                                         "count": 0})
+                    locations_info[location]["count"] += count
+        # NOTE: `locations_info` is already sorted based on the location's count
+        # because it is almost a copy of `locations` which is already sorted
+        # (based on the location's count) from the returned database request
+        self.locations_info = locations_info
         # Sort the countries and US-states dicts based on the number of
         # occurrences, i.e. the dict's values. And convert the sorted dicts
         # into a numpy array
+        # TODO: check if these are useful arrays
         self.sorted_countries_count = sorted(countries_to_count.items(), key=lambda x: x[1], reverse=True)
         self.sorted_countries_count = np.array(self.sorted_countries_count)
         self.sorted_us_states_count = sorted(us_states_to_count.items(), key=lambda x: x[1], reverse=True)
         self.sorted_us_states_count = np.array(self.sorted_us_states_count)
-        # Delete the two temp dicts
-        del countries_to_count
-        del us_states_to_count
+
+    def filter_locations(self, include_continents=[], exclude_countries=[]):
+        # TODO: Sanity check on `include_continents` and `exclude_countries`
+        filtered_locations = []
         ipdb.set_trace()
+        for loc, country_info in self.locations_info.items():
+            country = country_info["country"]
+            count = country_info["count"]
+            if ("All" in include_continents or
+                        self.get_continent(country) in include_continents) \
+                    and country not in exclude_countries:
+                filtered_locations.append((loc, count))
+        ipdb.set_trace()
+        return filtered_locations
+
+    def generate_map_us_states(self):
+        # TODO: find out the complete name of the map projection used
+        # We are using the Lambert ... map projection and cropping the map to
+        # display only the USA territory
+        map = Basemap(llcrnrlon=-119, llcrnrlat=22, urcrnrlon=-64, urcrnrlat=49,
+                      projection='lcc', lat_1=32, lat_2=45, lon_0=-95)
+        map.readshapefile(SHAPE_FILENAME, name="states", drawbounds=True)
+        locations = self.filter_locations(include_continents=["North America"],
+                                          exclude_countries=["Canada", "Mexico"])
+        self.generate_map(map, locations, top_k=3)
+
+    def generate_map_world_countries(self):
+        scale = 1.2
+        map = Basemap(projection='mill',
+                      llcrnrlon=-180., llcrnrlat=-60,
+                      urcrnrlon=180., urcrnrlat=80.)
+
+        # Draw coast lines, countries, and fill the continents
+        map.drawcoastlines()
+        map.drawcountries()
+        map.drawstates()
+        map.fillcontinents()
+        map.drawmapboundary()
+        locations = self.filter_locations(include_continents=["All"])
+        self.generate_map(map, locations)
+
+    def generate_map_europe_countries(self):
+        pass
+
+    def generate_map(self, map, locations, top_k=None):
+        new_cached_locations = False
+        top_k_locations = []
+        if top_k is not None:
+            top_k_locations = get_top_k_locations(locations, k=top_k)
+        for (i, (location, count)) in enumerate(locations):
+            print("[{}/{}]".format((i+1), len(locations)))
+            # Check if valid location
+            if not is_valid_location(location):
+                # NOTE: We ignore the cases where `location` is empty (None)
+                # or refers to "No office location" or is not in the right continent
+                # TODO: add logging
+                continue
+            # Check if we already computed the location's longitude and latitude
+            # with the geocoding service
+            elif location in self.cached_locations:
+                loc = self.cached_locations[location]
+            else:
+                # TODO: else to be checked
+                ipdb.set_trace()
+                # Get the location's longitude and latitude
+                # We are using the module `geopy` to get the longitude and latitude of
+                # locations which will then be transformed into map coordinates so we can
+                # draw markers on a map with `basemap`
+                geolocator = Nominatim()
+                try:
+                    loc = geolocator.geocode(location)
+                except geopy.exc.GeocoderTimedOut:
+                    ipdb.set_trace()
+                    dump_pickle(self.cached_locations, CACHED_LOCATIONS_FILENAME)
+                    # TODO: do something when there is a connection error with the geocoding service
+                # Check if the geocoder service was able to provide the map coordinates
+                if loc is None:
+                    ipdb.set_trace()
+                    # Take the last part (i.e. country) since the whole location
+                    # string is not recognized by the geocoding service
+                    last_part_loc = get_last_part_loc(location)
+                    # Sanity check
+                    assert last_part_loc is not None, "last_part_loc is None"
+                    time.sleep(WAIT_TIME)
+                    loc = geolocator.geocode(last_part_loc)
+                    assert loc is not None, "The geocoding service could not for the second time" \
+                                            "provide the map coordinates for the location '{}'".format(last_part_loc)
+                time.sleep(WAIT_TIME)
+                new_cached_locations = True
+                self.cached_locations[location] = loc
+            # Transform the location's longitude and latitude to the projection
+            # map coordinates
+            x, y = map(loc.longitude, loc.latitude)
+            # Plot the map coordinates on the map; the size of the marker is
+            # proportional to the number of occurrences of the location in job posts
+            map.plot(x, y, marker='o', color='Red', markersize=int(np.sqrt(count)) * MARKER_SCALE)
+            # Annotate topk locations, i.e.the topk locations with the most job posts
+            if location in top_k_locations:
+                plt.text(x, y, location, fontsize=5, fontweight='bold',
+                         ha='left', va='bottom', color='k')
+        # Dump `cached_locations` as a pickle file if new locations' map
+        # coordinates computed
+        if new_cached_locations:
+            dump_pickle(self.cached_locations, CACHED_LOCATIONS_FILENAME)
+        plt.show()
 
     def is_a_us_state(self, location):
         """
@@ -208,15 +348,15 @@ class DataAnalyzer:
 
         :return:
         """
-        translator = Translator()
         # TODO: countries not found: UK (it is found as UNITED KINGDOM OF GREAT BRITAIN AND NORTHERN IRELAND),
         # South Korea (it is found as REPUBLIC OF KOREA), IRAN (it is found as REPUBLIC OF IRAN)
-        if country.upper() in self.countries:
+        if country in self.countries:
             return country
         elif country in self.translated_countries:
             return self.translated_countries[country]
         else:
             # TODO: google translation service has problems with Suisse->Suisse
+            translator = Translator()
             transl_country = translator.translate(country, dest='en').text
             # Save the translation
             temp = {country: transl_country}
@@ -224,9 +364,21 @@ class DataAnalyzer:
             dump_json(temp, TRANSL_COUNTRIES_FILENAME, update=True)
             return transl_country
 
+    def get_continent(self, country):
+        assert country is not None, "country is None in get_continent()"
+        if country in self.countries:
+            return self.countries[country]["continent"]
+        else:
+            ipdb.set_trace()
+            return None
 
-def load_countries():
-    return iso3166.countries_by_name
+
+def get_top_k_locations(locations, k):
+    assert type(locations) == list, "get_top_k_locations(): locations must be a list of tuples"
+    locations = np.array(locations)
+    count = locations[:, 1].astype(np.int32)
+    sorted_indices = np.argsort(count)[::-1]
+    return locations[sorted_indices][:k]
 
 
 def load_json(path):
@@ -431,7 +583,7 @@ def load_pickle(path):
 
 
 # TODO: add in Utility
-def dump_pickle(path, data):
+def dump_pickle(data, path):
     """
     Dumps a pickle file on disk and returns 0 if everything went right or None
     if file not found.
@@ -468,9 +620,19 @@ def is_valid_location(location):
         return True
 
 
+def get_last_part_loc(location):
+    # Get country or US state from `location`
+    # NOTE: in most cases, location is of the form 'Berlin, Germany'
+    # where country is given at the end after the comma
+    if location is None:
+        return None
+    else:
+        return location.split(",")[-1].strip()
+
+
 if __name__ == '__main__':
     config = {"db_filename": DB_FILENAME,
-              "analyze_tag": True,
+              "analyze_tags": True,
               "analyze_locations": True}
     ipdb.set_trace()
     data_analyzer = DataAnalyzer(config)
@@ -624,7 +786,7 @@ if __name__ == '__main__':
                     loc = geolocator.geocode(location)
                 except geopy.exc.GeocoderTimedOut:
                     ipdb.set_trace()
-                    if dump_pickle("cached_locations.pkl", cached_locations) is None:
+                    if dump_pickle(cached_locations, "cached_locations.pkl") is None:
                         # TODO: replace pass with logging
                         pass
                     # TODO: do something when there is a connection error with the geocoding service
