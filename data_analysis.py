@@ -234,7 +234,10 @@ class DataAnalyzer:
                           top_k=3)
 
     def generate_map_world_countries(self):
-        scale = 1.2
+        # a Miller Cylindrical projection
+        # TODO: should be set in the config, just like MARKER_SCALE which is used
+        # in generate_map_us_states()
+        marker_scale = 1.5
         map = Basemap(projection='mill',
                       llcrnrlon=-180., llcrnrlat=-60,
                       urcrnrlon=180., urcrnrlat=80.)
@@ -246,7 +249,7 @@ class DataAnalyzer:
         map.fillcontinents()
         map.drawmapboundary()
         locations = self.filter_locations(include_continents=["All"])
-        self.generate_map(map, locations, markersize=lambda count: 1.5)
+        self.generate_map(map, locations, markersize=lambda count: marker_scale)
 
     def generate_map_europe_countries(self):
         pass
@@ -311,8 +314,8 @@ class DataAnalyzer:
         # coordinates computed
         if new_cached_locations:
             dump_pickle(self.cached_locations, CACHED_LOCATIONS_FILENAME)
-        ipdb.set_trace()
         plt.show()
+        ipdb.set_trace()
 
     def is_a_us_state(self, location):
         """
@@ -372,6 +375,7 @@ class DataAnalyzer:
         if country in self.countries:
             return self.countries[country]["continent"]
         else:
+            # TODO: test else clause
             ipdb.set_trace()
             return None
 
