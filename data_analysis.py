@@ -106,14 +106,24 @@ class DataAnalyzer:
         # NOTE: bar charts are for categorical data
         # Generate bar chart of countries vs number of job posts
         # TODO: should be set in a config
-        top_k = 10
+        top_k = 20
         country_names = self.format_country_names(self.sorted_countries_count[:top_k, 0])
         config = {"x": country_names,
                   "y": self.sorted_countries_count[:top_k, 1].astype(np.int32),
                   "xlabel": "Countries",
                   "ylabel": "Number of job posts",
                   "title": "Top {} most popular countries".format(top_k),
-                  "grid_which": "boths"}
+                  "grid_which": "both"}
+        # TODO: place number (of job posts) on top of each bar
+        #self.generate_bar_chart(config)
+
+        # Generate bar chart of US states vs number of job posts
+        config = {"x": self.sorted_us_states_count[:, 0],
+                  "y": self.sorted_us_states_count[:, 1].astype(np.int32),
+                  "xlabel": "US states",
+                  "ylabel": "Number of job posts",
+                  "title": "US states popularity",
+                  "grid_which": "major"}
         self.generate_bar_chart(config)
 
     def format_country_names(self, country_names, max_n_char=20):
@@ -262,7 +272,6 @@ class DataAnalyzer:
         map = Basemap(projection='mill',
                       llcrnrlon=-180., llcrnrlat=-60,
                       urcrnrlon=180., urcrnrlat=80.)
-
         # Draw coast lines, countries, and fill the continents
         map.drawcoastlines()
         map.drawcountries()
