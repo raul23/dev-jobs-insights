@@ -152,7 +152,9 @@ class DataAnalyzer:
         #self.generate_pie_chart(config)
 
     def analyze_salary(self):
-
+        # Return list of minimum salary
+        ipdb.set_trace()
+        min_salaries = self.select_all_min_salaries()
 
     def format_country_names(self, country_names, max_n_char=20):
         for i, name in enumerate(country_names):
@@ -183,6 +185,19 @@ class DataAnalyzer:
         :return: list of tuples of the form (location, count)
         """
         sql = '''SELECT location, COUNT(*) as CountOf FROM job_posts GROUP BY location ORDER BY CountOf DESC'''
+        cur = self.conn.cursor()
+        cur.execute(sql)
+        return cur.fetchall()
+
+    def select_all_min_salaries(self):
+        """
+        Returns all minimum salaries.
+        A list of tuples is returned where a tuple is of the form (job_id, min_salary).
+
+        :param conn: sqlite3.Connection object
+        :return: list of tuples of the form (job_id, min_salary)
+        """
+        sql = """SELECT job_id, value FROM job_salary WHERE name LIKE 'min%'"""
         cur = self.conn.cursor()
         cur.execute(sql)
         return cur.fetchall()
@@ -575,19 +590,6 @@ def select_all_tags(conn):
     return cur.fetchall()
 
 
-def select_all_min_salaries(conn):
-    """
-    Returns all minimum salaries
-
-    :param conn:
-    :return:
-    """
-    sql = """SELECT job_id, value FROM job_salary WHERE name LIKE 'min%'"""
-    cur = conn.cursor()
-    cur.execute(sql)
-    return cur.fetchall()
-
-
 def select_all_max_salaries(conn):
     """
     Returns all maximum salaries
@@ -761,8 +763,9 @@ def get_last_part_loc(location):
 
 if __name__ == '__main__':
     config = {"db_filename": DB_FILENAME,
-              "analyze_tags": True,
-              "analyze_locations": True}
+              "analyze_tags": False,
+              "analyze_locations": False,
+              "analyze_salary": True}
     ipdb.set_trace()
     data_analyzer = DataAnalyzer(config)
     data_analyzer.run_analysis()
