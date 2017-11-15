@@ -67,6 +67,8 @@ class DataAnalyzer:
                 self.analyze_tags()
             if config["analyze_locations"]:
                 self.analyze_locations()
+            if config["analyze_salary"]:
+                self.analyze_salary()
 
     def analyze_tags(self):
         """
@@ -82,6 +84,17 @@ class DataAnalyzer:
         # associated with) and they are sorted in order of decreasing
         # number of occurrences (i.e. most popular tag at first)
         self.sorted_tags_count = np.array(results)
+        # Generate bar chart of tags vs number of job posts
+        # TODO: should be set in a config
+        top_k = 20
+        config = {"x": self.sorted_tags_count[:top_k, 0],
+                  "y": self.sorted_tags_count[:top_k, 1].astype(np.int32),
+                  "xlabel": "Skills (tags)",
+                  "ylabel": "Number of jobs",
+                  "title": "Top {} most popular skills".format(top_k),
+                  "grid_which": "major"}
+        # TODO: place number (of job posts) on top of each bar
+        self.generate_bar_chart(config)
 
     def analyze_locations(self):
         """
@@ -94,6 +107,7 @@ class DataAnalyzer:
         results = self.count_location_occurrences()
         # Process the results
         self.process_locations(results)
+        # TODO: add in config option to set the image dimensions
         # Generate map with markers added on US states that have job posts
         # associated with
         #self.generate_map_us_states()
@@ -115,8 +129,7 @@ class DataAnalyzer:
                   "title": "Top {} most popular countries".format(top_k),
                   "grid_which": "both"}
         # TODO: place number (of job posts) on top of each bar
-        #self.generate_bar_chart(config)
-
+        self.generate_bar_chart(config)
         # Generate bar chart of US states vs number of job posts
         config = {"x": self.sorted_us_states_count[:, 0],
                   "y": self.sorted_us_states_count[:, 1].astype(np.int32),
@@ -124,7 +137,22 @@ class DataAnalyzer:
                   "ylabel": "Number of job posts",
                   "title": "US states popularity",
                   "grid_which": "major"}
-        self.generate_bar_chart(config)
+        #self.generate_bar_chart(config)
+        # Generate pie chart of countries vs number of job posts
+        config = {"labels": self.sorted_countries_count[:, 0],
+                  "values": self.sorted_countries_count[:, 1].astype(np.int32),
+                  "title": "Countries popularity by % of job posts"}
+        # TODO: add 'other countries' for countries with few job posts
+        # Pie chart is too crowded for countries with less than 0.9% of job posts
+        #self.generate_pie_chart(config)
+        # Generate pie chart of countries vs number of job posts
+        config = {"labels": self.sorted_us_states_count[:, 0],
+                  "values": self.sorted_us_states_count[:, 1].astype(np.int32),
+                  "title": "US States popularity by % of job posts"}
+        #self.generate_pie_chart(config)
+
+    def analyze_salary(self):
+
 
     def format_country_names(self, country_names, max_n_char=20):
         for i, name in enumerate(country_names):
@@ -348,7 +376,19 @@ class DataAnalyzer:
 
     @staticmethod
     def generate_bar_chart(plt_config):
-        ipdb.set_trace()
+        default_config = {"x": None,
+                          "y": None,
+                          "xlabel": "",
+                          "ylabel": "",
+                          "title": "",
+                          "grid_which": "major",
+                          "yaxis_major_mutiplelocator": 20,
+                          "yaxis_minor_mutiplelocator": 10}
+        # Sanity check on config dicts
+        assert len(default_config) >= len(plt_config), "generate_bar_chart(): plt_config" \
+                                                       "has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
+        default_config.update(plt_config)
+        plt_config = default_config
         x = plt_config["x"]
         y = plt_config["y"]
         grid_which = plt_config["grid_which"]
@@ -370,11 +410,34 @@ class DataAnalyzer:
         ax.set_title(title)
         labels = ax.get_xticklabels()
         plt.setp(labels, rotation=270.)
-        plt.minorticks_on()
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(plt_config["yaxis_major_mutiplelocator"]))
+        ax.yaxis.set_minor_locator(ticker.MultipleLocator(plt_config["yaxis_minor_mutiplelocator"]))
+        #plt.minorticks_on()
         plt.grid(which=grid_which)
         plt.tight_layout()
         plt.show()
-        ipdb.set_trace()
+
+    @staticmethod
+    def generate_pie_chart(plt_config):
+        default_config = {"values": None,
+                          "labels": None,
+                          "title": ""}
+        # Sanity check on config dicts
+        assert len(default_config) >= len(plt_config), "generate_bar_chart(): plt_config" \
+                                                       "has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
+        default_config.update(plt_config)
+        values = plt_config["values"]
+        labels = plt_config["labels"]
+        # Sanity check on the input arrays
+        assert type(values) == type(np.array([])), "generate_pie_chart(): wrong type on input array 'values'"
+        assert type(labels) == type(np.array([])), "generate_pie_chart(): wrong type on input array 'labels'"
+        assert values.shape == labels.shape, "generate_pie_chart(): wrong shape with 'labels' and 'values'"
+        title = plt_config["title"]
+        ax = plt.gca()
+        plt.pie(values, labels=labels, autopct='%1.1f%%')
+        ax.set_title(title)
+        plt.axis('equal')
+        plt.show()
 
     def is_a_us_state(self, location):
         """
