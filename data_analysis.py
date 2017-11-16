@@ -18,6 +18,7 @@ from mpl_toolkits.basemap import Basemap
 import numpy as np
 import plotly
 from plotly.graph_objs import Scatter, Figure, Layout
+# TODO: check if we must use np.{int,float}{32,64}
 
 
 # TODO: the following variables should be set in a config file
@@ -60,6 +61,19 @@ class DataAnalyzer:
         self.sorted_tags_count = None
         self.sorted_countries_count = None
         self.sorted_us_states_count = None
+        # TODO: {min, max}_salaries might not be used much
+        self.min_salaries = None
+        self.max_salaries = None
+        self.job_ids_with_salary = None
+        self.job_id_to_salary_mid_ranges = None
+        # Global stats about salary
+        self.global_mean_salary = None
+        self.global_std_salary = None
+        self.global_min_salary = None
+        self.global_max_salary = None
+        self.min_job_id = None
+        self.max_job_id = None
+        self.sorted_salary_mid_ranges = None
 
     def run_analysis(self):
         with self.conn:
@@ -152,9 +166,83 @@ class DataAnalyzer:
         #self.generate_pie_chart(config)
 
     def analyze_salary(self):
-        # Return list of minimum salary
+        # Compute salary mid-range for each min-max interval
+        self.compute_salary_mid_ranges()
+        self.compute_global_stats()
+        # Generate histogram of salary mid ranges vs number of job posts
+        # TODO: removing some outliers
+        # TODO: add a threshold to remove outliers, e.g. salary mid-range less
+        # than 20k and over 400k will be discarded
         ipdb.set_trace()
-        min_salaries = self.select_all_min_salaries()
+        config = {"data": self.sorted_salary_mid_ranges[1:-1],
+                  "bin_width": 10000.,
+                  "xlabel": "Mid-range salaries",
+                  "ylabel": "Number of job posts",
+                  "title": "Histogram: Mid-range salaries",
+                  "grid_which": "major",
+                  "xaxis_major_mutiplelocator": 10000,
+                  "xaxis_minor_mutiplelocator": 1000,
+                  "yaxis_major_mutiplelocator": 5,
+                  "yaxis_minor_mutiplelocator": 1
+                  }
+        self.generate_histogram()
+
+    def compute_salary_mid_ranges(self):
+        # Get list of min/max salary, i.e. for each job id we want its
+        # corresponding min/max salary
+        # TODO: return the min/max salaries in ascending order so you don't have
+        # to sort `salary_mid_ranges` later on. You will have to modify the SQL
+        # SELECT request in `select_all_min_salaries()` and `select_all_max_salaries()`
+        # TODO: check if there are other cases where you could sort the data at the source
+        # instead of doing it here after retrieving the data from the db
+        job_ids_1, min_salaries = self.get_salaries("min")
+        job_ids_2, max_salaries = self.get_salaries("max")
+        self.min_salaries = min_salaries
+        self.max_salaries = max_salaries
+        # Sanity check on `job_ids_*`
+        assert np.array_equal(job_ids_1, job_ids_2), "The two returned job_ids don't match"
+        self.job_ids_with_salary = job_ids_1
+        del job_ids_2
+
+        # Compute salary mid-range for each min-max interval
+        salary_ranges = np.hstack((min_salaries, max_salaries))
+        # TODO: check precision for `salary_mid_ranges`
+        salary_mid_ranges = salary_ranges.mean(axis=1)
+        self.job_id_to_salary_mid_ranges = dict(zip(self.job_ids_with_salary, salary_mid_ranges))
+        sorted_indices = np.argsort(salary_mid_ranges)
+        self.sorted_salary_mid_ranges = salary_mid_ranges[sorted_indices]
+        # Get job_id's associated with these global min and max salaries
+        min_index = sorted_indices[0]
+        max_index = sorted_indices[-1]
+        self.min_job_id = self.job_ids_with_salary[min_index]
+        self.max_job_id = self.job_ids_with_salary[max_index]
+
+    def compute_global_stats(self):
+        # Compute salary mean across list of mid-range salaries
+        global_mean_salary = self.sorted_salary_mid_ranges.mean()
+        # Precision to two decimals
+        self.global_mean_salary = float(format(global_mean_salary, '.2f'))
+        # Compute std across list of mid-range salaries
+        global_std_salary = self.sorted_salary_mid_ranges.std()
+        # Precision to two decimals
+        self.global_std_salary = float(format(global_std_salary, '.2f'))
+        # Get min and max salaries across list of mid-range salaries
+        self.global_min_salary = self.sorted_salary_mid_ranges[0]
+        self.global_max_salary = self.sorted_salary_mid_ranges[-1]
+
+    def get_salaries(self, which="min"):
+        if which == "min":
+            salaries = self.select_all_min_salaries()
+        else:
+            salaries = self.select_all_max_salaries()
+        salaries = np.array(salaries)
+        # Extract the job ids
+        job_ids = salaries[:, 0]
+        # Extract the corresponding min salaries
+        salaries = salaries[:, 1].astype(np.float64)
+        # Reshape salaries arrays
+        salaries = salaries.reshape((len(salaries), 1))
+        return job_ids, salaries
 
     def format_country_names(self, country_names, max_n_char=20):
         for i, name in enumerate(country_names):
@@ -168,7 +256,6 @@ class DataAnalyzer:
         Returns tags sorted in decreasing order of their occurrences in job posts.
         A list of tuples is returned where a tuple is of the form (tag_name, count).
 
-        :param conn: sqlite3.Connection object
         :return: list of tuples of the form (tag_name, count)
         """
         sql = '''SELECT name, COUNT(name) as CountOf FROM entries_tags GROUP BY name ORDER BY CountOf DESC'''
@@ -181,7 +268,6 @@ class DataAnalyzer:
         Returns locations sorted in decreasing order of their occurrences in job posts.
         A list of tuples is returned where a tuple is of the form (location, count).
 
-        :param conn: sqlite3.Connection object
         :return: list of tuples of the form (location, count)
         """
         sql = '''SELECT location, COUNT(*) as CountOf FROM job_posts GROUP BY location ORDER BY CountOf DESC'''
@@ -194,10 +280,22 @@ class DataAnalyzer:
         Returns all minimum salaries.
         A list of tuples is returned where a tuple is of the form (job_id, min_salary).
 
-        :param conn: sqlite3.Connection object
         :return: list of tuples of the form (job_id, min_salary)
         """
         sql = """SELECT job_id, value FROM job_salary WHERE name LIKE 'min%'"""
+        cur = self.conn.cursor()
+        cur.execute(sql)
+        return cur.fetchall()
+
+    def select_all_max_salaries(self):
+        """
+        Returns all maximum salaries.
+        A list of tuples is returned where a tuple is of the form (job_id, max_salary).
+
+        :param conn: sqlite3.Connection object
+        :return: list of tuples of the form (job_id, max_salary)
+        """
+        sql = """SELECT job_id, value FROM job_salary WHERE name LIKE 'max%'"""
         cur = self.conn.cursor()
         cur.execute(sql)
         return cur.fetchall()
@@ -293,6 +391,57 @@ class DataAnalyzer:
                     and country not in exclude_countries:
                 filtered_locations.append((loc, count))
         return filtered_locations
+
+    @staticmethod
+    def generate_histogram(plt_config):
+        ipdb.set_trace()
+        default_config = {"data": None,
+                          "bin_width": 10000,
+                          "xlabel": "",
+                          "ylabel": "",
+                          "title": "",
+                          "grid_which": "major",
+                          "xaxis_major_mutiplelocator": 10000,
+                          "xaxis_minor_mutiplelocator": 1000,
+                          "yaxis_major_mutiplelocator": 5,
+                          "yaxis_minor_mutiplelocator": 1
+                          }
+        # Sanity check on config dicts
+        assert len(default_config) >= len(plt_config), "generate_histogram(): plt_config" \
+                                                       "has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
+        default_config.update(plt_config)
+        plt_config = default_config
+        data = plt_config["data"]
+        bin_width = plt_config["bind_wdith"]
+        xlabel = plt_config["xlabel"]
+        ylabel = plt_config["ylabel"]
+        title = plt_config["title"]
+        grid_which = plt_config["grid_which"]
+        xaxis_major_mutiplelocator = plt_config["xaxis_major_mutiplelocator"]
+        xaxis_minor_mutiplelocator = plt_config["xaxis_minor_mutiplelocator"] # TODO: not used
+        yaxis_major_mutiplelocator = plt_config["yaxis_major_mutiplelocator"]
+        yaxis_minor_mutiplelocator = plt_config["yaxis_minor_mutiplelocator"]
+        # Sanity check on the input array
+        assert type(data) == type(np.array([])), "generate_histogram(): wrong type on input array 'data'"
+        assert grid_which in ["minor", "major", "both"], "generate_histogram(): " \
+                                                         "wrong value for grid_which='{}'".format(grid_which)
+        n_bins = np.ceil((x.max() - x.min()) / bin_width).astype(np.int32)
+        ax = plt.gca()
+        ax.hist(x, bins=n_bins, color='r')
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(xaxis_major_mutiplelocator))
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(yaxis_major_mutiplelocator))
+        ax.yaxis.set_minor_locator(ticker.MultipleLocator(yaxis_minor_mutiplelocator))
+        plt.xlim(0, x)
+        labels = ax.get_xticklabels()
+        plt.setp(labels, rotation=270.)
+        plt.grid(True, which='major')
+        plt.tight_layout()
+        # TODO: add function to save image instead of showing it
+        plt.show()
+        ipdb.set_trace()
 
     def generate_map_us_states(self):
         # TODO: find out the complete name of the map projection used
@@ -406,6 +555,9 @@ class DataAnalyzer:
         plt_config = default_config
         x = plt_config["x"]
         y = plt_config["y"]
+        xlabel = plt_config["xlabel"]
+        ylabel = plt_config["ylabel"]
+        title = plt_config["title"]
         grid_which = plt_config["grid_which"]
         # Sanity check on the input arrays
         assert type(x) == type(np.array([])), "generate_bar_chart(): wrong type on input array 'x'"
@@ -413,9 +565,6 @@ class DataAnalyzer:
         assert x.shape == y.shape, "generate_bar_chart(): wrong shape with 'x' and 'y'"
         assert grid_which in ["minor", "major", "both"], "generate_bar_chart(): " \
                                                          "wrong value for grid_which='{}'".format(grid_which)
-        xlabel = plt_config["xlabel"]
-        ylabel = plt_config["ylabel"]
-        title = plt_config["title"]
         ax = plt.gca()
         index = np.arange(len(x))
         plt.bar(index, y)
@@ -443,11 +592,11 @@ class DataAnalyzer:
         default_config.update(plt_config)
         values = plt_config["values"]
         labels = plt_config["labels"]
+        title = plt_config["title"]
         # Sanity check on the input arrays
         assert type(values) == type(np.array([])), "generate_pie_chart(): wrong type on input array 'values'"
         assert type(labels) == type(np.array([])), "generate_pie_chart(): wrong type on input array 'labels'"
         assert values.shape == labels.shape, "generate_pie_chart(): wrong shape with 'labels' and 'values'"
-        title = plt_config["title"]
         ax = plt.gca()
         plt.pie(values, labels=labels, autopct='%1.1f%%')
         ax.set_title(title)
@@ -563,7 +712,7 @@ def create_connection(db_file, autocommit=False):
 
     :param db_file: database file
     :param autocommit: TODO
-    :return: Connection object or None
+    :return: sqlite3.Connection object  or None
     """
     try:
         if autocommit:
@@ -585,19 +734,6 @@ def select_all_tags(conn):
     :return:
     """
     sql = '''SELECT * FROM tags'''
-    cur = conn.cursor()
-    cur.execute(sql)
-    return cur.fetchall()
-
-
-def select_all_max_salaries(conn):
-    """
-    Returns all maximum salaries
-
-    :param conn:
-    :return:
-    """
-    sql = """SELECT job_id, value FROM job_salary WHERE name LIKE 'max%'"""
     cur = conn.cursor()
     cur.execute(sql)
     return cur.fetchall()
