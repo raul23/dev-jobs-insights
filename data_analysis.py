@@ -151,7 +151,7 @@ class DataAnalyzer:
                   "title": "Top {} most popular countries".format(top_k),
                   "grid_which": "both"}
         # TODO: place number (of job posts) on top of each bar
-        self.generate_bar_chart(config)
+        #self.generate_bar_chart(config)
         # Generate bar chart of US states vs number of job posts
         config = {"x": self.sorted_us_states_count[:, 0],
                   "y": self.sorted_us_states_count[:, 1].astype(np.int32),
@@ -178,7 +178,14 @@ class DataAnalyzer:
         self.compute_salary_mid_ranges()
         # Compute global stats on salaries, e.g. global max/min mid-range salaries
         self.compute_global_stats()
-        # Get
+        # Get location names that have a salary associated with
+        results = self.select_locations(tuple(self.job_ids_with_salary))
+        # Sanity check on results
+        assert len(results) == len(self.job_ids_with_salary), \
+            "job ids are missing in returned results"
+        # Process results to extract average mid-range salaries for each
+        # countries and US states
+        self.process_locations_with_salaries(results)
         # Generate histogram of salary mid ranges vs number of job posts
         # TODO: you can use self.MAX_MID_RANGE_SALARY_THRESHOLD only after running
         # compute_global_stats() where the global max and min salaries are computed
@@ -308,6 +315,24 @@ class DataAnalyzer:
         cur.execute(sql)
         return cur.fetchall()
 
+    def select_locations(self, job_ids):
+        # Sanity check on input
+        # TODO: remove too much info in assert message, i.e. the name of the method
+        assert type(job_ids) is tuple, "job_ids is not a tuple"
+        sql = '''SELECT id, location FROM job_posts WHERE id IN ({})'''
+        sql = self.build_sql_request(sql, len(job_ids))
+        cur = self.conn.cursor()
+        cur.execute(sql, job_ids)
+        return cur.fetchall()
+
+    def build_sql_request(self, sql, n_items):
+        placeholders = list(n_items * "?")
+        placeholders = str(placeholders)
+        placeholders = placeholders.replace("[", "")
+        placeholders = placeholders.replace("]", "")
+        placeholders = placeholders.replace("'", "")
+        return sql.format(placeholders)
+
     def process_locations(self, locations):
         # Temp dicts
         locations_info = {}
@@ -340,7 +365,7 @@ class DataAnalyzer:
                     # occurrences in job posts)
                     us_states_to_count.setdefault(last_part_loc, 0)
                     us_states_to_count[last_part_loc] += count
-                    # Also since it is a US state, save 'United States' and it
+                    # Also since it is a US state, save 'United States' and its
                     # count (i.e. number of occurrences in job posts)
                     # NOTE: in the job posts, the location for a US state is
                     # given without the country at the end, e.g. Fort Meade, MD
@@ -387,6 +412,73 @@ class DataAnalyzer:
         self.sorted_countries_count = np.array(self.sorted_countries_count)
         self.sorted_us_states_count = sorted(us_states_to_count.items(), key=lambda x: x[1], reverse=True)
         self.sorted_us_states_count = np.array(self.sorted_us_states_count)
+
+    def process_locations_with_salaries(self, locations):
+        # Temp dicts
+        ipdb.set_trace()
+        countries_to_salary = {}
+        us_states_to_salary = {}
+        for (i, (job_id, location)) in enumerate(locations):
+            print("[{}/{}]".format((i + 1), len(locations)))
+            # Check if valid location
+            if not is_valid_location(location):
+                # NOTE: We ignore the case where `location` is empty (None)
+                # or refers to "No office location"
+                # TODO: add logging
+                continue
+            # Sanitize input: this should be done at the source, i.e. in the
+            # script that is loading data into the database
+            elif ";" in location:
+                ipdb.set_trace()
+                # TODO: it should be done in a separate method since we are also
+                # doing the same thing in process_locations()
+                new_locations = location.split(";")
+                for new_loc in new_locations:
+                    locations.append((new_loc.strip(), 1))
+                continue
+            else:
+                # Get country or US state from `location`
+                last_part_loc = get_last_part_loc(location)
+                # Sanity check
+                assert last_part_loc is not None, "last_part_loc is None"
+                # Is the location referring to a country or a US state?
+                if self.is_a_us_state(last_part_loc):
+                    ipdb.set_trace()
+                    # `location` refers to a US state
+                    # Save last part of `location` along with some data for
+                    # computing the average mid-range salary for the given US state
+                    self.add_salary(us_states_to_salary, location, job_id)
+                    # Also since it is a US state, save 'United States' along with
+                    # some data for computing the average mid-range salary for
+                    # the given US country
+                    # NOTE: in the job posts, the location for a US state is
+                    # given without the country at the end, e.g. Fort Meade, MD
+                    self.add_salary(countries_to_salary, "United States", job_id)
+                else:
+                    ipdb.set_trace()
+                    # `location` refers to a country
+                    # Check for countries written in other languages, and keep
+                    # only the english translation
+                    # NOTE: sometimes, a country is not given in English e.g.
+                    # Deutschland and Germany
+                    # Save the location and along with some data for computing
+                    # the average mid-range salary for the given country
+                    transl_country = self.get_english_country_transl(last_part_loc)
+                    assert transl_country in self.countries, \
+                        "The country '{}' is not found".format(transl_country)
+                    self.add_salary(countries_to_salary, transl_country, job_id)
+        ipdb.set_trace()
+
+    def add_salary(self, dictionary, location, job_id):
+        dictionary.setdefault(location, {"average_mid_range_salary": 0,
+                                         "cumulative_sum": 0,
+                                         "count": 0})
+        mid_range_salary = self.job_id_to_salary_mid_ranges[job_id]
+        dictionary[location]["count"] += 1  # update count
+        cum_sum = dictionary[location]["cumulative_sum"]
+        dictionary[location]["average_mid_range_salary"] \
+            = (cum_sum + mid_range_salary) / dictionary[location]["count"]  # update average
+        dictionary[location]["cumulative_sum"] += mid_range_salary  # update cumulative sum
 
     def filter_locations(self, include_continents=[], exclude_countries=[]):
         # TODO: Sanity check on `include_continents` and `exclude_countries`
@@ -753,112 +845,6 @@ def create_connection(db_file, autocommit=False):
         print(e)
 
     return None
-
-
-def select_all_tags(conn):
-    """
-    Returns all tags
-
-    :param conn:
-    :return:
-    """
-    sql = '''SELECT * FROM tags'''
-    cur = conn.cursor()
-    cur.execute(sql)
-    return cur.fetchall()
-
-
-def select_entries_tags(conn, job_ids):
-    # TODO: change function name
-    # Sanity check
-    assert type(job_ids) is tuple
-    sql = '''SELECT * FROM entries_tags WHERE id IN ({})'''
-    placeholders = list(len(job_ids)*"?")
-    placeholders = str(placeholders)
-    placeholders = placeholders.replace("[", "")
-    placeholders = placeholders.replace("]", "")
-    placeholders = placeholders.replace("'", "")
-    sql = sql.format(placeholders)
-    cur = conn.cursor()
-    cur.execute(sql, job_ids)
-    return cur.fetchall()
-
-
-def select_industries(conn, job_ids):
-    # Sanity check
-    assert type(job_ids) is tuple
-    # TODO: factorization, almost same code (sql changes) as select_entries_tags()
-    sql = '''SELECT job_id, value FROM job_overview WHERE job_id IN ({}) AND name="Industry"'''
-    placeholders = list(len(job_ids)*"?")
-    placeholders = str(placeholders)
-    placeholders = placeholders.replace("[", "")
-    placeholders = placeholders.replace("]", "")
-    placeholders = placeholders.replace("'", "")
-    sql = sql.format(placeholders)
-    cur = conn.cursor()
-    cur.execute(sql, job_ids)
-    return cur.fetchall()
-
-
-def select_roles(conn, job_ids):
-    # Sanity check
-    assert type(job_ids) is tuple
-    # TODO: factorization, almost same code (sql changes) as select_entries_tags()
-    sql = '''SELECT job_id, value FROM job_overview WHERE job_id IN ({}) AND name="Role"'''
-    placeholders = list(len(job_ids)*"?")
-    placeholders = str(placeholders)
-    placeholders = placeholders.replace("[", "")
-    placeholders = placeholders.replace("]", "")
-    placeholders = placeholders.replace("'", "")
-    sql = sql.format(placeholders)
-    cur = conn.cursor()
-    cur.execute(sql, job_ids)
-    return cur.fetchall()
-
-
-def select_locations(conn, job_ids):
-    # Sanity check
-    assert type(job_ids) is tuple
-    # TODO: factorization, almost same code (sql changes) as select_entries_tags()
-    sql = '''SELECT id, location FROM job_posts WHERE id IN ({})'''
-    placeholders = list(len(job_ids)*"?")
-    placeholders = str(placeholders)
-    placeholders = placeholders.replace("[", "")
-    placeholders = placeholders.replace("]", "")
-    placeholders = placeholders.replace("'", "")
-    sql = sql.format(placeholders)
-    cur = conn.cursor()
-    cur.execute(sql, job_ids)
-    return cur.fetchall()
-
-
-# TODO: not used anymore
-def count_tag(conn, tag):
-    """
-    For a given tag, count the number of its occurrences in the `entries_tags` table
-
-    :param conn:
-    :return:
-    """
-    # Sanity check
-    assert type(tag) is tuple
-    sql = '''SELECT COUNT(name) FROM entries_tags WHERE name=?'''
-    cur = conn.cursor()
-    cur.execute(sql, tag)
-    return cur.fetchone()
-
-
-def count_industry_occurrences(conn):
-    """
-    For a given industry, count the number of its occurrences in the `job_overview` table
-
-    :param conn:
-    :return:
-    """
-    sql = '''SELECT value, COUNT(*) as CountOf FROM job_overview WHERE name='Industry' GROUP BY value ORDER BY CountOf DESC'''
-    cur = conn.cursor()
-    cur.execute(sql)
-    return cur.fetchall()
 
 
 # TODO: add in Utility
