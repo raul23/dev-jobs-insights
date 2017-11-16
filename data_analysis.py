@@ -443,11 +443,10 @@ class DataAnalyzer:
                 assert last_part_loc is not None, "last_part_loc is None"
                 # Is the location referring to a country or a US state?
                 if self.is_a_us_state(last_part_loc):
-                    ipdb.set_trace()
                     # `location` refers to a US state
                     # Save last part of `location` along with some data for
                     # computing the average mid-range salary for the given US state
-                    self.add_salary(us_states_to_salary, location, job_id)
+                    self.add_salary(us_states_to_salary, last_part_loc, job_id)
                     # Also since it is a US state, save 'United States' along with
                     # some data for computing the average mid-range salary for
                     # the given US country
@@ -455,7 +454,6 @@ class DataAnalyzer:
                     # given without the country at the end, e.g. Fort Meade, MD
                     self.add_salary(countries_to_salary, "United States", job_id)
                 else:
-                    ipdb.set_trace()
                     # `location` refers to a country
                     # Check for countries written in other languages, and keep
                     # only the english translation
