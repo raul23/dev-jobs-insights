@@ -82,6 +82,8 @@ class DataAnalyzer:
         # in filter_mid_range_salaries()
         self.MIN_MID_RANGE_SALARY_THRESHOLD = MIN_MID_RANGE_SALARY_THRESHOLD
         self.MAX_MID_RANGE_SALARY_THRESHOLD = MAX_MID_RANGE_SALARY_THRESHOLD
+        self.avg_mid_range_salaries_by_countries = None
+        self.avg_mid_range_salaries_by_us_states = None
 
     def run_analysis(self):
         with self.conn:
@@ -132,10 +134,10 @@ class DataAnalyzer:
         # TODO: add in config option to set the image dimensions
         # Generate map with markers added on US states that have job posts
         # associated with
-        #self.generate_map_us_states()
+        self.generate_map_us_states()
         # Generate map with markers added on countries that have job posts
         # associated with
-        #self.generate_map_world_countries()
+        self.generate_map_world_countries()
         # Generate map with markers added on european countries that have job
         # posts associated with
         #self.generate_map_europe_countries()
@@ -166,7 +168,7 @@ class DataAnalyzer:
                   "title": "Countries popularity by % of job posts"}
         # TODO: add 'other countries' for countries with few job posts
         # Pie chart is too crowded for countries with less than 0.9% of job posts
-        #self.generate_pie_chart(config)
+        self.generate_pie_chart(config)
         # Generate pie chart of countries vs number of job posts
         config = {"labels": self.sorted_us_states_count[:, 0],
                   "values": self.sorted_us_states_count[:, 1].astype(np.int32),
@@ -307,7 +309,6 @@ class DataAnalyzer:
         Returns all maximum salaries.
         A list of tuples is returned where a tuple is of the form (job_id, max_salary).
 
-        :param conn: sqlite3.Connection object
         :return: list of tuples of the form (job_id, max_salary)
         """
         sql = """SELECT job_id, value FROM job_salary WHERE name LIKE 'max%'"""
@@ -325,7 +326,8 @@ class DataAnalyzer:
         cur.execute(sql, job_ids)
         return cur.fetchall()
 
-    def build_sql_request(self, sql, n_items):
+    @staticmethod
+    def build_sql_request(sql, n_items):
         placeholders = list(n_items * "?")
         placeholders = str(placeholders)
         placeholders = placeholders.replace("[", "")
@@ -466,6 +468,28 @@ class DataAnalyzer:
                         "The country '{}' is not found".format(transl_country)
                     self.add_salary(countries_to_salary, transl_country, job_id)
         ipdb.set_trace()
+        # For each dict, keep every fields, except "cumulative_sum" and build
+        # a structured array out of the dicts
+        # TODO: use a structured array like the following, so you can have columns
+        # in a numpy array with different data types, and also it is easier to sort
+        # this kind of array based on the name of a field
+        temp_countries = [(k, v["average_mid_range_salary"], v["count"])
+                          for k, v in countries_to_salary.items()]
+        temp_us_states = [(k, v["average_mid_range_salary"], v["count"])
+                          for k, v in us_states_to_salary.items()]
+        # Fields (+data types) for the structured array
+        dtype = [("country", "S10"), ("average_mid_range_salary", float), ("count", int)]
+        temp_countries = np.array(temp_countries, dtype=dtype)
+        dtype = [("us_state", "S10"), ("average_mid_range_salary", float), ("count", int)]
+        temp_us_states = np.array(temp_us_states, dtype=dtype)
+        # Sort each array based on the field 'average_mid_range_salary'
+        temp_countries.sort(order="average_mid_range_salary")
+        temp_us_states.sort(order="average_mid_range_salary")
+        temp_countries = temp_countries[::-1]
+        temp_us_states = temp_us_states[::-1]
+        self.avg_mid_range_salaries_by_countries = temp_countries
+        self.avg_mid_range_salaries_by_us_states = temp_us_states
+        ipdb.set_trace()
 
     def add_salary(self, dictionary, location, job_id):
         dictionary.setdefault(location, {"average_mid_range_salary": 0,
@@ -478,15 +502,15 @@ class DataAnalyzer:
             = (cum_sum + mid_range_salary) / dictionary[location]["count"]  # update average
         dictionary[location]["cumulative_sum"] += mid_range_salary  # update cumulative sum
 
-    def filter_locations(self, include_continents=[], exclude_countries=[]):
+    def filter_locations(self, include_continents="All", exclude_countries=None):
+        ipdb.set_trace()
         # TODO: Sanity check on `include_continents` and `exclude_countries`
         filtered_locations = []
         for loc, country_info in self.locations_info.items():
             country = country_info["country"]
             count = country_info["count"]
-            if ("All" in include_continents or
-                        self.get_continent(country) in include_continents) \
-                    and country not in exclude_countries:
+            if (include_continents == "All" or self.get_continent(country) in include_continents) \
+                    and (exclude_countries is None or country not in exclude_countries):
                 filtered_locations.append((loc, count))
         return filtered_locations
 
@@ -522,8 +546,8 @@ class DataAnalyzer:
                           "yaxis_minor_mutiplelocator": 1
                           }
         # Sanity check on config dicts
-        assert len(default_config) >= len(plt_config), "generate_histogram(): plt_config" \
-                                                       "has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
+        assert len(default_config) >= len(plt_config), \
+            "plt_config has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
         default_config.update(plt_config)
         plt_config = default_config
         data = plt_config["data"]
@@ -586,7 +610,7 @@ class DataAnalyzer:
         map.drawstates()
         map.fillcontinents()
         map.drawmapboundary()
-        locations = self.filter_locations(include_continents=["All"])
+        locations = self.filter_locations(include_continents="All")
         self.generate_map(map, locations, markersize=lambda count: marker_scale)
 
     def generate_map_europe_countries(self):
@@ -617,6 +641,7 @@ class DataAnalyzer:
                 # locations which will then be transformed into map coordinates so we can
                 # draw markers on a map with `basemap`
                 geolocator = Nominatim()
+                loc = None
                 try:
                     loc = geolocator.geocode(location)
                 except geopy.exc.GeocoderTimedOut:
@@ -637,6 +662,7 @@ class DataAnalyzer:
                                             "provide the map coordinates for the location '{}'".format(last_part_loc)
                 time.sleep(WAIT_TIME)
                 new_cached_locations = True
+                assert loc is not None, "loc is None"
                 self.cached_locations[location] = loc
             # Transform the location's longitude and latitude to the projection
             # map coordinates
@@ -703,16 +729,17 @@ class DataAnalyzer:
                           "labels": None,
                           "title": ""}
         # Sanity check on config dicts
-        assert len(default_config) >= len(plt_config), "generate_bar_chart(): plt_config" \
-                                                       "has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
+        assert len(default_config) >= len(plt_config), \
+            "plt_config has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
         default_config.update(plt_config)
         values = plt_config["values"]
         labels = plt_config["labels"]
         title = plt_config["title"]
         # Sanity check on the input arrays
-        assert type(values) == type(np.array([])), "generate_pie_chart(): wrong type on input array 'values'"
-        assert type(labels) == type(np.array([])), "generate_pie_chart(): wrong type on input array 'labels'"
-        assert values.shape == labels.shape, "generate_pie_chart(): wrong shape with 'labels' and 'values'"
+        ipdb.set_trace()
+        assert isinstance(values, type(np.array([]))), "Wrong type on input array 'values'"
+        assert isinstance(labels, type(np.array([]))), "Wrong type on input array 'labels'"
+        assert values.shape == labels.shape, "Wrong shape with 'labels' and 'values'"
         ax = plt.gca()
         plt.pie(values, labels=labels, autopct="%1.1f%%")
         ax.set_title(title)
