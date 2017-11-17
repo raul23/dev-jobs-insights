@@ -189,41 +189,20 @@ class DataAnalyzer:
         # countries and US states
         self.process_locations_with_salaries(results)
 
-    def analyze_salary_by_industries(self):
-        # Get industries that have a salary associated with
-        results = self.select_industries(tuple(self.job_ids_with_salary))
+    def analyze_salary_by_topic(self, topic):
+        ipdb.set_trace()
+        # Sanity check on input `topic`
+        assert topic in ["locations", "industries", "roles", "tags"], \
+            "'{}' is not a valid topic".format(topic)
+        # Get topics that have a salary associated with
+        select_method = eval("self.select_{}".format(topic))
+        process_results_method = eval("self.process_{}_with_salaries".format(topic))
+        results = select_method(tuple(self.job_ids_with_salary))
         # Sanity check on results
         assert len(results) == len(self.job_ids_with_salary), \
             "job ids are missing in returned results"
-        # Process results to extract average mid-range salaries for each industries
-        self.process_industries_with_salaries(results)
-
-    def analyze_salary_by_roles(self):
-        # Get roles that have a salary associated with
-        results = self.select_roles(tuple(self.job_ids_with_salary))
-        # Sanity check on results
-        assert len(results) == len(self.job_ids_with_salary), \
-            "job ids are missing in returned results"
-        # Process results to extract average mid-range salaries for each roles
-        self.process_industries_with_salaries(results)
-
-    def analyze_salary_by_tags(self):
-        # Get tags that have a salary associated with
-        results = self.select_tags(tuple(self.job_ids_with_salary))
-        # Sanity check on results
-        assert len(results) == len(self.job_ids_with_salary), \
-            "job ids are missing in returned results"
-        # Process results to extract average mid-range salaries for each tags
-        self.process_industries_with_salaries(results)
-
-    def analyze_salary_by_dimension(self, dim):
-        # Get tags that have a salary associated with
-        results = self.select_tags(tuple(self.job_ids_with_salary))
-        # Sanity check on results
-        assert len(results) == len(self.job_ids_with_salary), \
-            "job ids are missing in returned results"
-        # Process results to extract average mid-range salaries for each tags
-        self.process_industries_with_salaries(results)
+        # Process results to extract average mid-range salaries for each topics
+        process_results_method(results)
 
     def analyze_salary(self):
         # Compute salary mid-range for each min-max interval
@@ -231,11 +210,10 @@ class DataAnalyzer:
         # Compute global stats on salaries, e.g. global max/min mid-range salaries
         self.compute_global_stats()
 
-        # Analyze salary by different dimensions
-        self.analyze_salary_by_locations()
-        self.analyze_salary_by_industries()
-        self.analyze_salary_by_roles()
-        self.analyze_salary_by_tags()
+        # Analyze salary by different topics
+        topics = ["locations", "industries", "roles", "tags"]
+        for topic in topics:
+            self.analyze_salary_by_topic(topic)
 
         # Generate histogram of salary mid ranges vs number of job posts
         # TODO: you can use self.MAX_MID_RANGE_SALARY_THRESHOLD only after running
@@ -465,10 +443,13 @@ class DataAnalyzer:
         self.sorted_us_states_count = np.array(self.sorted_us_states_count)
 
     def process_industries_with_salaries(self, locations):
+        pass
 
     def process_roles_with_salaries(self, locations):
+        pass
 
     def process_tags_with_salaries(self, locations):
+        pass
 
     def process_locations_with_salaries(self, locations):
         # Temp dicts
