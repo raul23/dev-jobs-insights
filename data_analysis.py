@@ -194,14 +194,14 @@ class DataAnalyzer:
         # Sanity check on input `topic`
         assert topic in ["locations", "industries", "roles", "tags"], \
             "'{}' is not a valid topic".format(topic)
-        # Get topics that have a salary associated with
+        # Get topic's rows that have a salary associated with
         select_method = eval("self.select_{}".format(topic))
         process_results_method = eval("self.process_{}_with_salaries".format(topic))
         results = select_method(tuple(self.job_ids_with_salary))
         # Sanity check on results
         assert len(results) == len(self.job_ids_with_salary), \
             "job ids are missing in returned results"
-        # Process results to extract average mid-range salaries for each topics
+        # Process results to extract average mid-range salaries for each topic's rows
         process_results_method(results)
 
     def analyze_salary(self):
@@ -211,7 +211,8 @@ class DataAnalyzer:
         self.compute_global_stats()
 
         # Analyze salary by different topics
-        topics = ["locations", "industries", "roles", "tags"]
+        #topics = ["locations", "industries", "roles", "tags"]
+        topics = ["industries"]
         for topic in topics:
             self.analyze_salary_by_topic(topic)
 
@@ -394,6 +395,7 @@ class DataAnalyzer:
         locations_info = {}
         countries_to_count = {}
         us_states_to_count = {}
+        # TODO: factorization of for loop with generate_map()
         for (i, (location, count)) in enumerate(locations):
             print("[{}/{}]".format((i + 1), len(locations)))
             # Check if valid location
@@ -483,6 +485,9 @@ class DataAnalyzer:
         ipdb.set_trace()
         countries_to_salary = {}
         us_states_to_salary = {}
+        # TODO: factorization of for loop with process_locations() and generate_map()
+        # However, the other cases use (i, (location, count)) in the for loop, maybe
+        # only the other two will be factorized
         for (i, (job_id, location)) in enumerate(locations):
             print("[{}/{}]".format((i + 1), len(locations)))
             # Check if valid location
@@ -536,6 +541,8 @@ class DataAnalyzer:
         # TODO: use a structured array like the following, so you can have columns
         # in a numpy array with different data types, and also it is easier to sort
         # this kind of array based on the name of a field
+        # TODO: factorization: same as in process_topic_with_salaries and
+        # countries and us_states same code
         temp_countries = [(k, v["average_mid_range_salary"], v["count"])
                           for k, v in countries_to_salary.items()]
         temp_us_states = [(k, v["average_mid_range_salary"], v["count"])
@@ -555,16 +562,34 @@ class DataAnalyzer:
         self.avg_mid_range_salaries_by_us_states = temp_us_states
         ipdb.set_trace()
 
-    def add_salary(self, dictionary, location, job_id):
-        dictionary.setdefault(location, {"average_mid_range_salary": 0,
+    def process_industries_with_salaries(self, industries):
+        self.avg_mid_range_salaries_by_industries = self.process_topic_with_salaries(industries, "industry")
+
+    def process_topic_with_salaries(self, input_data, topic_name):
+        topic_to_salary = {}
+        for job_id, name in input_data:
+            self.add_salary(topic_to_salary, name, job_id)
+        struct_arr = [(k, v["average_mid_range_salary"], v["count"])
+                      for k, v in topic_to_salary.items()]
+        # Fields (+data types) for the structured array
+        dtype = [(topic_name, "S10"), ("average_mid_range_salary", float), ("count", int)]
+        struct_arr = np.array(struct_arr, dtype=dtype)
+        # Sort the array based on the field 'average_mid_range_salary' and in
+        # descending order of the given field
+        struct_arr.sort(order="average_mid_range_salary")
+        struct_arr = struct_arr[::-1]
+        return struct_arr
+
+    def add_salary(self, dictionary, name, job_id):
+        dictionary.setdefault(name, {"average_mid_range_salary": 0,
                                          "cumulative_sum": 0,
                                          "count": 0})
         mid_range_salary = self.job_id_to_salary_mid_ranges[job_id]
-        dictionary[location]["count"] += 1  # update count
-        cum_sum = dictionary[location]["cumulative_sum"]
-        dictionary[location]["average_mid_range_salary"] \
-            = (cum_sum + mid_range_salary) / dictionary[location]["count"]  # update average
-        dictionary[location]["cumulative_sum"] += mid_range_salary  # update cumulative sum
+        dictionary[name]["count"] += 1  # update count
+        cum_sum = dictionary[name]["cumulative_sum"]
+        dictionary[name]["average_mid_range_salary"] \
+            = (cum_sum + mid_range_salary) / dictionary[name]["count"]  # update average
+        dictionary[name]["cumulative_sum"] += mid_range_salary  # update cumulative sum
 
     def filter_locations(self, include_continents="All", exclude_countries=None):
         ipdb.set_trace()
