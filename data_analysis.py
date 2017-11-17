@@ -353,6 +353,33 @@ class DataAnalyzer:
         cur.execute(sql, job_ids)
         return cur.fetchall()
 
+    def select_industries(self, job_ids):
+        # Sanity check on input
+        assert type(job_ids) is tuple, "job_ids is not a tuple"
+        sql = '''SELECT job_id, value FROM job_overview WHERE job_id IN ({}) AND name="Industry"'''
+        sql = self.build_sql_request(sql, len(job_ids))
+        cur = self.conn.cursor()
+        cur.execute(sql, job_ids)
+        return cur.fetchall()
+
+    def select_roles(self, job_ids):
+        # Sanity check on input
+        assert type(job_ids) is tuple, "job_ids is not a tuple"
+        sql = '''SELECT job_id, value FROM job_overview WHERE job_id IN ({}) AND name="Role"'''
+        sql = self.build_sql_request(sql, len(job_ids))
+        cur = self.conn.cursor()
+        cur.execute(sql, job_ids)
+        return cur.fetchall()
+
+    def select_tags(self, job_ids):
+        # Sanity check on input
+        assert type(job_ids) is tuple, "job_ids is not a tuple"
+        sql = '''SELECT * FROM entries_tags WHERE id IN ({})'''
+        sql = self.build_sql_request(sql, len(job_ids))
+        cur = self.conn.cursor()
+        cur.execute(sql, job_ids)
+        return cur.fetchall()
+
     @staticmethod
     def build_sql_request(sql, n_items):
         placeholders = list(n_items * "?")
