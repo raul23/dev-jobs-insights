@@ -108,6 +108,7 @@ class DataAnalyzer:
         # associated with) and they are sorted in order of decreasing
         # number of occurrences (i.e. most popular tag at first)
         self.sorted_tags_count = np.array(results)
+
         # Generate bar chart of tags vs number of job posts
         # TODO: should be set in a config
         top_k = 20
@@ -132,6 +133,7 @@ class DataAnalyzer:
         # Process the results
         self.process_locations(results)
         # TODO: add in config option to set the image dimensions
+
         # Generate map with markers added on US states that have job posts
         # associated with
         self.generate_map_us_states()
@@ -141,6 +143,7 @@ class DataAnalyzer:
         # Generate map with markers added on european countries that have job
         # posts associated with
         #self.generate_map_europe_countries()
+
         # NOTE: bar charts are for categorical data
         # Generate bar chart of countries vs number of job posts
         # TODO: should be set in a config
@@ -162,6 +165,7 @@ class DataAnalyzer:
                   "title": "US states popularity",
                   "grid_which": "major"}
         #self.generate_bar_chart(config)
+
         # Generate pie chart of countries vs number of job posts
         config = {"labels": self.sorted_countries_count[:, 0],
                   "values": self.sorted_countries_count[:, 1].astype(np.int32),
@@ -175,11 +179,7 @@ class DataAnalyzer:
                   "title": "US States popularity by % of job posts"}
         #self.generate_pie_chart(config)
 
-    def analyze_salary(self):
-        # Compute salary mid-range for each min-max interval
-        self.compute_salary_mid_ranges()
-        # Compute global stats on salaries, e.g. global max/min mid-range salaries
-        self.compute_global_stats()
+    def analyze_salary_by_locations(self):
         # Get location names that have a salary associated with
         results = self.select_locations(tuple(self.job_ids_with_salary))
         # Sanity check on results
@@ -188,6 +188,55 @@ class DataAnalyzer:
         # Process results to extract average mid-range salaries for each
         # countries and US states
         self.process_locations_with_salaries(results)
+
+    def analyze_salary_by_industries(self):
+        # Get industries that have a salary associated with
+        results = self.select_industries(tuple(self.job_ids_with_salary))
+        # Sanity check on results
+        assert len(results) == len(self.job_ids_with_salary), \
+            "job ids are missing in returned results"
+        # Process results to extract average mid-range salaries for each industries
+        self.process_industries_with_salaries(results)
+
+    def analyze_salary_by_roles(self):
+        # Get roles that have a salary associated with
+        results = self.select_roles(tuple(self.job_ids_with_salary))
+        # Sanity check on results
+        assert len(results) == len(self.job_ids_with_salary), \
+            "job ids are missing in returned results"
+        # Process results to extract average mid-range salaries for each roles
+        self.process_industries_with_salaries(results)
+
+    def analyze_salary_by_tags(self):
+        # Get tags that have a salary associated with
+        results = self.select_tags(tuple(self.job_ids_with_salary))
+        # Sanity check on results
+        assert len(results) == len(self.job_ids_with_salary), \
+            "job ids are missing in returned results"
+        # Process results to extract average mid-range salaries for each tags
+        self.process_industries_with_salaries(results)
+
+    def analyze_salary_by_dimension(self, dim):
+        # Get tags that have a salary associated with
+        results = self.select_tags(tuple(self.job_ids_with_salary))
+        # Sanity check on results
+        assert len(results) == len(self.job_ids_with_salary), \
+            "job ids are missing in returned results"
+        # Process results to extract average mid-range salaries for each tags
+        self.process_industries_with_salaries(results)
+
+    def analyze_salary(self):
+        # Compute salary mid-range for each min-max interval
+        self.compute_salary_mid_ranges()
+        # Compute global stats on salaries, e.g. global max/min mid-range salaries
+        self.compute_global_stats()
+
+        # Analyze salary by different dimensions
+        self.analyze_salary_by_locations()
+        self.analyze_salary_by_industries()
+        self.analyze_salary_by_roles()
+        self.analyze_salary_by_tags()
+
         # Generate histogram of salary mid ranges vs number of job posts
         # TODO: you can use self.MAX_MID_RANGE_SALARY_THRESHOLD only after running
         # compute_global_stats() where the global max and min salaries are computed
@@ -415,6 +464,12 @@ class DataAnalyzer:
         self.sorted_us_states_count = sorted(us_states_to_count.items(), key=lambda x: x[1], reverse=True)
         self.sorted_us_states_count = np.array(self.sorted_us_states_count)
 
+    def process_industries_with_salaries(self, locations):
+
+    def process_roles_with_salaries(self, locations):
+
+    def process_tags_with_salaries(self, locations):
+
     def process_locations_with_salaries(self, locations):
         # Temp dicts
         ipdb.set_trace()
@@ -482,7 +537,8 @@ class DataAnalyzer:
         temp_countries = np.array(temp_countries, dtype=dtype)
         dtype = [("us_state", "S10"), ("average_mid_range_salary", float), ("count", int)]
         temp_us_states = np.array(temp_us_states, dtype=dtype)
-        # Sort each array based on the field 'average_mid_range_salary'
+        # Sort each array based on the field 'average_mid_range_salary' and in
+        # descending order of the given field
         temp_countries.sort(order="average_mid_range_salary")
         temp_us_states.sort(order="average_mid_range_salary")
         temp_countries = temp_countries[::-1]
