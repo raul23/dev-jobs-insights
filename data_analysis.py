@@ -210,7 +210,7 @@ class DataAnalyzer:
 
         # Analyze salary by different topics
         #topics = ["locations", "industries", "roles", "tags"]
-        topics = ["industries"]
+        topics = ["roles"]
         for topic in topics:
             self.analyze_salary_by_topic(topic)
 
@@ -380,6 +380,7 @@ class DataAnalyzer:
         return cur.fetchall()
 
     @staticmethod
+    # TODO: rename it to add_sql_placeholders
     def build_sql_request(sql, n_items):
         placeholders = list(n_items * "?")
         placeholders = str(placeholders)
@@ -560,6 +561,9 @@ class DataAnalyzer:
     def process_industries_with_salaries(self, industries):
         self.avg_mid_range_salaries_by_industries = self.process_topic_with_salaries(industries, "industry")
 
+    def process_roles_with_salaries(self, roles):
+        self.avg_mid_range_salaries_by_roles = self.process_topic_with_salaries(roles, "job_role")
+
     def process_topic_with_salaries(self, input_data, topic_name):
         ipdb.set_trace()
         topic_to_salary = {}
@@ -571,6 +575,7 @@ class DataAnalyzer:
         struct_arr = [(k, v["average_mid_range_salary"], v["count"])
                       for k, v in topic_to_salary.items()]
         # Fields (+data types) for the structured array
+        # TOOD: adjust precision of float numbers
         dtype = [(topic_name, "S20"), ("average_mid_range_salary", float), ("count", int)]
         struct_arr = np.array(struct_arr, dtype=dtype)
         # Sort the array based on the field 'average_mid_range_salary' and in
