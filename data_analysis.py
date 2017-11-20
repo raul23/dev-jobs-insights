@@ -85,6 +85,8 @@ class DataAnalyzer:
         self.avg_mid_range_salaries_by_countries = None
         self.avg_mid_range_salaries_by_us_states = None
         self.avg_mid_range_salaries_by_industries = None
+        self.avg_mid_range_salaries_by_roles = None
+        self.avg_mid_range_salaries_by_tags = None
 
     def run_analysis(self):
         with self.conn:
@@ -210,7 +212,7 @@ class DataAnalyzer:
 
         # Analyze salary by different topics
         #topics = ["locations", "industries", "roles", "tags"]
-        topics = ["roles"]
+        topics = ["tags"]
         for topic in topics:
             self.analyze_salary_by_topic(topic)
 
@@ -470,12 +472,6 @@ class DataAnalyzer:
         self.sorted_us_states_count = sorted(us_states_to_count.items(), key=lambda x: x[1], reverse=True)
         self.sorted_us_states_count = np.array(self.sorted_us_states_count)
 
-    def process_roles_with_salaries(self, locations):
-        pass
-
-    def process_tags_with_salaries(self, locations):
-        pass
-
     def process_locations_with_salaries(self, locations):
         # Temp dicts
         ipdb.set_trace()
@@ -562,7 +558,10 @@ class DataAnalyzer:
         self.avg_mid_range_salaries_by_industries = self.process_topic_with_salaries(industries, "industry")
 
     def process_roles_with_salaries(self, roles):
-        self.avg_mid_range_salaries_by_roles = self.process_topic_with_salaries(roles, "job_role")
+        self.avg_mid_range_salaries_by_roles = self.process_topic_with_salaries(roles, "job role")
+
+    def process_tags_with_salaries(self, roles):
+        self.avg_mid_range_salaries_by_tags = self.process_topic_with_salaries(roles, "technology")
 
     def process_topic_with_salaries(self, input_data, topic_name):
         ipdb.set_trace()
