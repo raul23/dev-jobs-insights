@@ -84,6 +84,7 @@ class DataAnalyzer:
         self.MAX_MID_RANGE_SALARY_THRESHOLD = MAX_MID_RANGE_SALARY_THRESHOLD
         self.avg_mid_range_salaries_by_countries = None
         self.avg_mid_range_salaries_by_us_states = None
+        self.avg_mid_range_salaries_by_industries = None
 
     def run_analysis(self):
         with self.conn:
@@ -198,9 +199,6 @@ class DataAnalyzer:
         select_method = eval("self.select_{}".format(topic))
         process_results_method = eval("self.process_{}_with_salaries".format(topic))
         results = select_method(tuple(self.job_ids_with_salary))
-        # Sanity check on results
-        assert len(results) == len(self.job_ids_with_salary), \
-            "job ids are missing in returned results"
         # Process results to extract average mid-range salaries for each topic's rows
         process_results_method(results)
 
@@ -471,9 +469,6 @@ class DataAnalyzer:
         self.sorted_us_states_count = sorted(us_states_to_count.items(), key=lambda x: x[1], reverse=True)
         self.sorted_us_states_count = np.array(self.sorted_us_states_count)
 
-    def process_industries_with_salaries(self, locations):
-        pass
-
     def process_roles_with_salaries(self, locations):
         pass
 
@@ -566,13 +561,17 @@ class DataAnalyzer:
         self.avg_mid_range_salaries_by_industries = self.process_topic_with_salaries(industries, "industry")
 
     def process_topic_with_salaries(self, input_data, topic_name):
+        ipdb.set_trace()
         topic_to_salary = {}
         for job_id, name in input_data:
             self.add_salary(topic_to_salary, name, job_id)
+        ipdb.set_trace()
+        # Keep every fields, except "cumulative_sum" and build a structured array
+        # out of the dict
         struct_arr = [(k, v["average_mid_range_salary"], v["count"])
                       for k, v in topic_to_salary.items()]
         # Fields (+data types) for the structured array
-        dtype = [(topic_name, "S10"), ("average_mid_range_salary", float), ("count", int)]
+        dtype = [(topic_name, "S20"), ("average_mid_range_salary", float), ("count", int)]
         struct_arr = np.array(struct_arr, dtype=dtype)
         # Sort the array based on the field 'average_mid_range_salary' and in
         # descending order of the given field
@@ -582,8 +581,8 @@ class DataAnalyzer:
 
     def add_salary(self, dictionary, name, job_id):
         dictionary.setdefault(name, {"average_mid_range_salary": 0,
-                                         "cumulative_sum": 0,
-                                         "count": 0})
+                                     "cumulative_sum": 0,
+                                     "count": 0})
         mid_range_salary = self.job_id_to_salary_mid_ranges[job_id]
         dictionary[name]["count"] += 1  # update count
         cum_sum = dictionary[name]["cumulative_sum"]
