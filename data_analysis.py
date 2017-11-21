@@ -89,15 +89,19 @@ class DataAnalyzer:
         self.avg_mid_range_salaries_by_tags = None
         # TODO: the outliers should be removed once and for all as early as possible
         # by finding the corresponding job ids and removing them from the different arrays
+        # TODO: rearrange the name of the variables
+        self.sorted_industries_count = None
 
     def run_analysis(self):
+        types_of_analysis = ["tags", "locations", "salary", "industries"]
+        ipdb.set_trace()
         with self.conn:
-            if config["analyze_tags"]:
-                self.analyze_tags()
-            if config["analyze_locations"]:
-                self.analyze_locations()
-            if config["analyze_salary"]:
-                self.analyze_salary()
+            for type in types_of_analysis:
+                method_name = "analyze_{}".format(type)
+                if method_name in config and config[method_name]:
+                    # TODO: sanity check on the method existence
+                    analyze_method = self.__getattribute__(method_name)
+                    analyze_method()
 
     def analyze_tags(self):
         """
@@ -220,7 +224,6 @@ class DataAnalyzer:
         # Analyze salary by different topics
         # TODO: see if you can divide locations into countries and us_states
         topics = ["locations", "industries", "roles", "tags"]
-        ipdb.set_trace()
         for topic in topics:
             self.analyze_salary_by_topic(topic)
 
@@ -258,7 +261,6 @@ class DataAnalyzer:
         # Build complete title
         titles = ["Average mid-range salary of "+title for title in titles]
         topic_to_title = dict(zip(topics, titles))
-        ipdb.set_trace()
         for topic, title in topic_to_title.items():
             # TODO: add sanity check on eval(), i.e. make sure that the data array
             # exists before using it
@@ -275,7 +277,33 @@ class DataAnalyzer:
             config["text"] = data[topic][indices]
             config["title"] = title
             self.generate_scatter_plot(config)
-        ipdb.set_trace()
+
+    def analyze_industries(self):
+        """
+        Analysis of tags (i.e. technologies such as java, python) which consist in
+        ... TODO complete description
+
+        :return:
+        """
+        # Get number of job posts for each industry
+        # TODO: specify that the results are already sorted in decreasing order of industry's count, i.e.
+        # from the most popular industry to the least one
+        results = self.count_industry_occurrences()
+        # TODO: Process the results by summing the similar industries (e.g. Software Development with
+        # Software Development / Engineering or eCommerce with E-Commerce)
+        # TODO: use Software Development instead of the longer Software Development / Engineering
+        self.sorted_industries_count = np.array(results)
+
+        # Generate bar chart: industries vs number of job posts
+        top_k = 20
+        config = {"x": self.sorted_industries_count[:top_k, 0],
+                  "y": self.sorted_industries_count[:top_k, 1].astype(np.int32),
+                  "xlabel": "Industries",
+                  "ylabel": "Number of jobs",
+                  "title": "Top {} most popular industries".format(top_k),
+                  "grid_which": "major"}
+        # TODO: place number (of job posts) on top of each bar
+        self.generate_bar_chart(config)
 
     def compute_salary_mid_ranges(self):
         # Get list of min/max salary, i.e. for each job id we want its
@@ -361,6 +389,18 @@ class DataAnalyzer:
         :return: list of tuples of the form (location, count)
         """
         sql = '''SELECT location, COUNT(*) as CountOf FROM job_posts GROUP BY location ORDER BY CountOf DESC'''
+        cur = self.conn.cursor()
+        cur.execute(sql)
+        return cur.fetchall()
+
+    def count_industry_occurrences(self):
+        """
+        Returns industries sorted in decreasing order of their occurrences in job posts.
+        A list of tuples is returned where a tuple is of the form (industry, count).
+
+        :return: list of tuples of the form (industry, count)
+        """
+        sql = '''SELECT value, COUNT(*) as CountOf from job_overview WHERE name='Industry' GROUP BY value ORDER BY CountOf DESC'''
         cur = self.conn.cursor()
         cur.execute(sql)
         return cur.fetchall()
@@ -638,7 +678,6 @@ class DataAnalyzer:
         dictionary[name]["cumulative_sum"] += mid_range_salary  # update cumulative sum
 
     def filter_locations(self, include_continents="All", exclude_countries=None):
-        ipdb.set_trace()
         # TODO: Sanity check on `include_continents` and `exclude_countries`
         filtered_locations = []
         for loc, country_info in self.locations_info.items():
@@ -681,7 +720,6 @@ class DataAnalyzer:
     @staticmethod
     def generate_scatter_plot(plt_config):
         # TODO: add labels to axes
-        ipdb.set_trace()
         default_config = {"x": None,
                           "y": None,
                           "mode": "markers",
@@ -713,7 +751,6 @@ class DataAnalyzer:
             "layout": Layout(title=title, hovermode=hovermode,
                              yaxis=dict(tickformat=yaxis_tickformat))
         })
-        ipdb.set_trace()
 
     @staticmethod
     def generate_histogram(plt_config):
@@ -919,7 +956,6 @@ class DataAnalyzer:
         labels = plt_config["labels"]
         title = plt_config["title"]
         # Sanity check on the input arrays
-        ipdb.set_trace()
         assert isinstance(values, type(np.array([]))), "Wrong type on input array 'values'"
         assert isinstance(labels, type(np.array([]))), "Wrong type on input array 'labels'"
         assert values.shape == labels.shape, "Wrong shape with 'labels' and 'values'"
@@ -1124,7 +1160,8 @@ if __name__ == '__main__':
     config = {"db_filename": DB_FILENAME,
               "analyze_tags": False,
               "analyze_locations": False,
-              "analyze_salary": True}
+              "analyze_salary": False,
+              "analyze_industries": True}
     ipdb.set_trace()
     data_analyzer = DataAnalyzer(config)
     data_analyzer.run_analysis()
