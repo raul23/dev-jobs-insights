@@ -1,12 +1,10 @@
 """
 Data analysis of Stackoverflow developer job posts
 """
-from configparser import ConfigParser
 import json
 import os
 import pickle
 import sqlite3
-import sys
 import time
 import ipdb
 
@@ -23,8 +21,6 @@ from plotly.graph_objs import Scatter, Figure, Layout
 # TODO: check if we must use np.{int,float}{32,64}
 
 
-# File containing script's settings
-SETTINGS_FILENAME = "config.ini"
 # TODO: the following variables should be set in a config file
 DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
 SHAPE_FILENAME = os.path.expanduser("~/data/basemap/st99_d00")
@@ -43,13 +39,10 @@ MAX_MID_RANGE_SALARY_THRESHOLD = 400000
 
 
 class DataAnalyzer:
-    def __init__(self):
-        ipdb.set_trace()
-        self.parser = setup_parser(SETTINGS_FILENAME)
-        if self.parser is None:
-            print("settings file '{}' not found".format(SETTINGS_FILENAME))
-            exit_script()
-        self.conn = create_connection(self.parser.get("db_filename"))
+    def __init__(self, config):
+        # Sanity check
+        assert "db_filename" in config, "No db_filename provided in config"
+        self.conn = create_connection(config["db_filename"])
         # NOTE: `countries` and `us_states` must not be empty when starting the
         # data analysis. However, `translated_countries` can be empty when starting
         # because it will be updated while performing the data analysis; same
@@ -1098,48 +1091,6 @@ def create_connection(db_file, autocommit=False):
     return None
 
 
-# TODO: utility function
-def check_file_exists(path):
-    """
-    Checks if both a file exists and it is a file. Returns True if it is the
-    case (can be a file or file symlink).
-
-    ref.: http://stackabuse.com/python-check-if-a-file-or-directory-exists/
-
-    :param path: path to check if it points to a file
-    :return bool: True if it file exists and is a file. False otherwise.
-    """
-    return os.path.isfile(path)
-
-
-# TODO: utility function
-def check_dir_exists(path):
-    """
-    Checks if both a directory exists and it is a directory. Returns True if it
-    is the case (can be a directory or directory symlink).
-
-    ref.: http://stackabuse.com/python-check-if-a-file-or-directory-exists/
-
-    :param path: path to check if it points to a directory
-    :return bool: True if it directory exists and is a directory. False otherwise.
-    """
-    return os.path.isdir(path)
-
-
-# TODO: utility function
-def check_path_exists(path):
-    """
-    Checks if a path exists where path can either points to a file, directory,
-    or symlink. Returns True if it is the case.
-
-    ref.: http://stackabuse.com/python-check-if-a-file-or-directory-exists/
-
-    :param path: path to check if it exists
-    :return bool: True if it path exists. False otherwise.
-    """
-    return os.path.exists(path)
-
-
 # TODO: add in Utility
 def load_pickle(path):
     """
@@ -1205,50 +1156,13 @@ def get_last_part_loc(location):
         return location.split(",")[-1].strip()
 
 
-# TODO: add in Utility
-def setup_parser(settings_filename):
-    """
-    Sets up parser for parsing the *.ini config file
-
-    :param settings_filename: *.ini filename containing a script's configuration
-    :return:
-    """
-    # Check that settings file exists
-    if not check_file_exists(settings_filename):
-        return None
-    parser = ConfigParser()
-    parser.read(settings_filename)
-    return parser
-
-
-def get_option_value(parser, option, value_type=str):
-    try:
-        if value_type == int:
-            return parser.getint(option)
-        elif value_type == float:
-            return parser.getfloat(option)
-        elif value_type == bool:
-            return parser.getboolean(option)
-        else:
-            return parser.get(option)
-    except KeyError as e:
-        print(e)
-        return None
-
-
-def exit_script(msg="Exiting...", code=1):
-    print(msg)
-    sys.exit(code)
-
-
 if __name__ == '__main__':
-    """
     config = {"db_filename": DB_FILENAME,
               "analyze_tags": False,
               "analyze_locations": False,
               "analyze_salary": False,
               "analyze_industries": True}
-    """
-    data_analyzer = DataAnalyzer()
+    ipdb.set_trace()
+    data_analyzer = DataAnalyzer(config)
     data_analyzer.run_analysis()
     ipdb.set_trace()
