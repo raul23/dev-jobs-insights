@@ -1,8 +1,10 @@
 """
 Data analysis of Stackoverflow developer job posts
 """
-from configparser import ConfigParser
+import ast
+from configparser import ConfigParser, NoOptionError, NoSectionError
 import json
+import linecache
 import os
 import pickle
 import sqlite3
@@ -44,23 +46,30 @@ MAX_MID_RANGE_SALARY_THRESHOLD = 400000
 
 class DataAnalyzer:
     def __init__(self):
-        ipdb.set_trace()
-        self.parser = setup_parser(SETTINGS_FILENAME)
-        if self.parser is None:
-            print("settings file '{}' not found".format(SETTINGS_FILENAME))
-            exit_script()
-        self.conn = create_connection(self.parser.get("db_filename"))
+        self.config_ini = read_config(SETTINGS_FILENAME)
+        if self.config_ini is None:
+            exit_script("ERROR: {} could not be read".format(SETTINGS_FILENAME))
+        db_path = self.config_ini["paths"]["db_path"]
+        db_path = os.path.expanduser(db_path)
+        self.conn = create_connection(db_path)
+        if self.conn is None:
+            exit_script("Connection to db couldn't be established")
         # NOTE: `countries` and `us_states` must not be empty when starting the
         # data analysis. However, `translated_countries` can be empty when starting
         # because it will be updated while performing the data analysis; same
         # for `cached_locations`.
-        self.countries = load_json(COUNTRIES_FILENAME)
-        assert self.countries is not None, "Error in loading countries"
-        self.us_states = load_json(US_STATES_FILENAME)
-        assert self.us_states is not None, "Error in loading us_states"
-        self.translated_countries = load_json(TRANSL_COUNTRIES_FILENAME)
-        if self.translated_countries is None:
-            self.translated_countries = {}
+        path = self.config_ini["paths"]["countries_path"]
+        self.countries = load_json(path)
+        if self.countries is None:
+            exit_script("ERROR: {} could not be loaded".format(path))
+        path = self.config_ini["paths"]["us_states_path"]
+        self.us_states = load_json(path)
+        if self.us_states is None:
+            print("ERROR: {} could not be loaded".format(path))
+        path = self.config_ini["paths"]["cached_transl_countries_path"]
+        self.cached_transl_countries = load_json(path)
+        if self.cached_transl_countries is None:
+            self.cached_transl_countries = {}
         self.cached_locations = load_pickle(CACHED_LOCATIONS_FILENAME)
         if self.cached_locations is None:
             self.cached_locations = {}
@@ -1047,24 +1056,28 @@ def get_top_k_locations(locations, k):
 
 
 def load_json(path):
+    path = os.path.expanduser(path)
     try:
         with open(path, "r") as f:
             data = json.load(f)
-    except FileNotFoundError as e:
-        print(e)
+    except FileNotFoundError:
+        print_exception("FileNotFoundError")
         return None
-    return data
+    else:
+        return data
 
 
 def dump_json(data, path, update=False):
+    path = os.path.expanduser(path)
     def dump_data(data, path):
         try:
             with open(path, "w") as f:
                 json.dump(data, f)
         except FileNotFoundError as e:
-            print(e)
+            print_exception("FileNotFoundError")
             return None
-        return 0
+        else:
+            return 0
     if os.path.isfile(path) and update:
         retval = load_json(path)
         if retval is None:
@@ -1078,23 +1091,27 @@ def dump_json(data, path, update=False):
 
 
 # TODO: utility function
-def create_connection(db_file, autocommit=False):
+def create_connection(db_path, autocommit=False):
     """
     Creates a database connection to the SQLite database specified by the db_file
 
-    :param db_file: database file
+    :param db_path: path to database file
     :param autocommit: TODO
     :return: sqlite3.Connection object  or None
     """
+    # Check if db filename exists
+    db_file = os.path.expanduser(db_path)
+    if not check_file_exists(db_file):
+        print("Database filename '{}' doesn't exist".format(db_file))
+        return None
     try:
         if autocommit:
             conn = sqlite3.connect(db_file, isolation_level=None)
         else:
             conn = sqlite3.connect(db_file)
         return conn
-    except sqlite3.Error as e:
-        print(e)
-
+    except sqlite3.Error:
+        print_exception()
     return None
 
 
@@ -1109,6 +1126,7 @@ def check_file_exists(path):
     :param path: path to check if it points to a file
     :return bool: True if it file exists and is a file. False otherwise.
     """
+    path = os.path.expanduser(path)
     return os.path.isfile(path)
 
 
@@ -1123,6 +1141,7 @@ def check_dir_exists(path):
     :param path: path to check if it points to a directory
     :return bool: True if it directory exists and is a directory. False otherwise.
     """
+    path = os.path.expanduser(path)
     return os.path.isdir(path)
 
 
@@ -1137,6 +1156,7 @@ def check_path_exists(path):
     :param path: path to check if it exists
     :return bool: True if it path exists. False otherwise.
     """
+    path = os.path.expanduser(path)
     return os.path.exists(path)
 
 
@@ -1148,6 +1168,7 @@ def load_pickle(path):
     :param path: path to the pickle file
     :return: content of the pickle file or None if error
     """
+    path = os.path.expanduser(path)
     try:
         with open(path, "rb") as f:
             data = pickle.load(f)
@@ -1167,13 +1188,15 @@ def dump_pickle(data, path):
     :param data: data to be saved on disk
     :return: 0 if success or None if error
     """
+    path = os.path.expanduser(path)
     try:
         with open(path, "wb") as f:
             pickle.dump(data, f)
     except FileNotFoundError as e:
         print(e)
         return None
-    return 0
+    else:
+        return 0
 
 
 def is_valid_location(location):
@@ -1205,50 +1228,99 @@ def get_last_part_loc(location):
         return location.split(",")[-1].strip()
 
 
-# TODO: add in Utility
-def setup_parser(settings_filename):
-    """
-    Sets up parser for parsing the *.ini config file
-
-    :param settings_filename: *.ini filename containing a script's configuration
-    :return:
-    """
-    # Check that settings file exists
-    if not check_file_exists(settings_filename):
-        return None
-    parser = ConfigParser()
-    parser.read(settings_filename)
-    return parser
-
-
-def get_option_value(parser, option, value_type=str):
-    try:
-        if value_type == int:
-            return parser.getint(option)
-        elif value_type == float:
-            return parser.getfloat(option)
-        elif value_type == bool:
-            return parser.getboolean(option)
-        else:
-            return parser.get(option)
-    except KeyError as e:
-        print(e)
-        return None
-
-
-def exit_script(msg="Exiting...", code=1):
+def exit_script(msg, code=1):
     print(msg)
+    print("Exiting...")
     sys.exit(code)
 
 
+def print_exception(error=None):
+    """
+    For a given exception, PRINTS filename, line number, the line itself, and
+    exception description.
+
+    ref.: https://stackoverflow.com/a/20264059
+
+    :return: None
+    """
+    exc_type, exc_obj, tb = sys.exc_info()
+    f = tb.tb_frame
+    lineno = tb.tb_lineno
+    filename = f.f_code.co_filename
+    linecache.checkcache(filename)
+    line = linecache.getline(filename, lineno, f.f_globals)
+    if error is None:
+        err_desc = exc_obj
+    else:
+        err_desc = "{}: {}".format(error, exc_obj)
+    print('EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), err_desc))
+
+
+def get_data_type(val):
+    """
+    Given a string, returns its corresponding data type
+
+    ref.: https://stackoverflow.com/a/10261229
+
+    :param val: string value
+    :return: Data type of string value
+    """
+    try:
+        t = ast.literal_eval(val)
+    except ValueError:
+        return str
+    except SyntaxError:
+        return str
+    else:
+        if type(t) is bool:
+            return bool
+        elif type(t) is int:
+            return int
+        elif type(t) is float:
+            return float
+        else:
+            return str
+
+
+def get_option_value(parser, section, option):
+    value_type = get_data_type(parser.get(section, option))
+    try:
+        if value_type == int:
+            return parser.getint(section, option)
+        elif value_type == float:
+            return parser.getfloat(section, option)
+        elif value_type == bool:
+            return parser.getboolean(section, option)
+        else:
+            return parser.get(section, option)
+    except NoSectionError:
+        print_exception()
+        return None
+    except NoOptionError:
+        print_exception()
+        return None
+
+
+def read_config(config_path):
+    parser = ConfigParser()
+    found = parser.read(config_path)
+    if config_path not in found:
+        print("ERROR: {} is empty".format(config_path))
+        return None
+    options = {}
+    for section in parser.sections():
+        options.setdefault(section, {})
+        for option in parser.options(section):
+            options[section].setdefault(option, None)
+            value = get_option_value(parser, section, option)
+            if value is None:
+                print("ERROR: The option '{}' could not be retrieved from {}".format(option, config_path))
+                return None
+            options[section][option] = value
+    return options
+
+
 if __name__ == '__main__':
-    """
-    config = {"db_filename": DB_FILENAME,
-              "analyze_tags": False,
-              "analyze_locations": False,
-              "analyze_salary": False,
-              "analyze_industries": True}
-    """
     data_analyzer = DataAnalyzer()
     data_analyzer.run_analysis()
     ipdb.set_trace()
