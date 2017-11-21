@@ -46,6 +46,7 @@ MAX_MID_RANGE_SALARY_THRESHOLD = 400000
 
 class DataAnalyzer:
     def __init__(self):
+        # TODO: add DEFAULT config values
         self.config_ini = read_config(SETTINGS_FILENAME)
         if self.config_ini is None:
             exit_script("ERROR: {} could not be read".format(SETTINGS_FILENAME))
@@ -58,6 +59,7 @@ class DataAnalyzer:
         # data analysis. However, `translated_countries` can be empty when starting
         # because it will be updated while performing the data analysis; same
         # for `cached_locations`.
+        ipdb.set_trace()
         path = self.config_ini["paths"]["countries_path"]
         self.countries = load_json(path)
         if self.countries is None:
@@ -73,6 +75,10 @@ class DataAnalyzer:
         self.cached_locations = load_pickle(CACHED_LOCATIONS_FILENAME)
         if self.cached_locations is None:
             self.cached_locations = {}
+        self.wait_time = self.config_ini["geocoding"]["wait_time"]
+        self.basemap = self.config_ini["basemap"]["marker_scale"]
+        self.min_salary_threshold = self.config_ini["outliers"]["min_salary"]
+        self.max_salary_threshold = self.config_ini["outliers"]["max_salary"]
         # These are all the data that will be saved while performing the various
         # analyses
         # TODO: specify that they are all unique, e.g. no two locations/tags/countries/us states
@@ -94,10 +100,6 @@ class DataAnalyzer:
         self.min_job_id = None
         self.max_job_id = None
         self.sorted_salary_mid_ranges = None
-        # TODO: could not manipulate them as global variables, had the unresolved error
-        # in filter_mid_range_salaries()
-        self.MIN_MID_RANGE_SALARY_THRESHOLD = MIN_MID_RANGE_SALARY_THRESHOLD
-        self.MAX_MID_RANGE_SALARY_THRESHOLD = MAX_MID_RANGE_SALARY_THRESHOLD
         self.avg_mid_range_salaries_by_countries = None
         self.avg_mid_range_salaries_by_us_states = None
         self.avg_mid_range_salaries_by_industries = None
@@ -1100,15 +1102,15 @@ def create_connection(db_path, autocommit=False):
     :return: sqlite3.Connection object  or None
     """
     # Check if db filename exists
-    db_file = os.path.expanduser(db_path)
-    if not check_file_exists(db_file):
-        print("Database filename '{}' doesn't exist".format(db_file))
+    db_path = os.path.expanduser(db_path)
+    if not check_file_exists(db_path):
+        print("Database filename '{}' doesn't exist".format(db_path))
         return None
     try:
         if autocommit:
-            conn = sqlite3.connect(db_file, isolation_level=None)
+            conn = sqlite3.connect(db_path, isolation_level=None)
         else:
-            conn = sqlite3.connect(db_file)
+            conn = sqlite3.connect(db_path)
         return conn
     except sqlite3.Error:
         print_exception()
