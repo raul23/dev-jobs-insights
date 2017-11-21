@@ -87,6 +87,8 @@ class DataAnalyzer:
         self.avg_mid_range_salaries_by_industries = None
         self.avg_mid_range_salaries_by_roles = None
         self.avg_mid_range_salaries_by_tags = None
+        # TODO: the outliers should be removed once and for all as early as possible
+        # by finding the corresponding job ids and removing them from the different arrays
 
     def run_analysis(self):
         with self.conn:
@@ -193,16 +195,21 @@ class DataAnalyzer:
         self.process_locations_with_salaries(results)
 
     def analyze_salary_by_topic(self, topic):
-        ipdb.set_trace()
         # Sanity check on input `topic`
         assert topic in ["locations", "industries", "roles", "tags"], \
             "'{}' is not a valid topic".format(topic)
         # Get topic's rows that have a salary associated with
-        select_method = eval("self.select_{}".format(topic))
-        process_results_method = eval("self.process_{}_with_salaries".format(topic))
+        # TODO: add sanity check on the select method/process, what if they don't
+        # exist, we should skip the topic and report an error
+        select_method = self.__getattribute__("select_{}".format(topic))
+        # TODO: remove eval
+        #select_method = eval("self.select_{}".format(topic))
+        process_results_method = self.__getattribute__("process_{}_with_salaries".format(topic))
+        # TODO: remove eval
+        #process_results_method = eval("self.process_{}_with_salaries".format(topic))
         results = select_method(tuple(self.job_ids_with_salary))
         # Process results to extract average mid-range salaries for each topic's rows
-        process_results_method(results)
+        process_results_method(results, topic)
 
     def analyze_salary(self):
         # Compute salary mid-range for each min-max interval
@@ -211,8 +218,9 @@ class DataAnalyzer:
         self.compute_global_stats()
 
         # Analyze salary by different topics
-        #topics = ["locations", "industries", "roles", "tags"]
-        topics = ["tags"]
+        # TODO: see if you can divide locations into countries and us_states
+        topics = ["locations", "industries", "roles", "tags"]
+        ipdb.set_trace()
         for topic in topics:
             self.analyze_salary_by_topic(topic)
 
@@ -230,7 +238,44 @@ class DataAnalyzer:
                   "yaxis_major_mutiplelocator": 5,
                   "yaxis_minor_mutiplelocator": 1
                   }
-        self.generate_histogram(config)
+        #self.generate_histogram(config)
+
+        # Generate scatter plots of number of job posts vs average mid-range salary
+        # for each topic (e.g. locations, roles)
+        config = {"x": None,
+                  "y": None,
+                  "mode": "markers",
+                  "text": None,
+                  "title": "",
+                  "yaxis_tickformat": "$0.0f"
+                  }
+        # TODO: the topics should be set in the constructor
+        topics = ["countries", "us_states", "industries", "roles", "tags"]
+        titles = ["countries", "US states", "industries", "job roles", "programming skills"]
+        # Sanity check on topics and corresponding titles
+        assert len(topics) == len(titles),\
+            "Number of topics ({}) and titles ({}) don't match".format(len(topics), len(titles))
+        # Build complete title
+        titles = ["Average mid-range salary of "+title for title in titles]
+        topic_to_title = dict(zip(topics, titles))
+        ipdb.set_trace()
+        for topic, title in topic_to_title.items():
+            # TODO: add sanity check on eval(), i.e. make sure that the data array
+            # exists before using it
+            data = self.__getattribute__("avg_mid_range_salaries_by_{}".format(topic))
+            # TODO: sanity check on data["average_mid_range_salary"], do the sanity
+            # check within filter_data()
+            indices = self.filter_data(data["average_mid_range_salary"],
+                                       min_threshold=self.MIN_MID_RANGE_SALARY_THRESHOLD,
+                                       max_threshold=self.MAX_MID_RANGE_SALARY_THRESHOLD)
+            # TODO: sanity check on data keys
+            # Filter the arrays to keep only the filtered data
+            config["x"] = data["count"][indices]
+            config["y"] = data["average_mid_range_salary"][indices]
+            config["text"] = data[topic][indices]
+            config["title"] = title
+            self.generate_scatter_plot(config)
+        ipdb.set_trace()
 
     def compute_salary_mid_ranges(self):
         # Get list of min/max salary, i.e. for each job id we want its
@@ -472,9 +517,8 @@ class DataAnalyzer:
         self.sorted_us_states_count = sorted(us_states_to_count.items(), key=lambda x: x[1], reverse=True)
         self.sorted_us_states_count = np.array(self.sorted_us_states_count)
 
-    def process_locations_with_salaries(self, locations):
+    def process_locations_with_salaries(self, locations, topic):
         # Temp dicts
-        ipdb.set_trace()
         countries_to_salary = {}
         us_states_to_salary = {}
         # TODO: factorization of for loop with process_locations() and generate_map()
@@ -527,7 +571,6 @@ class DataAnalyzer:
                     assert transl_country in self.countries, \
                         "The country '{}' is not found".format(transl_country)
                     self.add_salary(countries_to_salary, transl_country, job_id)
-        ipdb.set_trace()
         # For each dict, keep every fields, except "cumulative_sum" and build
         # a structured array out of the dicts
         # TODO: use a structured array like the following, so you can have columns
@@ -540,9 +583,11 @@ class DataAnalyzer:
         temp_us_states = [(k, v["average_mid_range_salary"], v["count"])
                           for k, v in us_states_to_salary.items()]
         # Fields (+data types) for the structured array
-        dtype = [("country", "S10"), ("average_mid_range_salary", float), ("count", int)]
+        # TODO: use the input `topic` to label the fields, call the method twice for
+        # countries and us_states
+        dtype = [("countries", "S20"), ("average_mid_range_salary", float), ("count", int)]
         temp_countries = np.array(temp_countries, dtype=dtype)
-        dtype = [("us_state", "S10"), ("average_mid_range_salary", float), ("count", int)]
+        dtype = [("us_states", "S10"), ("average_mid_range_salary", float), ("count", int)]
         temp_us_states = np.array(temp_us_states, dtype=dtype)
         # Sort each array based on the field 'average_mid_range_salary' and in
         # descending order of the given field
@@ -552,30 +597,28 @@ class DataAnalyzer:
         temp_us_states = temp_us_states[::-1]
         self.avg_mid_range_salaries_by_countries = temp_countries
         self.avg_mid_range_salaries_by_us_states = temp_us_states
-        ipdb.set_trace()
 
-    def process_industries_with_salaries(self, industries):
-        self.avg_mid_range_salaries_by_industries = self.process_topic_with_salaries(industries, "industry")
+    def process_industries_with_salaries(self, industries, topic):
+        self.avg_mid_range_salaries_by_industries = self.process_topic_with_salaries(industries, topic)
 
-    def process_roles_with_salaries(self, roles):
-        self.avg_mid_range_salaries_by_roles = self.process_topic_with_salaries(roles, "job role")
+    def process_roles_with_salaries(self, roles, topic):
+        self.avg_mid_range_salaries_by_roles = self.process_topic_with_salaries(roles, topic)
 
-    def process_tags_with_salaries(self, roles):
-        self.avg_mid_range_salaries_by_tags = self.process_topic_with_salaries(roles, "technology")
+    def process_tags_with_salaries(self, tags, topic):
+        self.avg_mid_range_salaries_by_tags = self.process_topic_with_salaries(tags, topic)
 
     def process_topic_with_salaries(self, input_data, topic_name):
-        ipdb.set_trace()
         topic_to_salary = {}
         for job_id, name in input_data:
             self.add_salary(topic_to_salary, name, job_id)
-        ipdb.set_trace()
         # Keep every fields, except "cumulative_sum" and build a structured array
         # out of the dict
         struct_arr = [(k, v["average_mid_range_salary"], v["count"])
                       for k, v in topic_to_salary.items()]
         # Fields (+data types) for the structured array
         # TOOD: adjust precision of float numbers
-        dtype = [(topic_name, "S20"), ("average_mid_range_salary", float), ("count", int)]
+        # TODO: the length of the string field should be set in a config (for each topic?)
+        dtype = [(topic_name, "S30"), ("average_mid_range_salary", float), ("count", int)]
         struct_arr = np.array(struct_arr, dtype=dtype)
         # Sort the array based on the field 'average_mid_range_salary' and in
         # descending order of the given field
@@ -606,6 +649,9 @@ class DataAnalyzer:
                 filtered_locations.append((loc, count))
         return filtered_locations
 
+    # TODO: it is better to return the indices of salaries to keep; thus use
+    # the filter_data() method instead which can filter any kind of data, not only
+    # salaries but also counts for instance
     def filter_mid_range_salaries(self):
         # TODO: change all *salary_mid_ranges* to *mid_range_salaries*,
         # even methods
@@ -618,13 +664,59 @@ class DataAnalyzer:
             self.MIN_MID_RANGE_SALARY_THRESHOLD = min_salary
         if not (max_salary >= self.MAX_MID_RANGE_SALARY_THRESHOLD >= min_salary):
             self.MAX_MID_RANGE_SALARY_THRESHOLD = max_salary
-        first_cond = (self.sorted_salary_mid_ranges > self.MIN_MID_RANGE_SALARY_THRESHOLD)
-        second_cond = (self.sorted_salary_mid_ranges < self.MAX_MID_RANGE_SALARY_THRESHOLD)
+        first_cond = (self.sorted_salary_mid_ranges >= self.MIN_MID_RANGE_SALARY_THRESHOLD)
+        second_cond = (self.sorted_salary_mid_ranges <= self.MAX_MID_RANGE_SALARY_THRESHOLD)
         return self.sorted_salary_mid_ranges[first_cond & second_cond]
+
+    def filter_data(self, data, min_threshold, max_threshold):
+        # Sanity check on input thresholds
+        if not (data.max() >= min_threshold >= data.min()):
+            min_threshold = data.min()
+        if not (data.max() >= max_threshold >= data.min()):
+            max_threshold = data.max()
+        first_cond = data >= min_threshold
+        second_cond = data <= max_threshold
+        return np.where(first_cond & second_cond)
+
+    @staticmethod
+    def generate_scatter_plot(plt_config):
+        # TODO: add labels to axes
+        ipdb.set_trace()
+        default_config = {"x": None,
+                          "y": None,
+                          "mode": "markers",
+                          "text": None,
+                          "title": "",
+                          "hovermode": "closest",
+                          "yaxis_tickformat": "$0.0f"
+                          }
+        # Sanity check on config dicts
+        assert len(default_config) >= len(plt_config), \
+            "plt_config has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
+        default_config.update(plt_config)
+        plt_config = default_config
+        x = plt_config["x"]
+        y = plt_config["y"]
+        mode = plt_config["mode"]
+        text = plt_config["text"]
+        title = plt_config["title"]
+        hovermode = plt_config["hovermode"]
+        yaxis_tickformat = plt_config["yaxis_tickformat"]
+        assert type(x) == type(np.array([])), "wrong type on input array 'x'"
+        assert type(y) == type(np.array([])), "wrong type on input array 'y'"
+        assert type(text) == type(np.array([])), "wrong type on input array 'text'"
+        plotly.offline.plot({
+            "data": [Scatter(x=list(x.flatten()),
+                             y=list(y.flatten()),
+                             mode=mode,
+                             text=list(text.flatten()))],
+            "layout": Layout(title=title, hovermode=hovermode,
+                             yaxis=dict(tickformat=yaxis_tickformat))
+        })
+        ipdb.set_trace()
 
     @staticmethod
     def generate_histogram(plt_config):
-        ipdb.set_trace()
         default_config = {"data": None,
                           #"bin_width": 10000, # TODO: not used
                           "bins": None,
@@ -654,9 +746,9 @@ class DataAnalyzer:
         yaxis_major_mutiplelocator = plt_config["yaxis_major_mutiplelocator"]
         yaxis_minor_mutiplelocator = plt_config["yaxis_minor_mutiplelocator"]
         # Sanity check on the input array
-        assert type(data) == type(np.array([])), "generate_histogram(): wrong type on input array 'data'"
-        assert grid_which in ["minor", "major", "both"], "generate_histogram(): " \
-                                                         "wrong value for grid_which='{}'".format(grid_which)
+        assert type(data) == type(np.array([])), "wrong type on input array 'data'"
+        assert grid_which in ["minor", "major", "both"], \
+            "wrong value for grid_which='{}'".format(grid_which)
         #n_bins = np.ceil((data.max() - data.min()) / bin_width).astype(np.int64)
         ax = plt.gca()
         ax.hist(data, bins=bins, color="r")
@@ -673,7 +765,6 @@ class DataAnalyzer:
         plt.tight_layout()
         # TODO: add function to save image instead of showing it
         plt.show()
-        ipdb.set_trace()
 
     def generate_map_us_states(self):
         # TODO: find out the complete name of the map projection used
