@@ -13,11 +13,9 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from mpl_toolkits.basemap import Basemap
 import numpy as np
-import plotly
-from plotly.graph_objs import Scatter, Figure, Layout
 
 sys.path.append("..")  # Relative import of utility.util
-from utility import util
+from utility import util, graph_util as g_util
 
 
 # File containing script's settings
@@ -164,7 +162,7 @@ class DataAnalyzer:
                   "title": self.config_ini["bar_chart_tags"]["title"],
                   "grid_which": self.config_ini["bar_chart_tags"]["grid_which"]}
         # TODO: place number (of job posts) on top of each bar
-        self.generate_bar_chart(config)
+        g_util.generate_bar_chart(config)
 
     def analyze_locations(self):
         """
@@ -200,7 +198,7 @@ class DataAnalyzer:
                   "title": self.config_ini["bar_chart_countries"]["title"],
                   "grid_which": self.config_ini["bar_chart_countries"]["grid_which"]}
         # TODO: place number (of job posts) on top of each bar
-        self.generate_bar_chart(config)
+        g_util.generate_bar_chart(config)
         # Generate bar chart of US states vs number of job posts
         config = {"x": self.sorted_us_states_count[:, 0],
                   "y": self.sorted_us_states_count[:, 1].astype(np.int32),
@@ -208,7 +206,7 @@ class DataAnalyzer:
                   "ylabel": self.config_ini["bar_chart_us_states"]["ylabel"],
                   "title": self.config_ini["bar_chart_us_states"]["title"],
                   "grid_which": self.config_ini["bar_chart_us_states"]["grid_which"]}
-        self.generate_bar_chart(config)
+        g_util.generate_bar_chart(config)
 
         # Generate pie chart of countries vs number of job posts
         config = {"labels": self.sorted_countries_count[:, 0],
@@ -216,12 +214,12 @@ class DataAnalyzer:
                   "title": self.config_ini["pie_chart_countries"]["title"]}
         # TODO: add 'other countries' for countries with few job posts
         # Pie chart is too crowded for countries with less than 0.9% of job posts
-        self.generate_pie_chart(config)
+        g_util.generate_pie_chart(config)
         # Generate pie chart of countries vs number of job posts
         config = {"labels": self.sorted_us_states_count[:, 0],
                   "values": self.sorted_us_states_count[:, 1].astype(np.int32),
                   "title": self.config_ini["pie_chart_us_states"]["title"]}
-        self.generate_pie_chart(config)
+        g_util.generate_pie_chart(config)
 
     def analyze_salary_by_locations(self):
         # Get location names that have a salary associated with
@@ -276,7 +274,7 @@ class DataAnalyzer:
                   "yaxis_major_mutiplelocator": self.config_ini["histogram_salary"]["yaxis_major_mutiplelocator"],
                   "yaxis_minor_mutiplelocator": self.config_ini["histogram_salary"]["yaxis_minor_mutiplelocator"]
                   }
-        self.generate_histogram(config)
+        g_util.generate_histogram(config)
 
         # Generate scatter plots of number of job posts vs average mid-range salary
         # for each topic (e.g. locations, roles)
@@ -304,7 +302,7 @@ class DataAnalyzer:
             data = self.__getattribute__("avg_mid_range_salaries_by_{}".format(topic))
             # TODO: sanity check on data["average_mid_range_salary"], do the sanity
             # check within filter_data()
-            indices = self.filter_data(data["average_mid_range_salary"],
+            indices = util.filter_data(data["average_mid_range_salary"],
                                        min_threshold=self.min_salary_threshold,
                                        max_threshold=self.max_salary_threshold)
             # TODO: sanity check on data keys
@@ -313,7 +311,7 @@ class DataAnalyzer:
             config["y"] = data["average_mid_range_salary"][indices]
             config["text"] = data[topic][indices]
             config["title"] = title
-            self.generate_scatter_plot(config)
+            g_util.generate_scatter_plot(config)
 
     def analyze_industries(self):
         """
@@ -340,7 +338,7 @@ class DataAnalyzer:
                   "title": self.config_ini["bar_chart_industries"]["title"],
                   "grid_which": self.config_ini["bar_chart_industries"]["grid_which"]}
         # TODO: place number (of job posts) on top of each bar
-        self.generate_bar_chart(config)
+        g_util.generate_bar_chart(config)
 
     def compute_salary_mid_ranges(self):
         # Get list of min/max salary, i.e. for each job id we want its
@@ -726,7 +724,7 @@ class DataAnalyzer:
         return filtered_locations
 
     # TODO: it is better to return the indices of salaries to keep; thus use
-    # the filter_data() method instead which can filter any kind of data, not only
+    # the filter_data() function instead which can filter any kind of data, not only
     # salaries but also counts for instance
     def filter_mid_range_salaries(self):
         # TODO: change all *salary_mid_ranges* to *mid_range_salaries*,
@@ -743,102 +741,6 @@ class DataAnalyzer:
         first_cond = (self.sorted_salary_mid_ranges >= self.min_salary_threshold)
         second_cond = (self.sorted_salary_mid_ranges <= self.max_salary_threshold)
         return self.sorted_salary_mid_ranges[first_cond & second_cond]
-
-    def filter_data(self, data, min_threshold, max_threshold):
-        # Sanity check on input thresholds
-        if not (data.max() >= min_threshold >= data.min()):
-            min_threshold = data.min()
-        if not (data.max() >= max_threshold >= data.min()):
-            max_threshold = data.max()
-        first_cond = data >= min_threshold
-        second_cond = data <= max_threshold
-        return np.where(first_cond & second_cond)
-
-    @staticmethod
-    def generate_scatter_plot(plt_config):
-        # TODO: add labels to axes
-        default_config = {"x": None,
-                          "y": None,
-                          "mode": "markers",
-                          "text": None,
-                          "title": "",
-                          "hovermode": "closest",
-                          "yaxis_tickformat": "$0.0f"
-                          }
-        # Sanity check on config dicts
-        assert len(default_config) >= len(plt_config), \
-            "plt_config has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
-        default_config.update(plt_config)
-        plt_config = default_config
-        x = plt_config["x"]
-        y = plt_config["y"]
-        mode = plt_config["mode"]
-        text = plt_config["text"]
-        title = plt_config["title"]
-        hovermode = plt_config["hovermode"]
-        yaxis_tickformat = plt_config["yaxis_tickformat"]
-        assert type(x) == type(np.array([])), "wrong type on input array 'x'"
-        assert type(y) == type(np.array([])), "wrong type on input array 'y'"
-        assert type(text) == type(np.array([])), "wrong type on input array 'text'"
-        plotly.offline.plot({
-            "data": [Scatter(x=list(x.flatten()),
-                             y=list(y.flatten()),
-                             mode=mode,
-                             text=list(text.flatten()))],
-            "layout": Layout(title=title, hovermode=hovermode,
-                             yaxis=dict(tickformat=yaxis_tickformat))
-        })
-
-    @staticmethod
-    def generate_histogram(plt_config):
-        default_config = {"data": None,
-                          #"bin_width": 10000, # TODO: not used
-                          "bins": None,
-                          "xlabel": "",
-                          "ylabel": "",
-                          "title": "",
-                          "grid_which": "major",
-                          "xaxis_major_mutiplelocator": 10000,
-                          "xaxis_minor_mutiplelocator": 1000,
-                          "yaxis_major_mutiplelocator": 5,
-                          "yaxis_minor_mutiplelocator": 1
-                          }
-        # Sanity check on config dicts
-        assert len(default_config) >= len(plt_config), \
-            "plt_config has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
-        default_config.update(plt_config)
-        plt_config = default_config
-        data = plt_config["data"]
-        bins = plt_config["bins"]
-        #bin_width = plt_config["bin_width"] # TODO: not used
-        xlabel = plt_config["xlabel"]
-        ylabel = plt_config["ylabel"]
-        title = plt_config["title"]
-        grid_which = plt_config["grid_which"]
-        xaxis_major_mutiplelocator = plt_config["xaxis_major_mutiplelocator"]
-        xaxis_minor_mutiplelocator = plt_config["xaxis_minor_mutiplelocator"] # TODO: not used
-        yaxis_major_mutiplelocator = plt_config["yaxis_major_mutiplelocator"]
-        yaxis_minor_mutiplelocator = plt_config["yaxis_minor_mutiplelocator"]
-        # Sanity check on the input array
-        assert type(data) == type(np.array([])), "wrong type on input array 'data'"
-        assert grid_which in ["minor", "major", "both"], \
-            "wrong value for grid_which='{}'".format(grid_which)
-        #n_bins = np.ceil((data.max() - data.min()) / bin_width).astype(np.int64)
-        ax = plt.gca()
-        ax.hist(data, bins=bins, color="r")
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.set_title(title)
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(xaxis_major_mutiplelocator))
-        ax.yaxis.set_major_locator(ticker.MultipleLocator(yaxis_major_mutiplelocator))
-        ax.yaxis.set_minor_locator(ticker.MultipleLocator(yaxis_minor_mutiplelocator))
-        plt.xlim(0, data.max())
-        labels = ax.get_xticklabels()
-        plt.setp(labels, rotation=270.)
-        plt.grid(True, which="major")
-        plt.tight_layout()
-        # TODO: add function to save image instead of showing it
-        plt.show()
 
     def generate_map_us_states(self):
         # TODO: find out the complete name of the map projection used
@@ -871,6 +773,7 @@ class DataAnalyzer:
         self.generate_map(map, locations, markersize=lambda count: marker_scale)
 
     def generate_map_europe_countries(self):
+        # TODO: complete method
         pass
 
     def generate_map(self, map, locations, markersize, top_k=None):
@@ -937,72 +840,8 @@ class DataAnalyzer:
             util.dump_pickle(self.cached_locations, self.cached_locations_path)
         plt.show()
 
-    @staticmethod
-    def generate_bar_chart(plt_config):
-        default_config = {"x": None,
-                          "y": None,
-                          "xlabel": "",
-                          "ylabel": "",
-                          "title": "",
-                          "grid_which": "major",
-                          "yaxis_major_mutiplelocator": 20,
-                          "yaxis_minor_mutiplelocator": 10}
-        # Sanity check on config dicts
-        assert len(default_config) >= len(plt_config), "generate_bar_chart(): plt_config" \
-                                                       "has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
-        default_config.update(plt_config)
-        plt_config = default_config
-        x = plt_config["x"]
-        y = plt_config["y"]
-        xlabel = plt_config["xlabel"]
-        ylabel = plt_config["ylabel"]
-        title = plt_config["title"]
-        grid_which = plt_config["grid_which"]
-        # Sanity check on the input arrays
-        assert type(x) == type(np.array([])), "generate_bar_chart(): wrong type on input array 'x'"
-        assert type(y) == type(np.array([])), "generate_bar_chart(): wrong type on input array 'y'"
-        assert x.shape == y.shape, "generate_bar_chart(): wrong shape with 'x' and 'y'"
-        assert grid_which in ["minor", "major", "both"], "generate_bar_chart(): " \
-                                                         "wrong value for grid_which='{}'".format(grid_which)
-        ax = plt.gca()
-        index = np.arange(len(x))
-        plt.bar(index, y)
-        plt.xticks(index, x)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.set_title(title)
-        labels = ax.get_xticklabels()
-        plt.setp(labels, rotation=270.)
-        ax.yaxis.set_major_locator(ticker.MultipleLocator(plt_config["yaxis_major_mutiplelocator"]))
-        ax.yaxis.set_minor_locator(ticker.MultipleLocator(plt_config["yaxis_minor_mutiplelocator"]))
-        #plt.minorticks_on()
-        plt.grid(which=grid_which)
-        plt.tight_layout()
-        plt.show()
-
-    @staticmethod
-    def generate_pie_chart(plt_config):
-        default_config = {"values": None,
-                          "labels": None,
-                          "title": ""}
-        # Sanity check on config dicts
-        assert len(default_config) >= len(plt_config), \
-            "plt_config has {} keys and default_config has {} keys".format(len(plt_config), len(default_config))
-        default_config.update(plt_config)
-        values = plt_config["values"]
-        labels = plt_config["labels"]
-        title = plt_config["title"]
-        # Sanity check on the input arrays
-        assert isinstance(values, type(np.array([]))), "Wrong type on input array 'values'"
-        assert isinstance(labels, type(np.array([]))), "Wrong type on input array 'labels'"
-        assert values.shape == labels.shape, "Wrong shape with 'labels' and 'values'"
-        ax = plt.gca()
-        plt.pie(values, labels=labels, autopct="%1.1f%%")
-        ax.set_title(title)
-        plt.axis("equal")
-        plt.show()
-
     def generate_report(self):
+        # TODO: complete method
         pass
 
     def is_a_us_state(self, location):

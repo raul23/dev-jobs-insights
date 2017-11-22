@@ -233,3 +233,14 @@ def print_exception(error=None):
     # TODO: find a way to add the error description (e.g. AttributeError) without
     # having to provide the error description as input to the function
     print('EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), err_desc))
+
+
+def filter_data(data, min_threshold, max_threshold):
+    # Sanity check on input thresholds
+    if not (data.max() >= min_threshold >= data.min()):
+        min_threshold = data.min()
+    if not (data.max() >= max_threshold >= data.min()):
+        max_threshold = data.max()
+    first_cond = data >= min_threshold
+    second_cond = data <= max_threshold
+    return np.where(first_cond & second_cond)
