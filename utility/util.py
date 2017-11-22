@@ -7,6 +7,8 @@ import pickle
 import sqlite3
 import sys
 
+import numpy as np
+
 
 def create_connection(db_path, autocommit=False):
     """

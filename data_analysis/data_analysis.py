@@ -208,6 +208,7 @@ class DataAnalyzer:
                   "grid_which": self.config_ini["bar_chart_us_states"]["grid_which"]}
         g_util.generate_bar_chart(config)
 
+
         # Generate pie chart of countries vs number of job posts
         config = {"labels": self.sorted_countries_count[:, 0],
                   "values": self.sorted_countries_count[:, 1].astype(np.int32),
@@ -312,6 +313,8 @@ class DataAnalyzer:
             config["text"] = data[topic][indices]
             config["title"] = title
             g_util.generate_scatter_plot(config)
+            # TODO: remove this waiting time between scatter plots browser-showing
+            time.sleep(2)
 
     def analyze_industries(self):
         """
