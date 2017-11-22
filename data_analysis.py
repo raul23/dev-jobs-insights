@@ -33,7 +33,10 @@ class DataAnalyzer:
         # TODO: test all the paths with check_file_exists()
         # TODO: set in config.ini the size of the saved graphs
         # TODO: check if we must use np.{int,float}{32,64}
-        # TODO: add line numbers to when calling exit_script()
+        # TODO: add line numbers to when calling exit_script(), also fix the inconsistency
+        # in the message error (line number don't match the actual error because we are
+        # not catching the actual the source of the error but the catch is placed
+        # farther from the source of the errror
         self.config_ini = read_config(SETTINGS_FILENAME)
         if self.config_ini is None:
             exit_script("ERROR: {} could not be read".format(SETTINGS_FILENAME))
@@ -332,14 +335,15 @@ class DataAnalyzer:
         # TODO: use Software Development instead of the longer Software Development / Engineering
         self.sorted_industries_count = np.array(results)
 
+        ipdb.set_trace()
         # Generate bar chart: industries vs number of job posts
-        top_k = 20
+        top_k = self.config_ini["bar_chart_industries"]["top_k"]
         config = {"x": self.sorted_industries_count[:top_k, 0],
                   "y": self.sorted_industries_count[:top_k, 1].astype(np.int32),
-                  "xlabel": "Industries",
-                  "ylabel": "Number of jobs",
-                  "title": "Top {} most popular industries".format(top_k),
-                  "grid_which": "major"}
+                  "xlabel": self.config_ini["bar_chart_industries"]["xlabel"],
+                  "ylabel": self.config_ini["bar_chart_industries"]["ylabel"],
+                  "title": self.config_ini["bar_chart_industries"]["title"],
+                  "grid_which": self.config_ini["bar_chart_industries"]["grid_which"]}
         # TODO: place number (of job posts) on top of each bar
         self.generate_bar_chart(config)
 
