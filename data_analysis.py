@@ -21,7 +21,6 @@ from mpl_toolkits.basemap import Basemap
 import numpy as np
 import plotly
 from plotly.graph_objs import Scatter, Figure, Layout
-# TODO: check if we must use np.{int,float}{32,64}
 
 
 # File containing script's settings
@@ -33,15 +32,19 @@ class DataAnalyzer:
         # TODO: add DEFAULT config values
         # TODO: test all the paths with check_file_exists()
         # TODO: set in config.ini the size of the saved graphs
+        # TODO: check if we must use np.{int,float}{32,64}
+        # TODO: add line numbers to when calling exit_script()
         self.config_ini = read_config(SETTINGS_FILENAME)
         if self.config_ini is None:
             exit_script("ERROR: {} could not be read".format(SETTINGS_FILENAME))
         self.types_of_analysis = self.get_analyses()
+        self.salary_topics = self.get_salary_topics()
+        self.topic_to_titles = self.get_topic_titles()
         db_path = self.config_ini["paths"]["db_path"]
         db_path = os.path.expanduser(db_path)
         self.conn = create_connection(db_path)
         if self.conn is None:
-            exit_script("Connection to db couldn't be established")
+            exit_script("ERROR: Connection to db couldn't be established")
         self.shape_path = os.path.expanduser(self.config_ini["paths"]["shape_path"])
         # NOTE: `countries` and `us_states` must not be empty when starting the
         # data analysis. However, `cached_transl_countries` can be empty when starting
@@ -101,8 +104,33 @@ class DataAnalyzer:
     def get_analyses(self):
         return [k for k,v in self.config_ini["analysis_types"].items() if v]
 
+    def get_salary_topics(self):
+        return [k for k,v in self.config_ini["salary_analysis_by_topic"].items() if v]
+
+    def get_topic_titles(self):
+        topic_to_titles = {}
+        for topic in self.salary_topics:
+            # TODO: remove the if; it is a hack while locations (in
+            # salary_analysis_by_topic config.ini) is not broken up into
+            # countries and us_states
+            if topic == "locations":
+                title = self.config_ini["scatter_salary_topic"]["countries_title"]
+                # Build complete title
+                complete_title = "Average mid-range salary of {}".format(title)
+                topic_to_titles["countries"] = complete_title
+
+                title = self.config_ini["scatter_salary_topic"]["us_states_title"]
+                # Build complete title
+                complete_title = "Average mid-range salary of {}".format(title)
+                topic_to_titles["us_states"] = complete_title
+            else:
+                title = self.config_ini["scatter_salary_topic"]["{}_title".format(topic)]
+                # Build complete title
+                title = "Average mid-range salary of {}".format(title)
+                topic_to_titles[topic] = title
+        return topic_to_titles
+
     def run_analysis(self):
-        ipdb.set_trace()
         with self.conn:
             for analysis_type in self.types_of_analysis:
                 try:
@@ -110,7 +138,7 @@ class DataAnalyzer:
                     analyze_method()
                 except AttributeError:
                     print_exception("AttributeError")
-                    print("ERROR: {} will be skipped".format(analysis_type))
+                    print("ERROR: {} could not be completed because of an AttributeError".format(analysis_type))
                     continue
 
     def analyze_tags(self):
@@ -207,24 +235,21 @@ class DataAnalyzer:
         self.process_locations_with_salaries(results)
 
     def analyze_salary_by_topic(self, topic):
-        # Sanity check on input `topic`
-        assert topic in ["locations", "industries", "roles", "tags"], \
-            "'{}' is not a valid topic".format(topic)
-        # Get topic's rows that have a salary associated with
         # TODO: add sanity check on the select method/process, what if they don't
         # exist, we should skip the topic and report an error
-        select_method = self.__getattribute__("select_{}".format(topic))
-        # TODO: remove eval
-        #select_method = eval("self.select_{}".format(topic))
-        process_results_method = self.__getattribute__("process_{}_with_salaries".format(topic))
-        # TODO: remove eval
-        #process_results_method = eval("self.process_{}_with_salaries".format(topic))
+        try:
+            select_method = self.__getattribute__("select_{}".format(topic))
+            process_results_method = self.__getattribute__("process_{}_with_salaries".format(topic))
+        except AttributeError:
+            print_exception("AttributeError")
+            return None
+        # Get topic's rows that have a salary associated with
         results = select_method(tuple(self.job_ids_with_salary))
         # Process results to extract average mid-range salaries for each topic's rows
         process_results_method(results, topic)
+        return 0
 
     def analyze_salary(self):
-        ipdb.set_trace()
         # Compute salary mid-range for each min-max interval
         self.compute_salary_mid_ranges()
         # Compute global stats on salaries, e.g. global max/min mid-range salaries
@@ -232,45 +257,49 @@ class DataAnalyzer:
 
         # Analyze salary by different topics
         # TODO: see if you can divide locations into countries and us_states
-        topics = ["locations", "industries", "roles", "tags"]
-        for topic in topics:
-            self.analyze_salary_by_topic(topic)
+        for topic in self.salary_topics:
+            retval = self.analyze_salary_by_topic(topic)
+            if retval is None:
+                print("ERROR: the topic '{}' will be skipped because an error "
+                      "occurred while processing it".format(topic))
 
         # Generate histogram of salary mid ranges vs number of job posts
         # TODO: you can use self.max_salary_threshold only after running
         # compute_global_stats() where the global max and min salaries are computed
         config = {"data": self.filter_mid_range_salaries(),
                   "bins": np.arange(0, self.max_salary_threshold, 10000),
-                  "xlabel": "Mid-range salaries",
-                  "ylabel": "Number of job posts",
-                  "title": "Histogram: Mid-range salaries",
-                  "grid_which": "major",
-                  "xaxis_major_mutiplelocator": 10000,
-                  "xaxis_minor_mutiplelocator": 1000,
-                  "yaxis_major_mutiplelocator": 5,
-                  "yaxis_minor_mutiplelocator": 1
+                  "xlabel": self.config_ini["histogram_salary"]["xlabel"],
+                  "ylabel": self.config_ini["histogram_salary"]["ylabel"],
+                  "title": self.config_ini["histogram_salary"]["title"],
+                  "grid_which": self.config_ini["histogram_salary"]["grid_which"],
+                  "xaxis_major_mutiplelocator": self.config_ini["histogram_salary"]["xaxis_major_mutiplelocator"],
+                  "xaxis_minor_mutiplelocator": self.config_ini["histogram_salary"]["xaxis_minor_mutiplelocator"],
+                  "yaxis_major_mutiplelocator": self.config_ini["histogram_salary"]["yaxis_major_mutiplelocator"],
+                  "yaxis_minor_mutiplelocator": self.config_ini["histogram_salary"]["yaxis_minor_mutiplelocator"]
                   }
-        #self.generate_histogram(config)
+        self.generate_histogram(config)
 
         # Generate scatter plots of number of job posts vs average mid-range salary
         # for each topic (e.g. locations, roles)
+        # TODO: find another way than the use of config dict when preparing the different graphs
+        # it is kind of confusing, maybe create a separate method that prepares the config dict
+        # and returns it to be used ar argument to the graph generate method
         config = {"x": None,
                   "y": None,
-                  "mode": "markers",
+                  "mode": self.config_ini["scatter_salary_topic"]["mode"],
                   "text": None,
                   "title": "",
-                  "yaxis_tickformat": "$0.0f"
+                  "yaxis_tickformat": self.config_ini["scatter_salary_topic"]["yaxis_tickformat"]
                   }
-        # TODO: the topics should be set in the constructor
-        topics = ["countries", "us_states", "industries", "roles", "tags"]
-        titles = ["countries", "US states", "industries", "job roles", "programming skills"]
         # Sanity check on topics and corresponding titles
-        assert len(topics) == len(titles),\
-            "Number of topics ({}) and titles ({}) don't match".format(len(topics), len(titles))
-        # Build complete title
-        titles = ["Average mid-range salary of "+title for title in titles]
-        topic_to_title = dict(zip(topics, titles))
-        for topic, title in topic_to_title.items():
+        # TODO: uncomment when lcations is broken up into countries and us states
+        """
+        if len(self.salary_topics) != len(self.topic_to_titles):
+            msg = "ERROR: Number of topics ({}) and titles ({}) don't match"\
+                .format(len(self.salary_topics), len(self.topic_to_titles))
+            exit_script(msg)
+        """
+        for topic, title in self.topic_to_titles.items():
             # TODO: add sanity check on eval(), i.e. make sure that the data array
             # exists before using it
             data = self.__getattribute__("avg_mid_range_salaries_by_{}".format(topic))
