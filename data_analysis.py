@@ -102,6 +102,7 @@ class DataAnalyzer:
         return [k for k,v in self.config_ini["analysis_types"].items() if v]
 
     def run_analysis(self):
+        ipdb.set_trace()
         with self.conn:
             for analysis_type in self.types_of_analysis:
                 try:
@@ -109,8 +110,7 @@ class DataAnalyzer:
                     analyze_method()
                 except AttributeError:
                     print_exception("AttributeError")
-                    print("ERROR: {} will be skipped because it is not a valid "
-                          "method name".format(analysis_type))
+                    print("ERROR: {} will be skipped".format(analysis_type))
                     continue
 
     def analyze_tags(self):
@@ -160,42 +160,41 @@ class DataAnalyzer:
         self.generate_map_world_countries()
         # Generate map with markers added on european countries that have job
         # posts associated with
-        #self.generate_map_europe_countries()
+        self.generate_map_europe_countries()
 
         # NOTE: bar charts are for categorical data
         # Generate bar chart of countries vs number of job posts
-        # TODO: should be set in a config
-        top_k = 20
+        top_k = self.config_ini["bar_chart_countries"]["top_k"]
         country_names = self.format_country_names(self.sorted_countries_count[:top_k, 0])
         config = {"x": country_names,
                   "y": self.sorted_countries_count[:top_k, 1].astype(np.int32),
-                  "xlabel": "Countries",
-                  "ylabel": "Number of job posts",
-                  "title": "Top {} most popular countries".format(top_k),
-                  "grid_which": "both"}
+                  "xlabel": self.config_ini["bar_chart_countries"]["xlabel"],
+                  "ylabel": self.config_ini["bar_chart_countries"]["ylabel"],
+                  "title": self.config_ini["bar_chart_countries"]["title"],
+                  "grid_which": self.config_ini["bar_chart_countries"]["grid_which"]}
         # TODO: place number (of job posts) on top of each bar
-        #self.generate_bar_chart(config)
+        self.generate_bar_chart(config)
         # Generate bar chart of US states vs number of job posts
         config = {"x": self.sorted_us_states_count[:, 0],
                   "y": self.sorted_us_states_count[:, 1].astype(np.int32),
-                  "xlabel": "US states",
-                  "ylabel": "Number of job posts",
-                  "title": "US states popularity",
-                  "grid_which": "major"}
-        #self.generate_bar_chart(config)
+                  "xlabel": self.config_ini["bar_chart_us_states"]["xlabel"],
+                  "ylabel": self.config_ini["bar_chart_us_states"]["ylabel"],
+                  "title": self.config_ini["bar_chart_us_states"]["title"],
+                  "grid_which": self.config_ini["bar_chart_us_states"]["grid_which"]}
+        self.generate_bar_chart(config)
 
         # Generate pie chart of countries vs number of job posts
         config = {"labels": self.sorted_countries_count[:, 0],
                   "values": self.sorted_countries_count[:, 1].astype(np.int32),
-                  "title": "Countries popularity by % of job posts"}
+                  "title": self.config_ini["pie_chart_countries"]["title"]}
         # TODO: add 'other countries' for countries with few job posts
         # Pie chart is too crowded for countries with less than 0.9% of job posts
         self.generate_pie_chart(config)
         # Generate pie chart of countries vs number of job posts
         config = {"labels": self.sorted_us_states_count[:, 0],
                   "values": self.sorted_us_states_count[:, 1].astype(np.int32),
-                  "title": "US States popularity by % of job posts"}
-        #self.generate_pie_chart(config)
+                  "title": self.config_ini["pie_chart_us_states"]["title"]}
+        self.generate_pie_chart(config)
 
     def analyze_salary_by_locations(self):
         # Get location names that have a salary associated with
@@ -225,6 +224,7 @@ class DataAnalyzer:
         process_results_method(results, topic)
 
     def analyze_salary(self):
+        ipdb.set_trace()
         # Compute salary mid-range for each min-max interval
         self.compute_salary_mid_ranges()
         # Compute global stats on salaries, e.g. global max/min mid-range salaries
@@ -1018,15 +1018,15 @@ class DataAnalyzer:
         # South Korea (it is found as REPUBLIC OF KOREA), IRAN (it is found as REPUBLIC OF IRAN)
         if country in self.countries:
             return country
-        elif country in self.translated_countries:
-            return self.translated_countries[country]
+        elif country in self.cached_transl_countries:
+            return self.cached_transl_countries[country]
         else:
             # TODO: google translation service has problems with Suisse->Suisse
             translator = Translator()
             transl_country = translator.translate(country, dest='en').text
             # Save the translation
             temp = {country: transl_country}
-            self.translated_countries.update(temp)
+            self.cached_transl_countries.update(temp)
             dump_json(temp, self.cached_transl_countries_path, update=True)
             return transl_country
 
