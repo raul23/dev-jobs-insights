@@ -15,7 +15,6 @@ import ipdb
 import geopy
 from geopy.geocoders import Nominatim
 from googletrans import Translator
-import iso3166
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from mpl_toolkits.basemap import Basemap
@@ -27,56 +26,45 @@ from plotly.graph_objs import Scatter, Figure, Layout
 
 # File containing script's settings
 SETTINGS_FILENAME = "config.ini"
-# TODO: the following variables should be set in a config file
-DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
-SHAPE_FILENAME = os.path.expanduser("~/data/basemap/st99_d00")
-COUNTRIES_FILENAME = "countries_info.json"
-US_STATES_FILENAME = "states_hash.json"
-TRANSL_COUNTRIES_FILENAME = "cached_transl_countries.json"
-CACHED_LOCATIONS_FILENAME = "cached_locations.pkl"
-# Number of seconds to wait between two requests to the geocoding service
-WAIT_TIME = 1
-# The marker to be drawn on a map is scaled by a factor
-MARKER_SCALE = 5
-# Thresholds for removing salary outliers, i.e. salaries in the range
-# [MIN_SALARY, MAX_SALARY] will be included, the rest will be discarded
-MIN_MID_RANGE_SALARY_THRESHOLD = 15000
-MAX_MID_RANGE_SALARY_THRESHOLD = 400000
 
 
 class DataAnalyzer:
     def __init__(self):
         # TODO: add DEFAULT config values
+        # TODO: test all the paths with check_file_exists()
+        # TODO: set in config.ini the size of the saved graphs
         self.config_ini = read_config(SETTINGS_FILENAME)
         if self.config_ini is None:
             exit_script("ERROR: {} could not be read".format(SETTINGS_FILENAME))
+        self.types_of_analysis = self.get_analyses()
         db_path = self.config_ini["paths"]["db_path"]
         db_path = os.path.expanduser(db_path)
         self.conn = create_connection(db_path)
         if self.conn is None:
             exit_script("Connection to db couldn't be established")
+        self.shape_path = os.path.expanduser(self.config_ini["paths"]["shape_path"])
         # NOTE: `countries` and `us_states` must not be empty when starting the
-        # data analysis. However, `translated_countries` can be empty when starting
+        # data analysis. However, `cached_transl_countries` can be empty when starting
         # because it will be updated while performing the data analysis; same
         # for `cached_locations`.
-        ipdb.set_trace()
-        path = self.config_ini["paths"]["countries_path"]
-        self.countries = load_json(path)
+        countries_path = self.config_ini["paths"]["countries_path"]
+        self.countries = load_json(countries_path)
         if self.countries is None:
-            exit_script("ERROR: {} could not be loaded".format(path))
-        path = self.config_ini["paths"]["us_states_path"]
-        self.us_states = load_json(path)
+            exit_script("ERROR: {} could not be loaded".format(countries_path))
+        us_states_path = self.config_ini["paths"]["us_states_path"]
+        self.us_states = load_json(us_states_path)
         if self.us_states is None:
-            print("ERROR: {} could not be loaded".format(path))
-        path = self.config_ini["paths"]["cached_transl_countries_path"]
-        self.cached_transl_countries = load_json(path)
+            print("ERROR: {} could not be loaded".format(us_states_path))
+        self.cached_transl_countries_path = self.config_ini["paths"]["cached_transl_countries_path"]
+        self.cached_transl_countries = load_json(self.cached_transl_countries_path)
         if self.cached_transl_countries is None:
             self.cached_transl_countries = {}
-        self.cached_locations = load_pickle(CACHED_LOCATIONS_FILENAME)
+        self.cached_locations_path = self.config_ini["paths"]["cached_locations_path"]
+        self.cached_locations = load_pickle(self.cached_locations_path)
         if self.cached_locations is None:
             self.cached_locations = {}
         self.wait_time = self.config_ini["geocoding"]["wait_time"]
-        self.basemap = self.config_ini["basemap"]["marker_scale"]
+        self.marker_scale = self.config_ini["basemap"]["marker_scale"]
         self.min_salary_threshold = self.config_ini["outliers"]["min_salary"]
         self.max_salary_threshold = self.config_ini["outliers"]["max_salary"]
         # These are all the data that will be saved while performing the various
@@ -110,16 +98,20 @@ class DataAnalyzer:
         # TODO: rearrange the name of the variables
         self.sorted_industries_count = None
 
+    def get_analyses(self):
+        return [k for k,v in self.config_ini["analysis_types"].items() if v]
+
     def run_analysis(self):
-        types_of_analysis = ["tags", "locations", "salary", "industries"]
-        ipdb.set_trace()
         with self.conn:
-            for type in types_of_analysis:
-                method_name = "analyze_{}".format(type)
-                if method_name in config and config[method_name]:
-                    # TODO: sanity check on the method existence
-                    analyze_method = self.__getattribute__(method_name)
+            for analysis_type in self.types_of_analysis:
+                try:
+                    analyze_method = self.__getattribute__(analysis_type)
                     analyze_method()
+                except AttributeError:
+                    print_exception("AttributeError")
+                    print("ERROR: {} will be skipped because it is not a valid "
+                          "method name".format(analysis_type))
+                    continue
 
     def analyze_tags(self):
         """
@@ -137,14 +129,13 @@ class DataAnalyzer:
         self.sorted_tags_count = np.array(results)
 
         # Generate bar chart of tags vs number of job posts
-        # TODO: should be set in a config
-        top_k = 20
+        top_k = self.config_ini["bar_chart_tags"]["top_k"]
         config = {"x": self.sorted_tags_count[:top_k, 0],
                   "y": self.sorted_tags_count[:top_k, 1].astype(np.int32),
-                  "xlabel": "Skills (tags)",
-                  "ylabel": "Number of jobs",
-                  "title": "Top {} most popular skills".format(top_k),
-                  "grid_which": "major"}
+                  "xlabel": self.config_ini["bar_chart_tags"]["xlabel"],
+                  "ylabel": self.config_ini["bar_chart_tags"]["ylabel"],
+                  "title": self.config_ini["bar_chart_tags"]["title"],
+                  "grid_which": self.config_ini["bar_chart_tags"]["grid_which"]}
         # TODO: place number (of job posts) on top of each bar
         self.generate_bar_chart(config)
 
@@ -246,10 +237,10 @@ class DataAnalyzer:
             self.analyze_salary_by_topic(topic)
 
         # Generate histogram of salary mid ranges vs number of job posts
-        # TODO: you can use self.MAX_MID_RANGE_SALARY_THRESHOLD only after running
+        # TODO: you can use self.max_salary_threshold only after running
         # compute_global_stats() where the global max and min salaries are computed
         config = {"data": self.filter_mid_range_salaries(),
-                  "bins": np.arange(0, self.MAX_MID_RANGE_SALARY_THRESHOLD, 10000),
+                  "bins": np.arange(0, self.max_salary_threshold, 10000),
                   "xlabel": "Mid-range salaries",
                   "ylabel": "Number of job posts",
                   "title": "Histogram: Mid-range salaries",
@@ -286,8 +277,8 @@ class DataAnalyzer:
             # TODO: sanity check on data["average_mid_range_salary"], do the sanity
             # check within filter_data()
             indices = self.filter_data(data["average_mid_range_salary"],
-                                       min_threshold=self.MIN_MID_RANGE_SALARY_THRESHOLD,
-                                       max_threshold=self.MAX_MID_RANGE_SALARY_THRESHOLD)
+                                       min_threshold=self.min_salary_threshold,
+                                       max_threshold=self.max_salary_threshold)
             # TODO: sanity check on data keys
             # Filter the arrays to keep only the filtered data
             config["x"] = data["count"][indices]
@@ -717,12 +708,12 @@ class DataAnalyzer:
         min_salary = self.sorted_salary_mid_ranges.min()
         # Sanity check on mid-range salary thresholds
         # TODO: these checks should be done when computing the global max and min in compute_global_stats()
-        if not (max_salary >= self.MIN_MID_RANGE_SALARY_THRESHOLD >= min_salary):
-            self.MIN_MID_RANGE_SALARY_THRESHOLD = min_salary
-        if not (max_salary >= self.MAX_MID_RANGE_SALARY_THRESHOLD >= min_salary):
-            self.MAX_MID_RANGE_SALARY_THRESHOLD = max_salary
-        first_cond = (self.sorted_salary_mid_ranges >= self.MIN_MID_RANGE_SALARY_THRESHOLD)
-        second_cond = (self.sorted_salary_mid_ranges <= self.MAX_MID_RANGE_SALARY_THRESHOLD)
+        if not (max_salary >= self.min_salary_threshold >= min_salary):
+            self.min_salary_threshold = min_salary
+        if not (max_salary >= self.max_salary_threshold >= min_salary):
+            self.max_salary_threshold = max_salary
+        first_cond = (self.sorted_salary_mid_ranges >= self.min_salary_threshold)
+        second_cond = (self.sorted_salary_mid_ranges <= self.max_salary_threshold)
         return self.sorted_salary_mid_ranges[first_cond & second_cond]
 
     def filter_data(self, data, min_threshold, max_threshold):
@@ -827,11 +818,11 @@ class DataAnalyzer:
         # display only the USA territory
         map = Basemap(llcrnrlon=-119, llcrnrlat=22, urcrnrlon=-64, urcrnrlat=49,
                       projection='lcc', lat_1=32, lat_2=45, lon_0=-95)
-        map.readshapefile(SHAPE_FILENAME, name="states", drawbounds=True)
+        map.readshapefile(self.shape_path, name="states", drawbounds=True)
         locations = self.filter_locations(include_continents=["North America"],
                                           exclude_countries=["Canada", "Mexico"])
         self.generate_map(map, locations,
-                          markersize=lambda count: int(np.sqrt(count)) * MARKER_SCALE,
+                          markersize=lambda count: int(np.sqrt(count)) * self.marker_scale,
                           top_k=3)
 
     def generate_map_world_countries(self):
@@ -884,7 +875,7 @@ class DataAnalyzer:
                     loc = geolocator.geocode(location)
                 except geopy.exc.GeocoderTimedOut:
                     ipdb.set_trace()
-                    dump_pickle(self.cached_locations, CACHED_LOCATIONS_FILENAME)
+                    dump_pickle(self.cached_locations, self.cached_locations_path)
                     # TODO: do something when there is a connection error with the geocoding service
                 # Check if the geocoder service was able to provide the map coordinates
                 if loc is None:
@@ -894,11 +885,11 @@ class DataAnalyzer:
                     last_part_loc = get_last_part_loc(location)
                     # Sanity check
                     assert last_part_loc is not None, "last_part_loc is None"
-                    time.sleep(WAIT_TIME)
+                    time.sleep(self.wait_time)
                     loc = geolocator.geocode(last_part_loc)
                     assert loc is not None, "The geocoding service could not for the second time" \
                                             "provide the map coordinates for the location '{}'".format(last_part_loc)
-                time.sleep(WAIT_TIME)
+                time.sleep(self.wait_time)
                 new_cached_locations = True
                 assert loc is not None, "loc is None"
                 self.cached_locations[location] = loc
@@ -915,7 +906,7 @@ class DataAnalyzer:
         # Dump `cached_locations` as a pickle file if new locations' map
         # coordinates computed
         if new_cached_locations:
-            dump_pickle(self.cached_locations, CACHED_LOCATIONS_FILENAME)
+            dump_pickle(self.cached_locations, self.cached_locations_path)
         plt.show()
 
     @staticmethod
@@ -1036,7 +1027,7 @@ class DataAnalyzer:
             # Save the translation
             temp = {country: transl_country}
             self.translated_countries.update(temp)
-            dump_json(temp, TRANSL_COUNTRIES_FILENAME, update=True)
+            dump_json(temp, self.cached_transl_countries_path, update=True)
             return transl_country
 
     def get_continent(self, country):
@@ -1255,6 +1246,8 @@ def print_exception(error=None):
         err_desc = exc_obj
     else:
         err_desc = "{}: {}".format(error, exc_obj)
+    # TODO: find a way to add the error description (e.g. AttributeError) without
+    # having to provide the error description as input to the function
     print('EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), err_desc))
 
 
