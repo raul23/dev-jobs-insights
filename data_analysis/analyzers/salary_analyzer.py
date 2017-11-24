@@ -11,13 +11,12 @@ class SalaryAnalyzer:
         # Connection to jobs_insights.sqlite db
         self.conn = conn
         self.config_ini = config_ini
-        countries_path = self.config_ini["paths"]["countries_path"]
-        us_states_path = self.config_ini["paths"]["us_states_path"]
-        cached_transl_countries_path = self.config_ini["paths"]["cached_transl_countries_path"]
+        self.stack_loc = util.StackOverflowLocation(self.config_ini["paths"]["countries_path"],
+                                                    self.config_ini["paths"]["us_states_path"],
+                                                    self.config_ini["paths"]["cached_transl_countries_path"])
         # List of topics against which to compute salary stats/graphs
         self.salary_topics = self.get_salary_topics()
         self.topic_to_titles = self.get_topic_titles()
-        self.stack_loc = util.StackOverflowLocation(countries_path, us_states_path, cached_transl_countries_path)
         self.min_salary_threshold = self.config_ini["outliers"]["min_salary"]
         self.max_salary_threshold = self.config_ini["outliers"]["max_salary"]
         # Salary stats to compute

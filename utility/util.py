@@ -356,7 +356,9 @@ class StackOverflowLocation:
         elif country in self.cached_transl_countries:
             return self.cached_transl_countries[country]
         else:
-            # TODO: test this else
+            # TODO: test this else clause
+            import ipdb
+            ipdb.set_trace()
             # TODO: google translation service has problems with Suisse->Suisse
             translator = Translator()
             transl_country = translator.translate(country, dest='en').text
@@ -365,3 +367,20 @@ class StackOverflowLocation:
             self.cached_transl_countries.update(temp)
             dump_json(temp, self.cached_transl_countries_path, update=True)
             return transl_country
+
+    def get_continent(self, country):
+        assert country is not None, "country is None"
+        if country in self.countries:
+            return self.countries[country]["continent"]
+        else:
+            # TODO: test else clause
+            import ipdb
+            ipdb.set_trace()
+            return None
+
+    def format_country_names(self, country_names, max_n_char=20):
+        for i, name in enumerate(country_names):
+            if len(name) > max_n_char:
+                alpha2 = self.countries[name]["alpha2"]
+                country_names[i] = alpha2
+        return country_names
