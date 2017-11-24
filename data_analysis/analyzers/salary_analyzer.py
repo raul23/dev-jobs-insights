@@ -71,7 +71,6 @@ class SalaryAnalyzer:
         self.salary_stats = dict(zip(self.salary_stats_names, [None] * len(self.salary_stats_names)))
 
     def run_analysis(self):
-        ipdb.set_trace()
         # Reset salary stats
         self.reset_stats()
         # Compute salary mid-range for each min-max interval
@@ -81,13 +80,11 @@ class SalaryAnalyzer:
 
         # Analyze salary by different topics
         # TODO: see if you can divide locations into countries and us_states
-        ipdb.set_trace()
         for topic in self.salary_topics:
             retval = self.analyze_salary_by_topic(topic)
             if retval is None:
                 print("ERROR: the topic '{}' will be skipped because an error "
                       "occurred while processing it".format(topic))
-        ipdb.set_trace()
         # Generate all the graphs (histogram, scatter plots)
         self.generate_graphs()
         return self.salary_stats
