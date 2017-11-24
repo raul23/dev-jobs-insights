@@ -6,7 +6,7 @@ import sys
 
 from analyzers.industry_analyzer import IndustryAnalyzer
 from analyzers.location_analyzer import LocationAnalyzer
-#from analyzers.salary_analyzer import SalaryAnalyzer
+from analyzers.salary_analyzer import SalaryAnalyzer
 from analyzers.tag_analyzer import TagAnalyzer
 from utility import util
 
@@ -61,7 +61,7 @@ class JobDataAnalyzer:
         :return:
         """
         ta = TagAnalyzer(self.conn, self.config_ini)
-        data = ta.run_analysis()
+        ta.run_analysis()
 
     def analyze_locations(self):
         """
@@ -70,11 +70,11 @@ class JobDataAnalyzer:
         :return:
         """
         la = LocationAnalyzer(self.conn, self.config_ini)
-        data = la.run_analysis()
+        la.run_analysis()
 
     def analyze_salary(self):
         sa = SalaryAnalyzer(self.conn, self.config_ini)
-        data = sa.run_analysis()
+        sa.run_analysis()
 
     def analyze_industries(self):
         """
@@ -84,11 +84,11 @@ class JobDataAnalyzer:
         :return:
         """
         ia = IndustryAnalyzer(self.conn, self.config_ini)
-        data = ia.run_analysis()
+        ia.run_analysis()
 
     def generate_report(self):
         # TODO: complete method
-        pass
+        raise NotImplementedError
 
 
 def exit_script(msg, code=1):

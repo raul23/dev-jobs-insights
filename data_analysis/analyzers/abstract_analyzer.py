@@ -3,6 +3,7 @@ class AbstractAnalyzer:
         # TODO: explain that stats_names must be a list of stats names
         # Sanity check on list of stats names
         assert type(stats_names) is list, "stats_names must be a list"
+        # Connection to jobs_insights.sqlite db
         self.conn = conn
         self.config_ini = config_ini
         # Stats to compute

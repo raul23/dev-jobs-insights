@@ -3,24 +3,14 @@ import time
 import numpy as np
 import ipdb
 
+from .abstract_analyzer import AbstractAnalyzer
 from utility import util, graph_util as g_util
 
 
-class SalaryAnalyzer:
+class SalaryAnalyzer(AbstractAnalyzer):
     def __init__(self, conn, config_ini):
-        # Connection to jobs_insights.sqlite db
-        self.conn = conn
-        self.config_ini = config_ini
-        self.stack_loc = util.StackOverflowLocation(self.config_ini["paths"]["countries_path"],
-                                                    self.config_ini["paths"]["us_states_path"],
-                                                    self.config_ini["paths"]["cached_transl_countries_path"])
-        # List of topics against which to compute salary stats/graphs
-        self.salary_topics = self.get_salary_topics()
-        self.topic_to_titles = self.get_topic_titles()
-        self.min_salary_threshold = self.config_ini["outliers"]["min_salary"]
-        self.max_salary_threshold = self.config_ini["outliers"]["max_salary"]
         # Salary stats to compute
-        self.salary_stats_names = [
+        self.stats_names = [
             "min_salaries",
             "max_salaries",
             "job_ids_with_salary",
@@ -38,7 +28,15 @@ class SalaryAnalyzer:
             "avg_mid_range_salaries_by_roles",
             "avg_mid_range_salaries_by_tags",
         ]
-        self.salary_stats = dict(zip(self.salary_stats_names, [None] * len(self.salary_stats_names)))
+        super().__init__(conn, config_ini, self.stats_names)
+        self.stack_loc = util.StackOverflowLocation(self.config_ini["paths"]["countries_path"],
+                                                    self.config_ini["paths"]["us_states_path"],
+                                                    self.config_ini["paths"]["cached_transl_countries_path"])
+        # List of topics against which to compute salary stats/graphs
+        self.salary_topics = self.get_salary_topics()
+        self.topic_to_titles = self.get_topic_titles()
+        self.min_salary_threshold = self.config_ini["outliers"]["min_salary"]
+        self.max_salary_threshold = self.config_ini["outliers"]["max_salary"]
 
     def get_salary_topics(self):
         return [k for k,v in self.config_ini["salary_analysis_by_topic"].items() if v]
@@ -66,9 +64,6 @@ class SalaryAnalyzer:
                 topic_to_titles[topic] = title
         return topic_to_titles
 
-    def reset_stats(self):
-        self.salary_stats = dict(zip(self.salary_stats_names, [None] * len(self.salary_stats_names)))
-
     def run_analysis(self):
         # Reset salary stats
         self.reset_stats()
@@ -86,7 +81,6 @@ class SalaryAnalyzer:
                       "occurred while processing it".format(topic))
         # Generate all the graphs (histogram, scatter plots)
         self.generate_graphs()
-        return self.salary_stats
 
     def compute_salary_mid_ranges(self):
         # Get list of min/max salary, i.e. for each job id we want its
@@ -98,27 +92,26 @@ class SalaryAnalyzer:
         # instead of doing it here after retrieving the data from the db
         job_ids_1, min_salaries = self.get_salaries("min")
         job_ids_2, max_salaries = self.get_salaries("max")
-        self.salary_stats["min_salaries"] = min_salaries
-        self.salary_stats["max_salaries"] = max_salaries
+        self.stats["min_salaries"] = min_salaries
+        self.stats["max_salaries"] = max_salaries
         # Sanity check on `job_ids_*`
         assert np.array_equal(job_ids_1, job_ids_2), \
             "The two returned job_ids don't match"
-        self.salary_stats["job_ids_with_salary"] = job_ids_1
+        self.stats["job_ids_with_salary"] = job_ids_1
         del job_ids_2
 
         # Compute salary mid-range for each min-max interval
         salary_ranges = np.hstack((min_salaries, max_salaries))
         # TODO: check precision for `salary_mid_ranges`
         salary_mid_ranges = salary_ranges.mean(axis=1)
-        self.salary_stats["job_id_to_salary_mid_ranges"] = dict(zip(self.salary_stats["job_ids_with_salary"],
-                                                                   salary_mid_ranges))
+        self.stats["job_id_to_salary_mid_ranges"] = dict(zip(self.stats["job_ids_with_salary"], salary_mid_ranges))
         sorted_indices = np.argsort(salary_mid_ranges)
-        self.salary_stats["sorted_salary_mid_ranges"] = salary_mid_ranges[sorted_indices]
+        self.stats["sorted_salary_mid_ranges"] = salary_mid_ranges[sorted_indices]
         # Get job_id's associated with these global min and max salaries
         min_index = sorted_indices[0]
         max_index = sorted_indices[-1]
-        self.salary_stats["min_job_id"] = self.salary_stats["job_ids_with_salary"][min_index]
-        self.salary_stats["max_job_id"] = self.salary_stats["job_ids_with_salary"][max_index]
+        self.stats["min_job_id"] = self.stats["job_ids_with_salary"][min_index]
+        self.stats["max_job_id"] = self.stats["job_ids_with_salary"][max_index]
 
     def compute_global_stats(self):
         # TODO: compute_global_stats() can only be called if compute_salary_mid_ranges
@@ -126,19 +119,19 @@ class SalaryAnalyzer:
         # Compute salary mean across list of mid-range salaries. Thus, test that
         # sorted_salary_mid_ranges is already computed before going with the rest of
         # the computations
-        global_mean_salary = self.salary_stats["sorted_salary_mid_ranges"].mean()
+        global_mean_salary = self.stats["sorted_salary_mid_ranges"].mean()
         # Precision to two decimals
-        self.salary_stats["global_mean_salary"] = float(format(global_mean_salary, ".2f"))
+        self.stats["global_mean_salary"] = float(format(global_mean_salary, ".2f"))
         # Compute std across list of mid-range salaries
-        global_std_salary = self.salary_stats["sorted_salary_mid_ranges"].std()
+        global_std_salary = self.stats["sorted_salary_mid_ranges"].std()
         # Precision to two decimals
-        self.salary_stats["global_std_salary"] = float(format(global_std_salary, ".2f"))
+        self.stats["global_std_salary"] = float(format(global_std_salary, ".2f"))
         # Get min and max salaries across list of mid-range salaries
         # TODO: Is it better (i.e. less computations) to use min()/max() instead
         # of indices ([0] and [-1]) to retrieve the min/max of a numpy array?
         # TODO: It is here that we should validate the min/max
-        self.salary_stats["global_min_salary"] = self.salary_stats["sorted_salary_mid_ranges"].min()
-        self.salary_stats["global_max_salary"] = self.salary_stats["sorted_salary_mid_ranges"].max()
+        self.stats["global_min_salary"] = self.stats["sorted_salary_mid_ranges"].min()
+        self.stats["global_max_salary"] = self.stats["sorted_salary_mid_ranges"].max()
 
     def analyze_salary_by_topic(self, topic):
         # TODO: job_ids_with_salary is needed prior to calling this method which is computed
@@ -151,7 +144,7 @@ class SalaryAnalyzer:
             util.print_exception("AttributeError")
             return None
         # Get topic's rows that have a salary associated with
-        results = select_method(tuple(self.salary_stats["job_ids_with_salary"]))
+        results = select_method(tuple(self.stats["job_ids_with_salary"]))
         # Process results to extract average mid-range salaries for each topic's rows
         process_results_method(results, topic)
         return 0
@@ -326,19 +319,19 @@ class SalaryAnalyzer:
         temp_us_states.sort(order="average_mid_range_salary")
         temp_countries = temp_countries[::-1]
         temp_us_states = temp_us_states[::-1]
-        self.salary_stats["avg_mid_range_salaries_by_countries"] = temp_countries
-        self.salary_stats["avg_mid_range_salaries_by_us_states"] = temp_us_states
+        self.stats["avg_mid_range_salaries_by_countries"] = temp_countries
+        self.stats["avg_mid_range_salaries_by_us_states"] = temp_us_states
 
     def process_industries_with_salaries(self, industries, topic):
-        self.salary_stats["avg_mid_range_salaries_by_industries"] \
+        self.stats["avg_mid_range_salaries_by_industries"] \
             = self.process_topic_with_salaries(industries, topic)
 
     def process_roles_with_salaries(self, roles, topic):
-        self.salary_stats["avg_mid_range_salaries_by_roles"] \
+        self.stats["avg_mid_range_salaries_by_roles"] \
             = self.process_topic_with_salaries(roles, topic)
 
     def process_tags_with_salaries(self, tags, topic):
-        self.salary_stats["avg_mid_range_salaries_by_tags"]\
+        self.stats["avg_mid_range_salaries_by_tags"]\
             = self.process_topic_with_salaries(tags, topic)
 
     def process_topic_with_salaries(self, input_data, topic_name):
@@ -367,7 +360,7 @@ class SalaryAnalyzer:
         dictionary.setdefault(name, {"average_mid_range_salary": 0,
                                      "cumulative_sum": 0,
                                      "count": 0})
-        mid_range_salary = self.salary_stats["job_id_to_salary_mid_ranges"][job_id]
+        mid_range_salary = self.stats["job_id_to_salary_mid_ranges"][job_id]
         dictionary[name]["count"] += 1  # update count
         cum_sum = dictionary[name]["cumulative_sum"]
         dictionary[name]["average_mid_range_salary"] \
@@ -414,7 +407,7 @@ class SalaryAnalyzer:
         for topic, title in self.topic_to_titles.items():
             # TODO: add sanity check on eval(), i.e. make sure that the data array
             # exists before using it
-            data = self.salary_stats["avg_mid_range_salaries_by_{}".format(topic)]
+            data = self.stats["avg_mid_range_salaries_by_{}".format(topic)]
             # TODO: sanity check on data["average_mid_range_salary"], do the sanity
             # check within filter_data()
             indices = util.filter_data(data["average_mid_range_salary"],
@@ -439,14 +432,14 @@ class SalaryAnalyzer:
         # Sanity check on the salary thresholds
         # TODO: we already have computed max/min with global_min_salary and
         # global_max_salary, use them instead of recomputing them
-        max_salary = self.salary_stats["sorted_salary_mid_ranges"].max()
-        min_salary = self.salary_stats["sorted_salary_mid_ranges"].min()
+        max_salary = self.stats["sorted_salary_mid_ranges"].max()
+        min_salary = self.stats["sorted_salary_mid_ranges"].min()
         # Sanity check on mid-range salary thresholds
         # TODO: these checks should be done when computing the global max and min in compute_global_stats()
         if not (max_salary >= self.min_salary_threshold >= min_salary):
             self.min_salary_threshold = min_salary
         if not (max_salary >= self.max_salary_threshold >= min_salary):
             self.max_salary_threshold = max_salary
-        first_cond = (self.salary_stats["sorted_salary_mid_ranges"] >= self.min_salary_threshold)
-        second_cond = (self.salary_stats["sorted_salary_mid_ranges"] <= self.max_salary_threshold)
-        return self.salary_stats["sorted_salary_mid_ranges"][first_cond & second_cond]
+        first_cond = (self.stats["sorted_salary_mid_ranges"] >= self.min_salary_threshold)
+        second_cond = (self.stats["sorted_salary_mid_ranges"] <= self.max_salary_threshold)
+        return self.stats["sorted_salary_mid_ranges"][first_cond & second_cond]

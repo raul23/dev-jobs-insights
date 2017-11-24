@@ -43,7 +43,6 @@ class LocationAnalyzer(AbstractAnalyzer):
         # Process the results
         self.process_locations(results)
         # TODO: add in config option to set the image dimensions
-
         # Generate map with markers added on US states that have job posts
         # associated with
         self.generate_map_us_states()
@@ -53,7 +52,6 @@ class LocationAnalyzer(AbstractAnalyzer):
         # Generate map with markers added on european countries that have job
         # posts associated with
         self.generate_map_europe_countries()
-
         self.generate_graphs()
 
     def count_location_occurrences(self):
