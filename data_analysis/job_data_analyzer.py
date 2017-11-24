@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import numpy as np
 
-#from analyzers.industry_analyzer import IndustryAnalyzer
+from analyzers.industry_analyzer import IndustryAnalyzer
 #from analyzers.location_analyzer import LocationAnalyzer
 #from analyzers.salary_analyzer import SalaryAnalyzer
 from analyzers.tag_analyzer import TagAnalyzer

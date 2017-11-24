@@ -6,13 +6,9 @@ from utility import graph_util as g_util
 
 class IndustryAnalyzer(AbstractAnalyzer):
     def __init__(self, conn, config_ini):
-        super().__init__(conn, config_ini)
         # Industries stats to compute
         self.stats_names = ["sorted_industries_count"]
-        self.stats = {"sorted_industries_count": None}
-
-    def reset_stats(self):
-        self.stats = {"sorted_industries_count": None}
+        super().__init__(conn, config_ini, self.stats_names)
 
     def run_analysis(self):
         # Reset all industry stats to be computed

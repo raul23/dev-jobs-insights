@@ -9,8 +9,6 @@ class TagAnalyzer(AbstractAnalyzer):
         # Tags stats to compute
         self.stats_names = ["sorted_tags_count"]
         super().__init__(conn, config_ini, self.stats_names)
-        self.conn = conn
-        self.config_ini = config_ini
 
     def run_analysis(self):
         # Reset all tag stats to be computed
