@@ -7,6 +7,7 @@ import pickle
 import sqlite3
 import sys
 
+from googletrans import Translator
 import numpy as np
 
 
@@ -246,3 +247,117 @@ def filter_data(data, min_threshold, max_threshold):
     first_cond = data >= min_threshold
     second_cond = data <= max_threshold
     return np.where(first_cond & second_cond)
+
+
+class StackOverflowLocation:
+    def __init__(self, countries_path, us_states_path, cached_transl_countries_path):
+        # NOTE: `countries` and `us_states` must not be empty when starting the
+        # data analysis. However, `cached_transl_countries` can be empty when
+        # starting because it will be updated while performing the data analysis
+        data = self.load_json_files([countries_path, us_states_path, cached_transl_countries_path])
+        invalid_path = self.check_data(data, [countries_path, us_states_path])
+        if invalid_path:
+            raise FileNotFoundError("Problem loading {}".format(invalid_path))
+        self.countries = data[countries_path]
+        self.us_states = data[us_states_path]
+        self.cached_transl_countries = data[cached_transl_countries_path]
+        if self.cached_transl_countries is None:
+            self.cached_transl_countries = {}
+
+    @staticmethod
+    def load_json_files(paths):
+        data = {}
+        for path in paths:
+            data.setdefault(path, None)
+            data[path] = load_json(path)
+        return data
+
+    @staticmethod
+    def check_data(data, paths):
+        for k,v in data.items():
+            if v is None:
+                return k
+        return None
+
+    def is_us_state(self, location):
+        """
+        Given a StackOverflow location string, returns True if the location
+        refers to a US state and False otherwise.
+
+        NOTE: locations in StackOverflow job posts use only two letters for US
+        states (and for UK)
+
+        :param location: string of the location to check
+        :return bool: True if it is a US state or False otherwise
+        """
+        # NOTE: the location can refer to a country (e.g. Seongnam-si, South Korea)
+        # or a US state (e.g. Portland, OR). Usually, if the last part of the
+        # location string consists of two capital letters, it refers to a US
+        # state; however we must take into account 'UK'
+        if location != "UK" and len(location) == 2:
+            if location in self.us_states:
+                return True
+            else:
+                raise KeyError("The two-letters location '{}' is not recognized"
+                               "as a US state".format(location))
+        else:
+            return False
+
+    @staticmethod
+    def is_location_valid(location):
+        """
+        Given a StackOverflow location string, returns True if `location` refers
+        to a valid StackOverflow location or False otherwise.
+
+        A valid location is one that doesn't refer to `None` or "No office location"
+        which are the two options in StackOverflow job posts for cases where
+        there is no location given for a job post.
+
+        TODO: Does No office location only refers to the case where the job post is
+        for a remote job?
+
+        :param location: location string to validate
+        :return bool: True if it is a valid location or False otherwise
+        """
+        if location in [None, "No office location"]:
+            return False
+        else:
+            return True
+
+    @staticmethod
+    def parse_location(location):
+        """
+        Given a StackOverflow location string,
+
+        :param location:
+        :return:
+        """
+        # Get the country or US state from `location`
+        # NOTE: in most cases, location is of the form 'Berlin, Germany'
+        # where country is given at the end after the comma
+        return location.split(",")[-1].strip()
+
+    def translate_country(self, country):
+        """
+        Returns the translation of a country in english
+
+        NOTE: in the StackOverflow job posts, some countries are not provided in
+        English and we must only work with their english translations
+
+        :return:
+        """
+        # TODO: countries not found: UK (it is found as UNITED KINGDOM OF GREAT BRITAIN AND NORTHERN IRELAND),
+        # South Korea (it is found as REPUBLIC OF KOREA), IRAN (it is found as REPUBLIC OF IRAN)
+        if country in self.countries:
+            return country
+        elif country in self.cached_transl_countries:
+            return self.cached_transl_countries[country]
+        else:
+            # TODO: google translation service has problems with Suisse->Suisse
+            translator = Translator()
+            transl_country = translator.translate(country, dest='en').text
+            # Save the translation
+            temp = {country: transl_country}
+            self.cached_transl_countries.update(temp)
+            dump_json(temp, self.cached_transl_countries_path, update=True)
+            return transl_country
