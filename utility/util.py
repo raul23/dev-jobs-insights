@@ -254,6 +254,9 @@ class StackOverflowLocation:
         # NOTE: `countries` and `us_states` must not be empty when starting the
         # data analysis. However, `cached_transl_countries` can be empty when
         # starting because it will be updated while performing the data analysis
+        self.countries_path = countries_path
+        self.us_states_path = us_states_path
+        self.cached_transl_countries_path = cached_transl_countries_path
         data = self.load_json_files([countries_path, us_states_path, cached_transl_countries_path])
         invalid_path = self.check_data(data, [countries_path, us_states_path])
         if invalid_path:
@@ -353,13 +356,12 @@ class StackOverflowLocation:
         elif country in self.cached_transl_countries:
             return self.cached_transl_countries[country]
         else:
+            # TODO: test this else
             # TODO: google translation service has problems with Suisse->Suisse
             translator = Translator()
             transl_country = translator.translate(country, dest='en').text
             # Save the translation
             temp = {country: transl_country}
             self.cached_transl_countries.update(temp)
-            import ipdb
-            ipdb.set_trace()
             dump_json(temp, self.cached_transl_countries_path, update=True)
             return transl_country
