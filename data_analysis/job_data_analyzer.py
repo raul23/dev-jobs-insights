@@ -25,9 +25,9 @@ class JobDataAnalyzer:
         # TODO: check if we must use np.{int,float}{32,64}
         # TODO: add line numbers to when calling exit_script(), also fix the inconsistency
         # TODO: replace all assert with print_exception() instead
-        # in the message error (line number don't match the actual error because we are
-        # not catching the actual the source of the error but the catch is placed
-        # farther from the source of the errror
+        # TODO: in the message error, line number don't match the actual error because we are
+        # not catching the actual source of the error but the catch is placed
+        # farther from the source of the error
         # TODO: the outliers should be removed once and for all as early as possible
         # by finding the corresponding job ids and removing them from the different arrays
         # TODO: rearrange the name of the variables
@@ -52,8 +52,6 @@ class JobDataAnalyzer:
             self.cached_locations = {}
         self.wait_time = self.config_ini["geocoding"]["wait_time"]
         self.marker_scale = self.config_ini["basemap"]["marker_scale"]
-        self.min_salary_threshold = self.config_ini["outliers"]["min_salary"]
-        self.max_salary_threshold = self.config_ini["outliers"]["max_salary"]
         # These are all the data that will be saved while performing the various analyses
         # Tags stats to compute
         self.tags_stats = {"sorted_tags_count": None}
@@ -76,9 +74,10 @@ class JobDataAnalyzer:
                 try:
                     analyze_method = self.__getattribute__(analysis_type)
                     analyze_method()
-                except AttributeError:
-                    util.print_exception("AttributeError")
-                    print("ERROR: {} will be skipped because of an AttributeError".format(analysis_type))
+                except (AttributeError, FileNotFoundError) as err:
+                    err_name = type(err).__name__
+                    util.print_exception(err_name)
+                    print("ERROR: {} will be skipped because of an {}".format(analysis_type, err_name))
 
     def analyze_tags(self):
         """
@@ -164,8 +163,7 @@ class JobDataAnalyzer:
         g_util.generate_pie_chart(config)
 
     def analyze_salary(self):
-        ipdb.set_trace()
-        sa = SalaryAnalyzer(self.conn, self.salary_topics, self.config_ini)
+        sa = SalaryAnalyzer(self.conn, self.config_ini)
         data = sa.run_analysis()
 
     def analyze_industries(self):

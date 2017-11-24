@@ -7,23 +7,19 @@ from utility import util, graph_util as g_util
 
 
 class SalaryAnalyzer:
-    def __init__(self, conn, salary_topics, config_ini):
+    def __init__(self, conn, config_ini):
         # Connection to jobs_insights.sqlite db
         self.conn = conn
-        # List of topics against which to compute salary insights
-        self.salary_topics = salary_topics
         self.config_ini = config_ini
         countries_path = self.config_ini["paths"]["countries_path"]
         us_states_path = self.config_ini["paths"]["us_states_path"]
         cached_transl_countries_path = self.config_ini["paths"]["cached_transl_countries_path"]
+        # List of topics against which to compute salary stats/graphs
         self.salary_topics = self.get_salary_topics()
         self.topic_to_titles = self.get_topic_titles()
-        try:
-            self.stack_loc = util.StackOverflowLocation(countries_path, us_states_path, cached_transl_countries_path)
-        except FileNotFoundError:
-            print("ERROR: analyze_salary will be skipped because the StackOverflow"
-                  "object could not be created")
-            self.stack_loc = None
+        self.stack_loc = util.StackOverflowLocation(countries_path, us_states_path, cached_transl_countries_path)
+        self.min_salary_threshold = self.config_ini["outliers"]["min_salary"]
+        self.max_salary_threshold = self.config_ini["outliers"]["max_salary"]
         # Salary stats to compute
         self.salary_stats_names = [
             "min_salaries",
@@ -85,12 +81,13 @@ class SalaryAnalyzer:
 
         # Analyze salary by different topics
         # TODO: see if you can divide locations into countries and us_states
+        ipdb.set_trace()
         for topic in self.salary_topics:
             retval = self.analyze_salary_by_topic(topic)
             if retval is None:
                 print("ERROR: the topic '{}' will be skipped because an error "
                       "occurred while processing it".format(topic))
-
+        ipdb.set_trace()
         # Generate all the graphs (histogram, scatter plots)
         self.generate_graphs()
         return self.salary_stats
@@ -206,6 +203,7 @@ class SalaryAnalyzer:
         cur.execute(sql)
         return cur.fetchall()
 
+    # TODO: add decorator to select_* methods
     def select_locations(self, job_ids):
         # Sanity check on input
         # TODO: remove too much info in assert message, i.e. the name of the method
@@ -253,6 +251,7 @@ class SalaryAnalyzer:
         placeholders = placeholders.replace("'", "")
         return sql.format(placeholders)
 
+    # TODO: `topic` argument not used
     def process_locations_with_salaries(self, locations, topic):
         # Temp dicts
         countries_to_salary = {}
@@ -263,7 +262,7 @@ class SalaryAnalyzer:
         for (i, (job_id, location)) in enumerate(locations):
             print("[{}/{}]".format((i + 1), len(locations)))
             # Check if valid location
-            if not util.is_valid_location(location):
+            if not self.stack_loc.is_location_valid(location):
                 # NOTE: We ignore the case where `location` is empty (None)
                 # or refers to "No office location"
                 # TODO: add logging
@@ -280,11 +279,11 @@ class SalaryAnalyzer:
                 continue
             else:
                 # Get country or US state from `location`
-                last_part_loc = util.get_last_part_loc(location)
+                last_part_loc = self.stack_loc.parse_location(location)
                 # Sanity check
                 assert last_part_loc is not None, "last_part_loc is None"
                 # Is the location referring to a country or a US state?
-                if self.is_a_us_state(last_part_loc):
+                if self.stack_loc.is_us_state(last_part_loc):
                     # `location` refers to a US state
                     # Save last part of `location` along with some data for
                     # computing the average mid-range salary for the given US state
@@ -303,8 +302,8 @@ class SalaryAnalyzer:
                     # Deutschland and Germany
                     # Save the location and along with some data for computing
                     # the average mid-range salary for the given country
-                    transl_country = self.get_english_country_transl(last_part_loc)
-                    assert transl_country in self.countries, \
+                    transl_country = self.stack_loc.translate_country(last_part_loc)
+                    assert transl_country in self.stack_loc.countries, \
                         "The country '{}' is not found".format(transl_country)
                     self.add_salary(countries_to_salary, transl_country, job_id)
         # For each dict, keep every fields, except "cumulative_sum" and build
@@ -419,7 +418,7 @@ class SalaryAnalyzer:
         for topic, title in self.topic_to_titles.items():
             # TODO: add sanity check on eval(), i.e. make sure that the data array
             # exists before using it
-            data = self.__getattribute__("avg_mid_range_salaries_by_{}".format(topic))
+            data = self.salary_stats["avg_mid_range_salaries_by_{}".format(topic)]
             # TODO: sanity check on data["average_mid_range_salary"], do the sanity
             # check within filter_data()
             indices = util.filter_data(data["average_mid_range_salary"],
