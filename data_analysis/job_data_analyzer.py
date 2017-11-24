@@ -12,7 +12,10 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import numpy as np
 
-from analyzers.salary_analyzer import SalaryAnalyzer
+#from analyzers.industry_analyzer import IndustryAnalyzer
+#from analyzers.location_analyzer import LocationAnalyzer
+#from analyzers.salary_analyzer import SalaryAnalyzer
+from analyzers.tag_analyzer import TagAnalyzer
 from utility import util, graph_util as g_util
 
 
@@ -43,27 +46,6 @@ class JobDataAnalyzer:
         self.conn = util.create_connection(db_path)
         if self.conn is None:
             exit_script("ERROR: Connection to db couldn't be established")
-        self.shape_path = os.path.expanduser(self.config_ini["paths"]["shape_path"])
-        # TODO: cached_locations_path should be called cached_map_locations_path because
-        # it relates to map locations' coordinates
-        self.cached_locations_path = self.config_ini["paths"]["cached_locations_path"]
-        self.cached_locations = util.load_pickle(self.cached_locations_path)
-        if self.cached_locations is None:
-            self.cached_locations = {}
-        self.wait_time = self.config_ini["geocoding"]["wait_time"]
-        self.marker_scale = self.config_ini["basemap"]["marker_scale"]
-        # These are all the data that will be saved while performing the various analyses
-        # Tags stats to compute
-        self.tags_stats = {"sorted_tags_count": None}
-        # Locations stats to compute
-        self.locations_stats = [
-            "locations_info",
-            "sorted_countries_count",
-            "sorted_us_states_count"
-        ]
-        self.locations_stats = dict(zip(self.locations_stats, [None]*len(self.locations_stats)))
-        # Industries stats to compute
-        self.industries_stats = {"sorted_industries_count": None}
 
     def get_analyses(self):
         return [k for k,v in self.config_ini["analysis_types"].items() if v]
@@ -86,24 +68,8 @@ class JobDataAnalyzer:
 
         :return:
         """
-        # Get counts of tags, i.e. for each tag we want to know its number of
-        # occurrences in job posts
-        results = self.count_tag_occurrences()
-        # NOTE: these are all the tags (even those that don't have a salary
-        # associated with) and they are sorted in order of decreasing
-        # number of occurrences (i.e. most popular tag at first)
-        self.sorted_tags_count = np.array(results)
-
-        # Generate bar chart of tags vs number of job posts
-        top_k = self.config_ini["bar_chart_tags"]["top_k"]
-        config = {"x": self.sorted_tags_count[:top_k, 0],
-                  "y": self.sorted_tags_count[:top_k, 1].astype(np.int32),
-                  "xlabel": self.config_ini["bar_chart_tags"]["xlabel"],
-                  "ylabel": self.config_ini["bar_chart_tags"]["ylabel"],
-                  "title": self.config_ini["bar_chart_tags"]["title"],
-                  "grid_which": self.config_ini["bar_chart_tags"]["grid_which"]}
-        # TODO: place number (of job posts) on top of each bar
-        g_util.generate_bar_chart(config)
+        ta = TagAnalyzer(self.conn, self.config_ini)
+        data = ta.run_analysis()
 
     def analyze_locations(self):
         """
@@ -173,25 +139,8 @@ class JobDataAnalyzer:
 
         :return:
         """
-        # Get number of job posts for each industry
-        # TODO: specify that the results are already sorted in decreasing order of industry's count, i.e.
-        # from the most popular industry to the least one
-        results = self.count_industry_occurrences()
-        # TODO: Process the results by summing the similar industries (e.g. Software Development with
-        # Software Development / Engineering or eCommerce with E-Commerce)
-        # TODO: use Software Development instead of the longer Software Development / Engineering
-        self.sorted_industries_count = np.array(results)
-
-        # Generate bar chart: industries vs number of job posts
-        top_k = self.config_ini["bar_chart_industries"]["top_k"]
-        config = {"x": self.sorted_industries_count[:top_k, 0],
-                  "y": self.sorted_industries_count[:top_k, 1].astype(np.int32),
-                  "xlabel": self.config_ini["bar_chart_industries"]["xlabel"],
-                  "ylabel": self.config_ini["bar_chart_industries"]["ylabel"],
-                  "title": self.config_ini["bar_chart_industries"]["title"],
-                  "grid_which": self.config_ini["bar_chart_industries"]["grid_which"]}
-        # TODO: place number (of job posts) on top of each bar
-        g_util.generate_bar_chart(config)
+        ia = IndustryAnalyzer(self.conn, self.config_ini)
+        data = ia.run_analysis()
 
     def format_country_names(self, country_names, max_n_char=20):
         for i, name in enumerate(country_names):
@@ -199,18 +148,6 @@ class JobDataAnalyzer:
                 alpha2 = self.countries[name]["alpha2"]
                 country_names[i] = alpha2
         return country_names
-
-    def count_tag_occurrences(self):
-        """
-        Returns tags sorted in decreasing order of their occurrences in job posts.
-        A list of tuples is returned where a tuple is of the form (tag_name, count).
-
-        :return: list of tuples of the form (tag_name, count)
-        """
-        sql = '''SELECT name, COUNT(name) as CountOf FROM entries_tags GROUP BY name ORDER BY CountOf DESC'''
-        cur = self.conn.cursor()
-        cur.execute(sql)
-        return cur.fetchall()
 
     def count_location_occurrences(self):
         """
@@ -220,18 +157,6 @@ class JobDataAnalyzer:
         :return: list of tuples of the form (location, count)
         """
         sql = '''SELECT location, COUNT(*) as CountOf FROM job_posts GROUP BY location ORDER BY CountOf DESC'''
-        cur = self.conn.cursor()
-        cur.execute(sql)
-        return cur.fetchall()
-
-    def count_industry_occurrences(self):
-        """
-        Returns industries sorted in decreasing order of their occurrences in job posts.
-        A list of tuples is returned where a tuple is of the form (industry, count).
-
-        :return: list of tuples of the form (industry, count)
-        """
-        sql = '''SELECT value, COUNT(*) as CountOf from job_overview WHERE name='Industry' GROUP BY value ORDER BY CountOf DESC'''
         cur = self.conn.cursor()
         cur.execute(sql)
         return cur.fetchall()
