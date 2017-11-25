@@ -60,7 +60,7 @@ StackOverflow and other sources of data
 
 ## Conclusion
 
-### Future improvements
+### Futur improvements
 List of **important** improvements:
 - automate the whole *data mining/graphs generation* process so we can run it
 weekly for example
