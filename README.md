@@ -1,2 +1,2 @@
-# dev_jobs_insights
+# dev-jobs-insights
 Data analysis of developer job posts
