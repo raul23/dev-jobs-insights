@@ -31,11 +31,11 @@ information about the extracted data from the job posts:
 **Number of US states:**  
 **Number of tags/technologies:** 651 (e.g. Java, Python, angularjs)    
 **Number of Industries:** 258 (e.g. Information Technology, eCommerce, Big Data)  
-**Number of Job roles:** 14 (e.g. Backend Developer, Mobile Developer)
-</br></br>
+**Number of Job roles:** 14 (e.g. Backend Developer, Mobile Developer)  
+
 **NOTE**:
 - the number of job posts is small but I intend on integrating more data from 
-StackOverflow and other sources of data
+StackOverflow and other sources of job posts data
 
 ### Graphs
 
@@ -60,7 +60,7 @@ StackOverflow and other sources of data
 
 ## Conclusion
 
-### Futur improvements
+### Future improvements
 List of **important** improvements:
 - automate the whole *data mining/graphs generation* process so we can run it
 weekly for example
