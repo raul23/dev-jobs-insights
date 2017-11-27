@@ -12,7 +12,7 @@ from utility import util
 
 
 class JobDataAnalyzer:
-    def __init__(self, settings_filename):
+    def __init__(self, settings_path):
 
         # TODO: add DEFAULT config values
         # TODO: test all the paths with check_file_exists() and exit if there is an error
@@ -29,9 +29,9 @@ class JobDataAnalyzer:
         # TODO: specify that they are all unique, e.g. no two locations/tags/countries/us states
         # TODO: locations_info is a dict and the rest are np.array
 
-        self.config_ini = util.read_config(settings_filename)
+        self.config_ini = util.read_config(settings_path)
         if self.config_ini is None:
-            exit_script("ERROR: {} could not be read".format(settings_filename))
+            exit_script("ERROR: {} could not be read".format(settings_path))
         self.types_of_analysis = self.get_analyses()
         db_path = self.config_ini["paths"]["db_path"]
         db_path = os.path.expanduser(db_path)
