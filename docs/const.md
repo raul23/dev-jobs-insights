@@ -20,18 +20,20 @@ want to reproduce the [results]() presented below.
 The job posts data was mined from StackOverflow developer jobs [RSS feed](https://stackoverflow.com/jobs/feed)
 and [website](https://stackoverflow.com/jobs). The following table presents important
 information about the extracted data from the job posts:
+
+| NAME | VALUE | EXAMPLES |
+|:-------:|:-------:|:-------:|
+| Sources of data | StackOverflow [RSS feed](https://stackoverflow.com/jobs/feed) and [dev jobs website](https://stackoverflow.com/jobs) |  |
+| Published date | from 2017-09-26 to 2017-10-26 |  |
+| Number of job posts | 933 |  |
+| Number of job posts with salary info |  |  |
+| Number of companies | 524 |  |
+| Number of countries |  |  |
+| Number of US states |  |  |
+| Number of tags/technologies | 651 | e.g. Java, Python, angularjs |
+| Number of Industries | 258 | e.g. Information Technology, eCommerce, Big Data |
+| Number of Job roles | 14 | e.g. Backend Developer, Mobile Developer |
  
-**Sources of data:** StackOverflow [RSS feed](https://stackoverflow.com/jobs/feed) and 
-[dev jobs website](https://stackoverflow.com/jobs)  
-**Published date:** from 2017-09-26 to 2017-10-26   
-**Number of job posts:** 933  
-**Number of job posts with salary info:**  
-**Number of companies:** 524  
-**Number of countries:**  
-**Number of US states:**  
-**Number of tags/technologies:** 651 (e.g. Java, Python, angularjs)    
-**Number of Industries:** 258 (e.g. Information Technology, eCommerce, Big Data)  
-**Number of Job roles:** 14 (e.g. Backend Developer, Mobile Developer)  
 
 **NOTE**:
 - the number of job posts is small but I intend on integrating more data from 
