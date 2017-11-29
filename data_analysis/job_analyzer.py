@@ -8,11 +8,7 @@ from analyzers.industry_analyzer import IndustryAnalyzer
 from analyzers.location_analyzer import LocationAnalyzer
 from analyzers.salary_analyzer import SalaryAnalyzer
 from analyzers.tag_analyzer import TagAnalyzer
-try:
-    from utility import genutil as util
-except ImportError:
-    sys.path.insert(0, os.path.expanduser("~/PycharmProjects/tools"))
-    from utility import genutil as util
+from utility import genutil as util
 
 
 class JobDataAnalyzer:
