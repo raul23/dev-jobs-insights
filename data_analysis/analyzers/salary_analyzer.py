@@ -4,7 +4,7 @@ import numpy as np
 import ipdb
 
 from .abstract_analyzer import AbstractAnalyzer
-from utility import util, graph_util as g_util
+from utility import genutil as util, graphutil as g_util
 
 
 class SalaryAnalyzer(AbstractAnalyzer):

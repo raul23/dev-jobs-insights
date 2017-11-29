@@ -1,7 +1,7 @@
 import numpy as np
 
 from .abstract_analyzer import AbstractAnalyzer
-from utility import graph_util as g_util
+from utility import graphutil as g_util
 
 
 class IndustryAnalyzer(AbstractAnalyzer):
