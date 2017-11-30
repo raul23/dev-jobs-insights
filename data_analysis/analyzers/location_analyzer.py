@@ -42,6 +42,7 @@ class LocationAnalyzer(AbstractAnalyzer):
         results = self.count_location_occurrences()
         # Process the results
         self.process_locations(results)
+        ipdb.set_trace()
         # TODO: add in config option to set the image dimensions
         # Generate map with markers added on US states that have job posts
         # associated with
