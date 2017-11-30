@@ -36,7 +36,7 @@ generated so we can see the developer job market across different dimensions (e.
 salary, industries, locations).
 
 The project **source code** written in Python 3 (Python 2.7 will eventually be
-supported) is found at [https://github.com/dev-jobs-insights](https://github.com/dev-jobs-insights). The code is
+supported) is found at [https://github.com/raul23/dev-jobs-insights](https://github.com/raul23/dev-jobs-insights). The code is
 commented but there is not yet documentation on how to install and run the code
 to generate the graphs. The documentation will be soon made available in case you
 want to reproduce the [results](#results) presented below.
