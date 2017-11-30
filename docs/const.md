@@ -24,19 +24,19 @@
 <!-- /TOC -->
 
 ## Project description
-**dev_jobs_insights** is a *personal* data mining project written in *Python* with the
+**dev-jobs-insights** is a data mining project written in *Python* with the
 main objective of extracting meaningful insights from developer job posts. These
 insights can help us in getting a more accurate picture of what the developer job
-market looks like so we can take better decisions (e.g. what technology to focus
-on).
+market looks like so we can take better decisions (e.g. what technologies to focus
+on to increase our chance of finding a job).
 
 Data visualization is an important tool in interpreting data. Thus graphs and maps
-are an important aspect of this project as you can see from the multiple graphs
-generated so we can see the developer job market along different dimensions (e.g.
-salary, industries).
+are an important aspect of this project as you can see from the [multiple graphs](#graphs)
+generated so we can see the developer job market across different dimensions (e.g.
+salary, industries, locations).
 
 The project **source code** written in Python 3 (Python 2.7 will eventually be
-supported) is found at [https://github.com/dev_jobs_insights](https://github.com/dev_jobs_insights). The code is
+supported) is found at [https://github.com/dev-jobs-insights](https://github.com/dev-jobs-insights). The code is
 commented but there is not yet documentation on how to install and run the code
 to generate the graphs. The documentation will be soon made available in case you
 want to reproduce the [results](#results) presented below.
