@@ -35,29 +35,29 @@ are an important aspect of this project as you can see from the multiple graphs
 generated so we can see the developer job market along different dimensions (e.g.
 salary, industries).
 
-The project **source code** written in Python 3 (Python 2.7 will eventually also be
-supported) is found at [https://github.com/dev_jobs_insights](). The code is
+The project **source code** written in Python 3 (Python 2.7 will eventually be
+supported) is found at [https://github.com/dev_jobs_insights](https://github.com/dev_jobs_insights). The code is
 commented but there is not yet documentation on how to install and run the code
 to generate the graphs. The documentation will be soon made available in case you
-want to reproduce the [results]() presented below.
+want to reproduce the [results](#results) presented below.
 
 ## Results
 The job posts data was mined from StackOverflow developer jobs [RSS feed](https://stackoverflow.com/jobs/feed)
 and [website](https://stackoverflow.com/jobs). The following table presents important
 information about the extracted data from the job posts:
 
-| NAME | VALUE | EXAMPLES |
+| NAME | VALUE | NOTES |
 |:-------:|:-------:|:-------:|
 | Sources of data | StackOverflow [RSS feed](https://stackoverflow.com/jobs/feed) and [dev jobs website](https://stackoverflow.com/jobs) |  |
 | Published date | from 2017-09-26 to 2017-10-26 |  |
 | Number of job posts | 933 |  |
 | Number of job posts with salary info | 301 |  |
 | Number of companies | 524 |  |
-| Number of countries | 46 |  |
-| Number of US states | 22 |  |
-| Number of tags/technologies | 651 | Java, Python, angularjs |
-| Number of Industries | 258 | Information Technology, eCommerce, Big Data |
-| Number of Job roles | 14 | Backend Developer, Mobile Developer |
+| Number of countries | 46 | Complete list |
+| Number of US states | 22 | Complete list |
+| Number of tags/technologies | 651 | e.g. Java, Python, angularjs |
+| Number of Industries | 258 | e.g. Information Technology, eCommerce, Big Data |
+| Number of Job roles | 14 | e.g. Backend Developer, Mobile Developer |
 
 
 **NOTE**:
