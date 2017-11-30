@@ -1,24 +1,25 @@
-<!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
+# Table of Contents
+<!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
 - [Project description](#project-description)
 - [Results](#results)
-    - [Graphs](#graphs)
-        - [Graphs: Tags/Technologies](#graphs-tagstechnologies)
-            - [Bar chart: 20 most popular technologies](#bar-chart-20-most-popular-technologies)
-        - [Graphs: Salary](#graphs-salary)
-            - [Histogram: Mid-range salaries](#histogram-mid-range-salaries)
-            - [Scatter plot: Average mid-range salary of Industries](#scatter-plot-average-mid-range-salary-of-industries)
-            - [Scatter plot: Average mid-range salary of Countries](#scatter-plot-average-mid-range-salary-of-countries)
-            - [Scatter plot: Average mid-range salary of US states](#scatter-plot-average-mid-range-salary-of-us-states)
-            - [Scatter plot: Average mid-range salary of Job Roles](#scatter-plot-average-mid-range-salary-of-job-roles)
-            - [Scatter plot: Average mid-range salary of Technologies](#scatter-plot-average-mid-range-salary-of-technologies)
-        - [Graphs: Industries](#graphs-industries)
-            - [Bar chart: 20 most popular industries](#bar-chart-20-most-popular-industries)
-        - [Graphs: Locations](#graphs-locations)
-            - [Bar chart: 20 most popular countries](#bar-chart-20-most-popular-countries)
-            - [Bar chart: US states popularity](#bar-chart-us-states-popularity)
+	- [Graphs](#graphs)
+		- [Graphs: Tags/Technologies](#graphs-tagstechnologies)
+			- [Bar chart: 20 most popular technologies](#bar-chart-20-most-popular-technologies)
+		- [Graphs: Salary](#graphs-salary)
+			- [Histogram: Mid-range salaries](#histogram-mid-range-salaries)
+			- [Scatter plot: Average mid-range salary of Industries](#scatter-plot-average-mid-range-salary-of-industries)
+			- [Scatter plot: Average mid-range salary of Countries](#scatter-plot-average-mid-range-salary-of-countries)
+			- [Scatter plot: Average mid-range salary of US states](#scatter-plot-average-mid-range-salary-of-us-states)
+			- [Scatter plot: Average mid-range salary of Job Roles](#scatter-plot-average-mid-range-salary-of-job-roles)
+			- [Scatter plot: Average mid-range salary of Technologies](#scatter-plot-average-mid-range-salary-of-technologies)
+		- [Graphs: Industries](#graphs-industries)
+			- [Bar chart: 20 most popular industries](#bar-chart-20-most-popular-industries)
+		- [Graphs: Locations](#graphs-locations)
+			- [Bar chart: 20 most popular countries](#bar-chart-20-most-popular-countries)
+			- [Bar chart: US states popularity](#bar-chart-us-states-popularity)
 - [Conclusion](#conclusion)
-    - [Future improvements](#future-improvements)
+	- [Future improvements](#future-improvements)
 
 <!-- /TOC -->
 
