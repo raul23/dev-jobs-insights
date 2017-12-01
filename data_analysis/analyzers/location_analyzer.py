@@ -43,6 +43,7 @@ class LocationAnalyzer(AbstractAnalyzer):
         # Process the results
         self.process_locations(results)
         ipdb.set_trace()
+        np.savetxt("countries.csv", self.stats["sorted_countries_count"], fmt='%.2f', delimiter=',')
         # TODO: add in config option to set the image dimensions
         # Generate map with markers added on US states that have job posts
         # associated with
