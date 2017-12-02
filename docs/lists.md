@@ -1,4 +1,5 @@
-# Data extracted from job posts
+# Complete data
+Complete data extracted from job posts
 
 ## Countries
 
