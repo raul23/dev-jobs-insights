@@ -111,3 +111,6 @@ temp-plot.html
 
 # backup files
 *bak.*
+
+# Pycharm project settings
+.idea
