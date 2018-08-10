@@ -1,12 +1,11 @@
 import argparse
 import os
 import sqlite3
-import sys
-import ipdb
+import time
 
 
-DB_FILENAME = "dev_jobs.sqlite"
-SCHEMA_FILENAME = "dev_jobs_schema.sql"
+DB_FILENAME = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
+SCHEMA_FILENAME = "dev_jobs_insights_schema.sql"
 
 
 if __name__ == '__main__':
@@ -25,19 +24,18 @@ if __name__ == '__main__':
 
     if results.overwrite and not db_is_new:
         print("WARNING: %s will be overwritten" % DB_FILENAME)
+        # Exit program before delay expires or the database is overwritten
+        time.sleep(5)
         os.remove(DB_FILENAME)
 
-    with sqlite3.connect(DB_FILENAME) as conn:
-        if db_is_new or results.overwrite:
-            print("Creating db")
+    if db_is_new or results.overwrite:
+        print("Creating db")
+        with sqlite3.connect(DB_FILENAME) as conn:
             try:
                 with open(SCHEMA_FILENAME, 'rt') as f:
                     schema = f.read()
                     conn.executescript(schema)
             except IOError as e:
                 print("I/O error({0}): {1}".format(e.errno, e.strerror))
-            except:  # Handle other exceptions such as attribute errors
-                # TODO: should give more info if there are errors with executescript (e.g. a missing comma)
-                print("Unexpected error:", sys.exc_info()[0])
-        else:
-            print("Database exists")
+    else:
+        print("Database exists:", DB_FILENAME)

@@ -114,3 +114,6 @@ temp-plot.html
 
 # Pycharm project settings
 .idea
+
+# mac system files
+.DS_Store

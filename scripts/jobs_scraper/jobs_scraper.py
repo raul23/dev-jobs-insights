@@ -7,7 +7,7 @@ import requests
 import ipdb
 
 
-DB_FILENAME = "~/databases/jobs_insights.sqlite"
+DB_FILENAME = "~/databases/dev_jobs_insights.sqlite"
 
 
 # TODO: utility function

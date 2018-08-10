@@ -77,7 +77,7 @@ class Entry:
                 for tag in entry_dict.tags:
                     self.tags.append(tag.term)
         else:
-            print("ERROR: Entry from {} doesn't have an id")
+            print("ERROR: Entry from {} doesn't have an id" % self.feed_name)
 
 
 def parse_summary(raw_summary):
@@ -87,23 +87,22 @@ def parse_summary(raw_summary):
     return doc.get_text().strip()
 
 
-# TODO: utility function
-def extract_value(entry_d, key):
+def extract_value(entry_dict, key):
     """
 
-    :param entry_d:
+    :param entry_dict:
     :param key:
     :return:
     """
     ret_val = None
-    if hasattr(entry_d, key):
-        ret_val = entry_d[key]
+    if hasattr(entry_dict, key):
+        ret_val = entry_dict[key]
     else:
-        print("WARNING: Entry {} doesn't have the key {}".format(entry_d.id, key))
+        print("WARNING: Entry {} doesn't have the key {}".format(entry_dict.id, key))
     return ret_val
 
 
-# TODO: utility function
+# TODO: add in utility package
 def get_local_time(utc_time=None):
     """
     If a UTC time is given, it is converted to the local time zone. If
