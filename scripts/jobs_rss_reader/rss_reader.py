@@ -1,9 +1,8 @@
 import os
 import sqlite3
-
+# Third-party code
 import feedparser
-import ipdb
-
+# Custom code
 from feeds_classes import Entry, Feed
 
 
@@ -36,7 +35,6 @@ class RSSReader:
             self.process_entries(feed_parser_dict.entries)
 
     def process_feed(self, feed_dict):
-        ipdb.set_trace()
         # Parse the feed dict
         feed = Feed(self.current_feed_url, feed_dict)
         # Check if the current feed is already in the db
@@ -56,7 +54,6 @@ class RSSReader:
             '''
 
     def process_entries(self, entries_list):
-        ipdb.set_trace()
         # `entries_list` is a list of dict
         for entry_dict in entries_list:
             # Process the entry
@@ -66,7 +63,6 @@ class RSSReader:
                 self.process_tags(entry)
 
     def process_entry(self, entry_dict):
-        ipdb.set_trace()
         # Parse the entry
         entry = Entry(self.current_feed_url, entry_dict)
         # Check if entry has an id
@@ -101,7 +97,6 @@ class RSSReader:
         return None
 
     def process_tags(self, entry):
-        ipdb.set_trace()
         for tag in entry.tags:
             # Check if tag is already in db
             row = self.select_tag((entry.id, tag,))
