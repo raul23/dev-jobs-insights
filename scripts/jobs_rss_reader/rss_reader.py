@@ -2,7 +2,7 @@ import os
 import sqlite3
 # Third-party code
 import feedparser
-# Custom code
+# Own code
 from feeds_classes import Entry, Feed
 
 
@@ -10,16 +10,15 @@ DB_FILENAME = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
 
 
 class RSSReader:
-
     def __init__(self, autocommit=False):
-        self.autocommit = False
+        self.autocommit = autocommit
         # Create db connection
         self.conn = None
         # Current feed URL being parsed
-        self.current_feed_url = None
+        self.feed_url = None
 
     def submit_feed(self, feed_url):
-        self.current_feed_url = feed_url
+        self.feed_url = feed_url
         self.conn = create_connection(DB_FILENAME)
         with self.conn:
             # Parse RSS feed
@@ -36,7 +35,7 @@ class RSSReader:
 
     def process_feed(self, feed_dict):
         # Parse the feed dict
-        feed = Feed(self.current_feed_url, feed_dict)
+        feed = Feed(self.feed_url, feed_dict)
         # Check if the current feed is already in the db
         row = self.select_feed((feed.name,))
         if row is None:  # feed not found in the db
@@ -64,7 +63,7 @@ class RSSReader:
 
     def process_entry(self, entry_dict):
         # Parse the entry
-        entry = Entry(self.current_feed_url, entry_dict)
+        entry = Entry(self.feed_url, entry_dict)
         # Check if entry has an id
         if entry.id:
             # Check if the current entry is already in the db
@@ -203,12 +202,13 @@ class RSSReader:
             self.conn.commit()
 
 
-# TODO: should be a utility function
+# TODO: add to the utility package
 def create_connection(db_file, autocommit=False):
     """
-    Creates a database connection to the SQLite database specified by the db_file
+    Creates a database connection to the SQLite database specified by `db_file`
 
     :param db_file: database file
+    :param autocommit: TODO
     :return: Connection object or None
     """
     try:

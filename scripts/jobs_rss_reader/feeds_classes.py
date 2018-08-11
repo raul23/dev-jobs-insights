@@ -1,7 +1,5 @@
 from datetime import datetime
-from time import localtime
-import ipdb
-
+# Third-party code
 from bs4 import BeautifulSoup
 import pytz
 import tzlocal

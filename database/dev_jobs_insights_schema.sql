@@ -34,40 +34,53 @@ create table tags (
 -- TODO: check in data_loading.py, `locations` can refer to two locations separated by ;
 -- e.g. Teunz, Germany; Kastl, Germany
 create table job_posts (
-        job_id			    integer primary key not null,
-		author		        text,
-		link				text
+        job_id			    integer primary key not null references entries(job_id),
+        author				text,
+		link				text,
+		title               text,
+		hiring_organization text,
+		employment_type     text,
+        date_posted          date,
+		valid_through        date
 );
 
-create table location (
+create table exp_level (
+		job_id				integer not null references job_posts(job_id),
+		level			    text not null,
+		primary key(job_id, exp_level)
+);
+
+create table industry (
+		job_id				integer not null references job_posts(job_id),
+		name			    text not null,
+		primary key(job_id, name)
+);
+
+
+-- TODO: check if skills = tags? If yer, then this table might be redundant
+create table skills (
+		job_id				integer not null references job_posts(job_id),
+		skill				text not null,
+		primary key(job_id, skill)
+);
+
+create table job_benefits (
 		job_id				integer not null references job_posts(job_id),
 		name				text not null,
 		primary key(job_id, name)
 );
 
--- Job perks such as salary and remote (work)
-CREATE TABLE job_perks (
-        perk_id             integer primary key not null,
-		job_id				text not null references  job_posts(job_id),
-		name				text not null, -- perk name
-		value               text not null -- perk value
-);
-
--- Overview info about a job such as company size, exp level
-CREATE TABLE job_overview (
-        item_id             integer primary key not null,
-		job_id				integer not null references job_posts(job_id),
-		name				text not null, -- name of info
-		value               text not null -- value of info
-);
-
--- Job salary
--- TODO: test this CREATE statement by executing it. I only executed it on the terminal
 CREATE TABLE job_salary (
-        salary_id           integer primary key not null,
-		job_id				text not null references job_posts(job_id),
-		min_salary          float not null,
-		max_salary          float not null,
-		currency            text not null,
-		value               float not null -- value of salary
+		job_id				integer primary key not null references job_posts(job_id),
+		min_value           integer not null,
+		max_value           integer not null,
+		currency            text not null
+);
+
+-- TODO: check if only one location per job post
+create table location (
+        loc_id              integer primary key,
+		job_id				integer not null references job_posts(job_id),
+		country				text not null,
+		city                text not null
 );

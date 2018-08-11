@@ -117,3 +117,6 @@ temp-plot.html
 
 # mac system files
 .DS_Store
+
+# Project data
+job_data.json
