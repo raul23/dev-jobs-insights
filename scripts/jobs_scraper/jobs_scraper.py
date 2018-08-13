@@ -88,7 +88,7 @@ if __name__ == '__main__':
         # (e.g. job location or salary) can be found in <script type="application/ld+json">
         # TODO: bsObj.find_all(type="application/ld+json") does the same thing?
         script_tag = bsObj.find(attrs={"type": "application/ld+json"})
-        entries_data[job_id]["json_job_data"] = None
+        entries_data[job_id]["json_job_data"] = {}
         if script_tag:
             # TODO: Sanity check: there should be only one script tag with type="application/ld+json"
             """
@@ -120,8 +120,8 @@ if __name__ == '__main__':
         entries_data[job_id]["job_data_in_header"] = {}
 
         # 1. Get company name
-        link_tag = bsObj.select_one("header.job-details--header > div.grid--cell > .fc-black-700 > a")
-        entries_data[job_id]["job_data_in_header"]["company_name"] = None
+        link_tag = bsObj.select_one("header.job-details--header > div.grid--cell > div.fc-black-700 > a")
+        entries_data[job_id]["job_data_in_header"]["company_name"] = {}
         if link_tag:
             # TODO: sanity check. There should be only one tag that matches the above pattern
             company_name = link_tag.text
@@ -134,9 +134,9 @@ if __name__ == '__main__':
                   "The company name should be found in "
                   "header.job-details--header > div.grid--cell > .fc-black-700 > a".format(link))
 
-        # 2. Get the office location
-        span_tag = bsObj.select_one("header.job-details--header > div.grid--cell > .fc-black-700 > .fc-black-500")
-        entries_data[job_id]["job_data_in_header"]["office_location"] = None
+        # 2. Get the office location which is located on the same line as the company name
+        span_tag = bsObj.select_one("header.job-details--header > div.grid--cell > div.fc-black-700 > span.fc-black-500")
+        entries_data[job_id]["job_data_in_header"]["office_location"] = {}
         if span_tag:
             if span_tag.text:
                 # The text where you find the location looks like this:
@@ -153,20 +153,25 @@ if __name__ == '__main__':
                   "header.job-details--header > div.grid--cell > .fc-black-700 > .fc-black-500".format(link))
 
         # 3. Get the other job data on the next line after the company name and location
-        div_tag = bsObj.select_one("header.job-details--header > div.grid--cell > .mt12")
+        div_tag = bsObj.select_one("header.job-details--header > div.grid--cell > div.mt12")
         entries_data[job_id]["job_data_in_header"]["other_job_data"] = {}
         if div_tag:
+            # Each `div_tag`'s child is associated to a job item (e.g. salary, remote)
+            # and is found within a <span> tag with a class that starts with '-'
+            # Example: header.job-details--header > div.grid--cell > .mt12 > span.-salary.pr16
             children = div_tag.findChildren()
             for child in children:
-                # Each job data is found within <span> with a class that starts
-                # with '-', e.g. <span class='-salary pr16'
-                classes = [tag_class for tag_class in child.attrs['class'] if tag_class.startswith('-')]
-                if classes:
+                # Each job data text is found within <span> with a class that starts
+                # with '-', e.g. <span class='-salary pr16'>
+                # NOTE: we need the child element's class that starts with '-' because
+                # we will then know how to name the extracted job data item
+                child_class = [tag_class for tag_class in child.attrs['class'] if tag_class.startswith('-')]
+                if child_class:
                     # TODO: sanity check. There should be only one class that starts with '-'
                     # len(classes) == 1
                     # Get the <div>'s class name without the '-' at the beginning,
                     # this will correspond to the type of job data (e.g. salary, remote)
-                    job_data_type = classes[0][1:]
+                    job_data_type = child_class[0][1:]
                     # Get the text (e.g. $71k - 85l) by removing any \r and \n around the string
                     if child.text:
                         job_data_value = child.text.strip()
@@ -181,30 +186,24 @@ if __name__ == '__main__':
                   "The other job data should be found in "
                   "header.job-details--header > div.grid--cell > .mt12".format(link))
 
-        # Get more job data (e.g. role, company size, technologies) from <div id="overview-items">:
-        div_tag = bsObj.find(id="overview-items")
-        entries_data[job_id]["overview_items"] = None
-        if div_tag:
-            # TODO: Sanity check: there should be only one script tag with id="overview-items"
-            entries_data[job_id]["overview_items"] = {'job_type': None,
-                                                      'exp_level': None,
-                                                      'job_role': None,
-                                                      'industry': None,
-                                                      'company_size': None,
-                                                      'company_type': None,
-                                                      'technologies': None
-                                                      }
-            # Get Job type
-            # Get Experience level
-            # Get Role
-            # Get Industry
-            # Get Company size
-            # Get Company type
-            # Get technologies
-            pass
+        # Get more job data (e.g. role, industry, company size) in the
+        # "About this job" section. Each item is located in
+        # "#overview-items > .mb32 > .job-details--about > .grid--cell6 > .mb8"
+        # NOTE: these job data are presented in two columns, with three items per column
+        div_tags = bsObj.select("#overview-items > .mb32 > .job-details--about > .grid--cell6 > .mb8")
+        entries_data[job_id]["overview_items"] = {}
+        if div_tags:
+            # Each `div_tag` corresponds to a job data item (e.g. Job type: Full-time, Company type: Private)
+            for div_tag in div_tags:
+                # Sample raw text: '\nJob type: \nContract\n'
+                temp = div_tag.text.strip().split(":")
+                job_data_type, job_data_value = temp[0].strip(), temp[1].strip()
+                entries_data[job_id]["overview_items"][job_data_type] = job_data_value
         else:
-            print("[ERROR] the page @ URL {} doesn't contain any DIV tag "
-                  "with id='overview-items'".format(link))
+            print("[ERROR] Couldn't extract job data from the 'About this job'"
+                  "section @ the URL {}. "
+                  "The job data should be found in "
+                  "#overview-items > .mb32 > .job-details--about > .grid--cell6".format(link))
 
         print("[INFO] Finished Processing {}".format(link))
         print("[INFO] Sleeping zzzZZZZ")
