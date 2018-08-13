@@ -87,10 +87,10 @@ if __name__ == '__main__':
         # On the web page of a job post, important data about the job post
         # (e.g. job location or salary) can be found in <script type="application/ld+json">
         # TODO: bsObj.find_all(type="application/ld+json") does the same thing?
-        tag = bsObj.find_all(attrs={"type": "application/ld+json"})
-        if tag:
+        script_tag = bsObj.find(attrs={"type": "application/ld+json"})
+        entries_data[job_id]["json_job_data"] = None
+        if script_tag:
             # TODO: Sanity check: there should be only one script tag with type="application/ld+json"
-            # assert len(tag) == 1
             """
             The job data found in <script type="application/ld+json"> is a json
             object with the following keys:
@@ -98,74 +98,94 @@ if __name__ == '__main__':
             'validThrough', 'employmentType', 'experienceRequirements',
             'industry', 'jobBenefits', 'hiringOrganization', 'baseSalary', 'jobLocation'
             """
-            job_data = json.loads(tag[0].get_text())
+            job_data = json.loads(script_tag.get_text())
             entries_data[job_id]["json_job_data"] = job_data
         else:
-            # Maybe the page is not found anymore or the company is not longer
+            # Reasons for not finding <script>: maybe the page is not found
+            # anymore (e.g. job post removed) or the company is not longer
             # accepting applications
             print("[WARNING] the page @ URL {} doesn't contain any SCRIPT tag "
                   "with type='application/ld+json'".format(link))
-            entries_data[job_id]["json_job_data"] = None
 
-        # Get more job data from <header class="job-details">:
-        # On the web page of a job post, more job data (e.g. salary, remote,
-        # location) can be found in <header class="job-details">
-        tag = bsObj.find("header", class_="job-details--header")
-        entries_data[job_id]["header_job_details"] = None
-        if tag:
-            # TODO: Sanity check: there should be only one header tag with class="overview-items"
-            # assert len(tag) == 1
-            entries_data[job_id]["header_job_details"] = {"company_name": None,
-                                                          "location": None
-                                                          }
+        # Get more job data (e.g. salary, remote, location) from the <header>
+        # The job data in the <header> are found in this order:
+        # 1. company name
+        # 2. office location
+        # 3. Other job data: Salary, Remote, Visa sponsor, Paid relocation, ...
+        # NOTE: the company name and office location are found on the same line
+        # separated by a vertical line. The other job data are to be all found on
+        # the same line (after the company name and office location) and these
+        # job data are all part of a class that starts with '-', e.g. '-salary',
+        # '-remote' or '-visa'
+        entries_data[job_id]["job_data_in_header"] = {}
 
-            # NOTE: the company name and location are the only two piece of job
-            # data in <header class="job-details"> that don't have a direct parent
-            # of <span class="-name_of_data"> where name_of_data can be {salary, remote}
-
-            # NOTE: in <header class="job-details">, the company name and location
-            # are to be found one beside the other.
-
-            # Get company name and location
-            link_tags = tag.find_all("a", href=re.compile("^/jobs/companies"))
-            # TODO: sanity check. There should be only two places that match
-            # the pattern "^/jobs/companies"
-            # assert len(link_tags) == 2
-            for link_tag in link_tags:
-                # In <header>, there are potentially two places where you can
-                # find href="/jobs/companies". The first place is associated with
-                # the image of the company within <div class="s-avatar"> which doesn't
-                # contain the text of the company name. The second place is where you
-                # will find the text of the company name and it is usually found in
-                # <div class="grid--cell">. However, here we are just testing if there
-                # is text in <a href="/jobs/companies"> and if it's the case then we found
-                # the good <a> that contains the company name.
-                if link_tag.text:
-                    entries_data[job_id]["header_job_details"]["company_name"] = link_tag.text
-                    # Get location which is found right after the company name
-                    next_sibling = link_tag.find_next_sibling()
-                    # The text where you find the location looks like this:
-                    # '\n|\r\nNo office location                    '
-                    # This the first strip() removes the first '\n' and the right
-                    # spaces. Then the split('\n')[-1] extracts the location info
-                    location = next_sibling.text.strip().split('\n')[-1]
-                    entries_data[job_id]["header_job_details"]["location"] = location
-                    break
-
-            # Get other job data
-            # In the other job data
-            pass
+        # 1. Get company name
+        link_tag = bsObj.select_one("header.job-details--header > div.grid--cell > .fc-black-700 > a")
+        entries_data[job_id]["job_data_in_header"]["company_name"] = None
+        if link_tag:
+            # TODO: sanity check. There should be only one tag that matches the above pattern
+            company_name = link_tag.text
+            if company_name:
+                entries_data[job_id]["job_data_in_header"]["company_name"] = company_name
+            else:
+                print("[WARNING] The company name is empty. URL @ {}".format(link))
         else:
-            pass
+            print("[ERROR] Couldn't extract the company name @ the URL {}. "
+                  "The company name should be found in "
+                  "header.job-details--header > div.grid--cell > .fc-black-700 > a".format(link))
 
-        # Get more job data from <div id="overview-items">:
-        # On the web page of a job post, more job data (e.g. role, company
-        # size, technologies) can be found in <div id="overview-items">
-        tag = bsObj.find_all(id="overview-items")
+        # 2. Get the office location
+        span_tag = bsObj.select_one("header.job-details--header > div.grid--cell > .fc-black-700 > .fc-black-500")
+        entries_data[job_id]["job_data_in_header"]["office_location"] = None
+        if span_tag:
+            if span_tag.text:
+                # The text where you find the location looks like this:
+                # '\n|\r\nNo office location                    '
+                # strip() removes the first '\n' and the right spaces. Then split('\n')[-1]
+                # extracts the location string
+                location = span_tag.text.strip().split('|')[-1].strip()
+                entries_data[job_id]["job_data_in_header"]["office_location"] = location
+            else:
+                print("[WARNING] The office location is empty. URL @ {}".format(link))
+        else:
+            print("[ERROR] Couldn't extract the office location @ the URL {}. "
+                  "The location should be found in "
+                  "header.job-details--header > div.grid--cell > .fc-black-700 > .fc-black-500".format(link))
+
+        # 3. Get the other job data on the next line after the company name and location
+        div_tag = bsObj.select_one("header.job-details--header > div.grid--cell > .mt12")
+        entries_data[job_id]["job_data_in_header"]["other_job_data"] = {}
+        if div_tag:
+            children = div_tag.findChildren()
+            for child in children:
+                # Each job data is found within <span> with a class that starts
+                # with '-', e.g. <span class='-salary pr16'
+                classes = [tag_class for tag_class in child.attrs['class'] if tag_class.startswith('-')]
+                if classes:
+                    # TODO: sanity check. There should be only one class that starts with '-'
+                    # len(classes) == 1
+                    # Get the <div>'s class name without the '-' at the beginning,
+                    # this will correspond to the type of job data (e.g. salary, remote)
+                    job_data_type = classes[0][1:]
+                    # Get the text (e.g. $71k - 85l) by removing any \r and \n around the string
+                    if child.text:
+                        job_data_value = child.text.strip()
+                        entries_data[job_id]["job_data_in_header"]["other_job_data"][job_data_type] = job_data_value
+                    else:
+                        print("[WARNING] No text found for the job data type {}. URL @ {}".format(job_data_type, link))
+                else:
+                    print("[WARNING] The <span>'s class doesn't start with '-'. "
+                          "Thus, we can't extract the job data. URL @ {}".format(link))
+        else:
+            print("[ERROR] Couldn't extract other job data @ the URL {}. "
+                  "The other job data should be found in "
+                  "header.job-details--header > div.grid--cell > .mt12".format(link))
+
+        # Get more job data (e.g. role, company size, technologies) from <div id="overview-items">:
+        div_tag = bsObj.find(id="overview-items")
         entries_data[job_id]["overview_items"] = None
-        if tag:
+        if div_tag:
             # TODO: Sanity check: there should be only one script tag with id="overview-items"
-            # assert len(tag) == 1
             entries_data[job_id]["overview_items"] = {'job_type': None,
                                                       'exp_level': None,
                                                       'job_role': None,
@@ -183,7 +203,7 @@ if __name__ == '__main__':
             # Get technologies
             pass
         else:
-            print("[WARNING] the page @ URL {} doesn't contain any DIV tag "
+            print("[ERROR] the page @ URL {} doesn't contain any DIV tag "
                   "with id='overview-items'".format(link))
 
         print("[INFO] Finished Processing {}".format(link))
