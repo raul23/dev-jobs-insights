@@ -119,7 +119,7 @@ temp-plot.html
 .DS_Store
 
 # Project data
-job_data.json
+*data.json
 
 # Project sandbox
 sandbox/

@@ -2,14 +2,24 @@ import codecs
 import json
 import os
 import sqlite3
+import sys
 import time
 # Third-party code
 from bs4 import BeautifulSoup
 import requests
 import ipdb
+# Own code
+# TODO: path insertion is hardcoded
+sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
+from utility import genutil
 
 
 DB_FILENAME = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
+# NOTE: if `CACHED_WEB_PAGES_PATH` is None, then the web pages will not be cached
+# The web pages will then be retrieved from the internet.
+CACHED_WEB_PAGES_PATH = os.path.expanduser("~/data/dev_jobs_insights/cached/web_pages/stackoverflow_job_posts/")
+DELAY_BETWEEN_REQUESTS = 15
+DEBUG = True
 
 
 # TODO: utility function
@@ -48,6 +58,13 @@ def select_all_job_id_author_and_link(conn):
 
 if __name__ == '__main__':
     ipdb.set_trace()
+    """
+    if not genutil.check_dir_exists(CACHED_WEB_PAGES_PATH):
+        print("[ERROR] The cached web pages directory doesn't exist: {}".format(CACHED_WEB_PAGES_PATH))
+        # TODO: ask user if directory should be created
+        sys.exit(1)
+    """
+
     session = requests.Session()
     headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit 537.36 (KHTML, like Gecko) Chrome",
                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"}
@@ -62,6 +79,7 @@ if __name__ == '__main__':
     # location and perks
     entries_data = {}
     count = 1
+    last_request_time = -sys.float_info.max
     print("[INFO] Total links to process = {}".format(len(job_ids_authors_links)))
     for job_id, author, link in job_ids_authors_links:
         print("\n[INFO] #{} Processing {}".format(count, link))
@@ -71,19 +89,50 @@ if __name__ == '__main__':
         entries_data[job_id]["author"] = author
         entries_data[job_id]["link"] = link
 
-        try:
-            req = session.get(link, headers=headers)
-        except OSError:
-            # TODO: process this exception
-            ipdb.set_trace()
-        bsObj = BeautifulSoup(req.text, "lxml")
+        ipdb.set_trace()
+        # Path where cached web page's HTML will be saved
+        filepath = os.path.join(CACHED_WEB_PAGES_PATH, "{}.html".format(job_id))
 
-        # Save the web page's HTML
-        # TODO: file path specified as argument to script
-        filepath = os.path.expanduser('~/data/dev_jobs_insights/web_pages/stackoverflow_job_posts/{}.html').format(job_id)
-        with open(filepath, 'w') as f:
-            f.write(str(bsObj))
-            print("[INFO] Job post's web page saved @ {}".format(filepath))
+        get_web_page = True
+        try:
+            # Load the cached web page's HTML if it is found
+            with open(filepath, 'r') as f:
+                html = f.read()
+            print("[INFO] The cached web page HTML is loaded from {}".format(filepath))
+            get_web_page = False
+        except OSError as e:
+            print("[ERROR] {}".format(e))
+            print("[INFO] The web page HTML @ {} will be retrieved".format(link))
+
+        if get_web_page:
+            # Get the web page HTML
+            current_delay = time.time() - last_request_time
+            diff_between_delays = current_delay - DELAY_BETWEEN_REQUESTS
+            if diff_between_delays < 0:
+                print("[INFO] Waiting before sending next HTTP request...")
+                time.sleep(diff_between_delays)
+                print("[INFO] Time is up! HTTP request will be sent.")
+            try:
+                req = session.get(link, headers=headers)
+                html = req.text
+            except OSError as e:
+                # TODO: process this exception
+                print("[ERROR] {}".format(e))
+                ipdb.set_trace()
+            last_request_time = time.time()
+            print("[INFO] The web page is retrieved from {}".format(link))
+
+            # Save the web page's HTML locally
+            if CACHED_WEB_PAGES_PATH:
+                # TODO: file path specified as argument to script
+                try:
+                    with open(filepath, 'w') as f:
+                        f.write(html)
+                    print("[INFO] The web page is saved in {}. URL is {}".format(filepath, link))
+                except OSError as e:
+                    print("[ERROR] {}".format(e))
+
+        bsObj = BeautifulSoup(html, "lxml")
 
         # Get job data from <script type="application/ld+json">:
         # On the web page of a job post, important data about the job post
@@ -241,12 +290,9 @@ if __name__ == '__main__':
                   "#overview-items > .mb32 > div > a.job-link".format(link))
 
         print("[INFO] Finished Processing {}".format(link))
-        print("[INFO] Sleeping zzzZZZZ")
-        time.sleep(2)
-        print("[INFO] Waking up")
 
         # TODO: debug code
-        if count == 30:
+        if DEBUG and count == 30:
             ipdb.set_trace()
 
     ipdb.set_trace()
