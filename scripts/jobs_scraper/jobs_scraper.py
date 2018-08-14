@@ -1,10 +1,8 @@
 import codecs
 import json
 import os
-import re
 import sqlite3
 import time
-# from urllib.request import urlopen
 # Third-party code
 from bs4 import BeautifulSoup
 import requests
@@ -73,17 +71,18 @@ if __name__ == '__main__':
         entries_data[job_id]["author"] = author
         entries_data[job_id]["link"] = link
 
-        # html = urlopen("https://stackoverflow.com/jobs/...")
-        # html = urlopen(link)
-        # ipdb.set_trace()
-        # Save the webpage
-
         try:
             req = session.get(link, headers=headers)
         except OSError:
             # TODO: process this exception
             ipdb.set_trace()
         bsObj = BeautifulSoup(req.text, "lxml")
+
+        # Save the web page's HTML
+        filepath = os.path.expanduser('~/data/dev_jobs_insights/web_pages/stackoverflow_job_posts/{}.html').format(job_id)
+        with open(filepath, 'w') as f:
+            f.write(str(bsObj))
+            print("[INFO] Job post's web page saved @ {}".format(filepath))
 
         # Get job data from <script type="application/ld+json">:
         # On the web page of a job post, important data about the job post
@@ -100,6 +99,7 @@ if __name__ == '__main__':
             'validThrough', 'employmentType', 'experienceRequirements',
             'industry', 'jobBenefits', 'hiringOrganization', 'baseSalary', 'jobLocation'
             """
+            # TODO: get_text()/getText() or get_text/getText
             job_data = json.loads(script_tag.get_text())
             entries_data[job_id]["json_job_data"] = job_data
         else:
