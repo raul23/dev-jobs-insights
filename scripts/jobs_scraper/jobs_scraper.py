@@ -88,9 +88,9 @@ if __name__ == '__main__':
         # Get job data from <script type="application/ld+json">:
         # On the web page of a job post, important data about the job post
         # (e.g. job location or salary) can be found in <script type="application/ld+json">
-        # TODO: bsObj.find_all(type="application/ld+json") does the same thing?
         script_tag = bsObj.find(attrs={"type": "application/ld+json"})
         entries_data[job_id]["json_job_data"] = {}
+        entries_data[job_id]["json_job_data_warning"] = None
         if script_tag:
             # TODO: Sanity check: there should be only one script tag with type="application/ld+json"
             """
@@ -106,8 +106,16 @@ if __name__ == '__main__':
             # Reasons for not finding <script>: maybe the page is not found
             # anymore (e.g. job post removed) or the company is not longer
             # accepting applications
+            # TODO: extract the message "This job is no longer accepting applications." located in
+            # body > div.container > div#content > aside.s-notice
             print("[WARNING] the page @ URL {} doesn't contain any SCRIPT tag "
                   "with type='application/ld+json'".format(link))
+            aside_tag = bsObj.select_one("body > div.container > div#content > aside.s-notice")
+            if aside_tag:
+                entries_data[job_id]["json_job_data_error"] = aside_tag.text
+            else:
+                print("[WARNING] the page @ URL {} doesn't contain any ASIDE tag. "
+                      "Notice text couldn't be extracted.".format(link))
 
         # Get more job data (e.g. salary, remote, location) from the <header>
         # The job data in the <header> are found in this order:
@@ -231,12 +239,14 @@ if __name__ == '__main__':
                   "The technologies should be found in "
                   "#overview-items > .mb32 > div > a.job-link".format(link))
 
-        ipdb.set_trace()
-
         print("[INFO] Finished Processing {}".format(link))
         print("[INFO] Sleeping zzzZZZZ")
         time.sleep(2)
         print("[INFO] Waking up")
+
+        # TODO: debug code
+        if count == 30:
+            ipdb.set_trace()
 
     ipdb.set_trace()
 
