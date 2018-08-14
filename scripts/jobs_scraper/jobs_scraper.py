@@ -79,6 +79,7 @@ if __name__ == '__main__':
         bsObj = BeautifulSoup(req.text, "lxml")
 
         # Save the web page's HTML
+        # TODO: file path specified as argument to script
         filepath = os.path.expanduser('~/data/dev_jobs_insights/web_pages/stackoverflow_job_posts/{}.html').format(job_id)
         with open(filepath, 'w') as f:
             f.write(str(bsObj))
