@@ -1,3 +1,4 @@
+import codecs
 import json
 import os
 import re
@@ -75,6 +76,7 @@ if __name__ == '__main__':
         # html = urlopen("https://stackoverflow.com/jobs/...")
         # html = urlopen(link)
         # ipdb.set_trace()
+        # Save the webpage
 
         try:
             req = session.get(link, headers=headers)
@@ -177,16 +179,23 @@ if __name__ == '__main__':
                         job_data_value = child.text.strip()
                         entries_data[job_id]["job_data_in_header"]["other_job_data"][job_data_type] = job_data_value
                     else:
-                        print("[WARNING] No text found for the job data type {}. URL @ {}".format(job_data_type, link))
+                        print("[ERROR] No text found for the job data type {}. URL @ {}".format(job_data_type, link))
                 else:
-                    print("[WARNING] The <span>'s class doesn't start with '-'. "
+                    print("[ERROR] The <span>'s class doesn't start with '-'. "
                           "Thus, we can't extract the job data. URL @ {}".format(link))
         else:
-            print("[ERROR] Couldn't extract other job data @ the URL {}. "
+            print("[WARNING] Couldn't extract other job data @ the URL {}. "
                   "The other job data should be found in "
                   "header.job-details--header > div.grid--cell > .mt12".format(link))
 
-        # Get more job data (e.g. role, industry, company size) in the
+        # Get job data from the Overview section. There are two places within
+        # Overview section that will be extracted for more job data:
+        # 1. in the "About this job" sub-section of Overview
+        # 2. in the "Technologies" sub-section of Overview
+        # NOTE: both sub-sections are located within <div id=""overview-items>
+
+        # [overview-items]
+        # 1. Get more job data (e.g. role, industry, company size) in the
         # "About this job" section. Each item is located in
         # "#overview-items > .mb32 > .job-details--about > .grid--cell6 > .mb8"
         # NOTE: these job data are presented in two columns, with three items per column
@@ -205,63 +214,44 @@ if __name__ == '__main__':
                   "The job data should be found in "
                   "#overview-items > .mb32 > .job-details--about > .grid--cell6".format(link))
 
+        # [overview-items]
+        # 2. Get the list of technologies, e.g. ruby, python, html5
+        link_tags = bsObj.select("#overview-items > .mb32 > div > a.job-link")
+        entries_data[job_id]["overview_items"]["technologies"] = []
+        if link_tags:
+            for link_tag in link_tags:
+                technology = link_tag.text
+                if technology:
+                    entries_data[job_id]["overview_items"]["technologies"].append(technology)
+                else:
+                    print("[ERROR] No text found for the technology with href={}. URL @ {}".format(link_tag["href"], link))
+        else:
+            print("[ERROR] Couldn't extract technologies from the 'Technologies'"
+                  "section @ the URL {}. "
+                  "The technologies should be found in "
+                  "#overview-items > .mb32 > div > a.job-link".format(link))
+
+        ipdb.set_trace()
+
         print("[INFO] Finished Processing {}".format(link))
         print("[INFO] Sleeping zzzZZZZ")
         time.sleep(2)
         print("[INFO] Waking up")
 
-        # TODO: debug code
-        # if count == 30:
-        #    ipdb.set_trace()
+    ipdb.set_trace()
 
-        # TODO: old code to be removed, it was based the old web page layout; thus the code is broken
-        """
-        # From <div class="job-detail-header">...</div>, get the location and perks (e.g. salary)
-        job_detail_header = bsObj.find_all(class_="job-detail-header")
-        perks_info = {}
-        location = None
-        if job_detail_header:
-            # Get location
-            location = job_detail_header[0].find_all(class_="-location")
-            if location:
-                location = location[0].get_text(strip=True)
-                if location.startswith("- \n"):
-                    location = location[3:]
-            # Get perks
-            perks = job_detail_header[0].find_all(class_="-perks g-row")
-            if len(perks):
-                for perk in perks[0].find_all("p"):
-                    if 'class' in perk.attrs:
-                        perk_type = perk.attrs['class'][0]
-                        if perk_type.startswith("-"):
-                            perk_type = perk_type[1:]
-                        perks_info.setdefault(perk_type, [])
-                        perk_values = perk.get_text(strip=True).split("|")
-                        for perk_value in perk_values:
-                            perk_value = perk_value.strip()
-                            perks_info[perk_type].append(perk_value)
+    # Save scraped data into json file
+    # ref.: https://stackoverflow.com/a/31343739 (presence of unicode strings,
+    # e.g. EURO currency symbol)
+    with codecs.open('data.json', 'w', 'utf8') as f:
+        f.write(json.dumps(entries_data, sort_keys=True, ensure_ascii=False))
 
-        # From <div id="overview-items">...</div>, get some important keyword about
-        # the job such as the job type, the experience level, and the role
-        tags = bsObj.find_all(id="overview-items")
-        overview_items = {}
-        if tags:
-            items = tags[0].find_all(class_="-item g-col")
-            if items:
-                for item in items:
-                    key = item.find(class_="-key")
-                    if key:
-                        key = key.get_text(strip=True)
-                        if key.endswith(":"):
-                            key = key[:-1]
-                        value = item.find(class_="-value")
-                        if value:
-                            value = value.get_text(strip=True)
-                            overview_items.setdefault(key, value)
+    ipdb.set_trace()
 
-        entries_data[job_id]["location"] = location
-        entries_data[job_id]["perks"] = perks_info
-        entries_data[job_id]["overview_items"] = overview_items
-        """
+    # Load json data (scraped data)
+    f = codecs.open('data.json', 'r', 'utf8')
+    # TODO: json.load or json.loads?
+    data = json.load(f)
+    f.close()
 
     ipdb.set_trace()
