@@ -112,7 +112,7 @@ if __name__ == '__main__':
                   "with type='application/ld+json'".format(link))
             aside_tag = bsObj.select_one("body > div.container > div#content > aside.s-notice")
             if aside_tag:
-                entries_data[job_id]["json_job_data_error"] = aside_tag.text
+                entries_data[job_id]["json_job_data_warning"] = aside_tag.text
             else:
                 print("[WARNING] the page @ URL {} doesn't contain any ASIDE tag. "
                       "Notice text couldn't be extracted.".format(link))
