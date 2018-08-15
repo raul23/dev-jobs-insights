@@ -20,7 +20,7 @@ from utility import genutil as gu
 DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
 # NOTE: if `CACHED_WEBPAGES_DIRPATH` is None, then the webpages will not be cached
 # The webpages will then be retrieved from the internet.
-CACHED_WEBPAGES_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/cached/webpages/stackoverflow_job_posts/")
+CACHED_WEBPAGES_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/cache/webpages/stackoverflow_job_posts/")
 DELAY_BETWEEN_REQUESTS = 2
 DEBUG = True
 
@@ -98,6 +98,7 @@ def main():
         entries_data.setdefault(job_id, {})
         entries_data[job_id]["author"] = author
         entries_data[job_id]["url"] = url
+        entries_data[job_id]["webpage_accessed"] = None
 
         # Path where cached webpage's HTML will be saved
         filepath = os.path.join(CACHED_WEBPAGES_DIRPATH, "{}.html".format(job_id))
@@ -110,6 +111,7 @@ def main():
                     html = f.read()
                 print("[INFO] The cached webpage HTML is loaded from {}".format(filepath))
                 get_webpage = False
+                entries_data[job_id]["webpage_accessed"] = gu.creation_date(filepath)
             except OSError as e:
                 print("[ERROR] {}".format(e))
                 print("[INFO] The webpage HTML @ {} will be retrieved".format(url))
@@ -124,6 +126,7 @@ def main():
                 print("[INFO] Time is up! HTTP request will be sent.")
             try:
                 req = session.get(url, headers=headers, timeout=5)
+                entries_data[job_id]["webpage_accessed"] = time.time()
                 html = req.text
             except OSError as e:
                 # TODO: process this exception
@@ -149,14 +152,32 @@ def main():
                     print("[ERROR] {}".format(e))
                     print("[WARNING] The webpage URL will not be saved locally")
 
+                # TODO: debug code
+                if not gu.check_file_exists(filepath):
+                    ipdb.set_trace()
+
         bsObj = BeautifulSoup(html, "lxml")
+
+        # Before extracting any job data from the job post, check if the job is
+        # accepting applications by extracting the message
+        # "This job is no longer accepting applications."
+        # This notice is located in
+        # body > div.container > div#content > aside.s-notice
+        # NOTE: Usually when this notice is present in a job post, the json job
+        # data is not found anymore within the html of the job post
+        aside_tag = bsObj.select_one("body > div.container > div#content > aside.s-notice")
+        entries_data[job_id]["job_post_notice"] = None
+        if aside_tag:
+            entries_data[job_id]["job_post_notice"] = aside_tag.text
+        else:
+            print("[WARNING] the page @ URL {} doesn't contain any ASIDE tag. "
+                  "Notice text couldn't be extracted.".format(url))
 
         # Get job data from <script type="application/ld+json">:
         # On the webpage of a job post, important data about the job post
         # (e.g. job location or salary) can be found in <script type="application/ld+json">
         script_tag = bsObj.find(attrs={"type": "application/ld+json"})
         entries_data[job_id]["json_job_data"] = {}
-        entries_data[job_id]["json_job_data_warning"] = None
         if script_tag:
             # TODO: Sanity check: there should be only one script tag with type="application/ld+json"
             """
@@ -173,16 +194,8 @@ def main():
             # Reasons for not finding <script>: maybe the page is not found
             # anymore (e.g. job post removed) or the company is not longer
             # accepting applications
-            # TODO: extract the message "This job is no longer accepting applications." located in
-            # body > div.container > div#content > aside.s-notice
             print("[WARNING] the page @ URL {} doesn't contain any SCRIPT tag "
                   "with type='application/ld+json'".format(url))
-            aside_tag = bsObj.select_one("body > div.container > div#content > aside.s-notice")
-            if aside_tag:
-                entries_data[job_id]["json_job_data_warning"] = aside_tag.text
-            else:
-                print("[WARNING] the page @ URL {} doesn't contain any ASIDE tag. "
-                      "Notice text couldn't be extracted.".format(url))
 
         # Get more job data (e.g. salary, remote, location) from the <header>
         # The job data in the <header> are found in this order:
@@ -309,8 +322,8 @@ def main():
         print("[INFO] Finished Processing {}".format(url))
 
         # TODO: debug code
-        if DEBUG and count == 30:
-            ipdb.set_trace()
+        #if DEBUG and count == 30:
+         #   ipdb.set_trace()
 
     ipdb.set_trace()
 
@@ -320,7 +333,7 @@ def main():
     with codecs.open('data.json', 'w', 'utf8') as f:
         f.write(json.dumps(entries_data, sort_keys=True, ensure_ascii=False))
 
-    ipdb.set_trace()
+    #ipdb.set_trace()
 
     # Load json data (scraped data)
     f = codecs.open('data.json', 'r', 'utf8')
@@ -328,7 +341,7 @@ def main():
     data = json.load(f)
     f.close()
 
-    ipdb.set_trace()
+    #ipdb.set_trace()
 
 
 if __name__ == '__main__':
