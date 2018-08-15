@@ -1,6 +1,7 @@
 import codecs
 import json
 import os
+import pathlib
 import sqlite3
 import sys
 import time
@@ -13,31 +14,31 @@ import ipdb
 # Own code
 # TODO: path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from utility import genutil
+from utility import genutil as gu
 
 
-DB_FILENAME = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
-# NOTE: if `CACHED_WEBPAGES_PATH` is None, then the webpages will not be cached
+DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
+# NOTE: if `CACHED_WEBPAGES_DIRPATH` is None, then the webpages will not be cached
 # The webpages will then be retrieved from the internet.
-CACHED_WEBPAGES_PATH = os.path.expanduser("~/data/dev_jobs_insights/cached/webpages/stackoverflow_job_posts/")
+CACHED_WEBPAGES_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/cached/webpages/stackoverflow_job_posts/")
 DELAY_BETWEEN_REQUESTS = 15
 DEBUG = True
 
 
 # TODO: utility function
-def create_connection(db_file, autocommit=False):
+def create_connection(db_filepath, autocommit=False):
     """
-    Creates a database connection to the SQLite database specified by `db_file`
+    Creates a database connection to the SQLite database specified by `db_filepath`
 
-    :param db_file: database file
+    :param db_filepath: database filepath
     :param autocommit: TODO
     :return: Connection object or None
     """
     try:
         if autocommit:
-            conn = sqlite3.connect(db_file, isolation_level=None)
+            conn = sqlite3.connect(db_filepath, isolation_level=None)
         else:
-            conn = sqlite3.connect(db_file)
+            conn = sqlite3.connect(db_filepath)
         return conn
     except sqlite3.Error as e:
         print(e)
@@ -59,12 +60,18 @@ def select_all_jobid_author_and_url(conn):
 
 
 if __name__ == '__main__':
-    if not genutil.check_dir_exists(CACHED_WEBPAGES_PATH):
-        print("[ERROR] The cached webpages directory doesn't exist: {}".format(CACHED_WEBPAGES_PATH))
+    ipdb.set_trace()
+    if not gu.check_dir_exists(CACHED_WEBPAGES_DIRPATH):
+        print("[ERROR] The cached webpages directory doesn't exist: {}".format(CACHED_WEBPAGES_DIRPATH))
         print("Do you want to create the directory?")
-        answer = input("Y or N: ").capitalize()
+        answer = input("Y/N: ").strip().capitalize()
         if answer == "Y":
-            print("[INFO] The directory {} will be created".format(CACHED_WEBPAGES_PATH))
+            print("[INFO] The directory {} will be created".format(CACHED_WEBPAGES_DIRPATH))
+            # NOTE: only works on Python 3.4+ (however Python 3.4 pathlib is
+            # missing `exist_ok` option
+            # see https://stackoverflow.com/a/14364249 for different methods of
+            # creating directories in Python 2.7+, 3.2+, 3.5+
+            pathlib.Path(CACHED_WEBPAGES_DIRPATH).mkdir(parents=True, exist_ok=True)
         else:
             print("[WARNING] The program will exit")
             sys.exit(1)
@@ -74,8 +81,7 @@ if __name__ == '__main__':
     session = requests.Session()
     headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit 537.36 (KHTML, like Gecko) Chrome",
                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"}
-    conn = create_connection(DB_FILENAME)
-    ipdb.set_trace()
+    conn = create_connection(DB_FILEPATH)
     with conn:
         # Get all the entries' URLs
         # TODO: check case where there is an error in executing the SQL query, e.g.
@@ -96,28 +102,29 @@ if __name__ == '__main__':
         entries_data[job_id]["author"] = author
         entries_data[job_id]["url"] = url
 
-        ipdb.set_trace()
         # Path where cached webpage's HTML will be saved
-        filepath = os.path.join(CACHED_WEBPAGES_PATH, "{}.html".format(job_id))
+        filepath = os.path.join(CACHED_WEBPAGES_DIRPATH, "{}.html".format(job_id))
 
         get_webpage = True
-        try:
-            # Load the cached webpage's HTML if it is found
-            with open(filepath, 'r') as f:
-                html = f.read()
-            print("[INFO] The cached webpage HTML is loaded from {}".format(filepath))
-            get_webpage = False
-        except OSError as e:
-            print("[ERROR] {}".format(e))
-            print("[INFO] The webpage HTML @ {} will be retrieved".format(url))
+        # Load the cached webpage's HTML if it is found
+        if CACHED_WEBPAGES_DIRPATH:
+            try:
+                with open(filepath, 'r') as f:
+                    html = f.read()
+                print("[INFO] The cached webpage HTML is loaded from {}".format(filepath))
+                get_webpage = False
+            except OSError as e:
+                print("[ERROR] {}".format(e))
+                print("[INFO] The webpage HTML @ {} will be retrieved".format(url))
 
         if get_webpage:
             # Get the webpage HTML
             current_delay = time.time() - last_request_time
             diff_between_delays = current_delay - DELAY_BETWEEN_REQUESTS
+            ipdb.set_trace()
             if diff_between_delays < 0:
                 print("[INFO] Waiting before sending next HTTP request...")
-                time.sleep(diff_between_delays)
+                time.sleep(abs(diff_between_delays))
                 print("[INFO] Time is up! HTTP request will be sent.")
             try:
                 req = session.get(url, headers=headers, timeout=5)
@@ -136,7 +143,7 @@ if __name__ == '__main__':
             print("[INFO] The webpage is retrieved from {}".format(url))
 
             # Save the webpage's HTML locally
-            if CACHED_WEBPAGES_PATH:
+            if CACHED_WEBPAGES_DIRPATH:
                 # TODO: file path specified as argument to script
                 try:
                     with open(filepath, 'w') as f:
