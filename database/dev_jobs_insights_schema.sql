@@ -3,7 +3,7 @@
 -- on the same row
 
 -- Feeds
-CREATE TABLE feeds (
+create table feeds (
         feed_id             integer primary key,
 		name		        text not null,
 		title		        text,
@@ -17,7 +17,7 @@ create table entries (
 		feed_name		    text not null,
 		title 			    text,
 		author              text,
-		link				text,
+		url				    text,
 		summary             text,
 		published		    datetime,
 		foreign key(feed_name) references feeds(name)
@@ -36,12 +36,14 @@ create table tags (
 create table job_posts (
         job_id			    integer primary key not null references entries(job_id),
         author				text,
-		link				text,
+		url 				text,
 		title               text,
 		hiring_organization text,
 		employment_type     text,
-        date_posted          date,
-		valid_through        date
+		cached_webpage      text,   -- filename of job post's cached web page
+        date_posted         date,
+		valid_through       date,
+		webpage_accessed    date
 );
 
 create table exp_level (
@@ -70,7 +72,7 @@ create table job_benefits (
 		primary key(job_id, name)
 );
 
-CREATE TABLE job_salary (
+create table job_salary (
 		job_id				integer primary key not null references job_posts(job_id),
 		min_value           integer not null,
 		max_value           integer not null,

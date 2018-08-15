@@ -4,14 +4,15 @@ import os
 import sqlite3
 import sys
 import time
+
 # Third-party code
 from bs4 import BeautifulSoup
 import requests
 import ipdb
+
 # Own code
 # TODO: path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from utility import genutil
 
 
 DB_FILENAME = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
@@ -43,21 +44,20 @@ def create_connection(db_file, autocommit=False):
     return None
 
 
-def select_all_job_id_author_and_link(conn):
+def select_all_jobid_author_and_url(conn):
     """
-    Returns all job_id, author and link from the `entries` table
+    Returns all job_id, author and url from the `entries` table
 
     :param conn:
     :return:
     """
-    sql = '''SELECT job_id, author, link FROM entries'''
+    sql = '''SELECT job_id, author, url FROM entries'''
     cur = conn.cursor()
     cur.execute(sql)
     return cur.fetchall()
 
 
 if __name__ == '__main__':
-    ipdb.set_trace()
     """
     if not genutil.check_dir_exists(CACHED_WEB_PAGES_PATH):
         print("[ERROR] The cached web pages directory doesn't exist: {}".format(CACHED_WEB_PAGES_PATH))
@@ -69,25 +69,26 @@ if __name__ == '__main__':
     headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit 537.36 (KHTML, like Gecko) Chrome",
                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"}
     conn = create_connection(DB_FILENAME)
+    ipdb.set_trace()
     with conn:
-        # Get all the entries' links
-        # TODO: check case where there is an error in executing the sql query, e.g.
+        # Get all the entries' URLs
+        # TODO: check case where there is an error in executing the SQL query, e.g.
         # sqlite3.OperationalError: no such column: id
-        job_ids_authors_links = select_all_job_id_author_and_link(conn)
+        job_ids_authors_urls = select_all_jobid_author_and_url(conn)
 
-    # For each entry's link, get extra information from the given URL such as
+    # For each entry's URL, get extra information from the given URL such as
     # location and perks
     entries_data = {}
     count = 1
     last_request_time = -sys.float_info.max
-    print("[INFO] Total links to process = {}".format(len(job_ids_authors_links)))
-    for job_id, author, link in job_ids_authors_links:
-        print("\n[INFO] #{} Processing {}".format(count, link))
+    print("[INFO] Total URLs to process = {}".format(len(job_ids_authors_urls)))
+    for job_id, author, url in job_ids_authors_urls:
+        print("\n[INFO] #{} Processing {}".format(count, url))
         count += 1
 
         entries_data.setdefault(job_id, {})
         entries_data[job_id]["author"] = author
-        entries_data[job_id]["link"] = link
+        entries_data[job_id]["url"] = url
 
         ipdb.set_trace()
         # Path where cached web page's HTML will be saved
@@ -102,7 +103,7 @@ if __name__ == '__main__':
             get_web_page = False
         except OSError as e:
             print("[ERROR] {}".format(e))
-            print("[INFO] The web page HTML @ {} will be retrieved".format(link))
+            print("[INFO] The web page HTML @ {} will be retrieved".format(url))
 
         if get_web_page:
             # Get the web page HTML
@@ -113,14 +114,15 @@ if __name__ == '__main__':
                 time.sleep(diff_between_delays)
                 print("[INFO] Time is up! HTTP request will be sent.")
             try:
-                req = session.get(link, headers=headers)
+                req = session.get(url, headers=headers)
                 html = req.text
             except OSError as e:
                 # TODO: process this exception
                 print("[ERROR] {}".format(e))
-                ipdb.set_trace()
+                print("[WARNING] The current URL {} will be skipped.".format(url))
+                continue
             last_request_time = time.time()
-            print("[INFO] The web page is retrieved from {}".format(link))
+            print("[INFO] The web page is retrieved from {}".format(url))
 
             # Save the web page's HTML locally
             if CACHED_WEB_PAGES_PATH:
@@ -128,7 +130,7 @@ if __name__ == '__main__':
                 try:
                     with open(filepath, 'w') as f:
                         f.write(html)
-                    print("[INFO] The web page is saved in {}. URL is {}".format(filepath, link))
+                    print("[INFO] The web page is saved in {}. URL is {}".format(filepath, url))
                 except OSError as e:
                     print("[ERROR] {}".format(e))
 
@@ -159,13 +161,13 @@ if __name__ == '__main__':
             # TODO: extract the message "This job is no longer accepting applications." located in
             # body > div.container > div#content > aside.s-notice
             print("[WARNING] the page @ URL {} doesn't contain any SCRIPT tag "
-                  "with type='application/ld+json'".format(link))
+                  "with type='application/ld+json'".format(url))
             aside_tag = bsObj.select_one("body > div.container > div#content > aside.s-notice")
             if aside_tag:
                 entries_data[job_id]["json_job_data_warning"] = aside_tag.text
             else:
                 print("[WARNING] the page @ URL {} doesn't contain any ASIDE tag. "
-                      "Notice text couldn't be extracted.".format(link))
+                      "Notice text couldn't be extracted.".format(url))
 
         # Get more job data (e.g. salary, remote, location) from the <header>
         # The job data in the <header> are found in this order:
@@ -188,11 +190,11 @@ if __name__ == '__main__':
             if company_name:
                 entries_data[job_id]["job_data_in_header"]["company_name"] = company_name
             else:
-                print("[WARNING] The company name is empty. URL @ {}".format(link))
+                print("[WARNING] The company name is empty. URL @ {}".format(url))
         else:
             print("[ERROR] Couldn't extract the company name @ the URL {}. "
                   "The company name should be found in "
-                  "header.job-details--header > div.grid--cell > .fc-black-700 > a".format(link))
+                  "header.job-details--header > div.grid--cell > .fc-black-700 > a".format(url))
 
         # 2. Get the office location which is located on the same line as the company name
         span_tag = bsObj.select_one("header.job-details--header > div.grid--cell > div.fc-black-700 > span.fc-black-500")
@@ -206,11 +208,11 @@ if __name__ == '__main__':
                 location = span_tag.text.strip().split('|')[-1].strip()
                 entries_data[job_id]["job_data_in_header"]["office_location"] = location
             else:
-                print("[WARNING] The office location is empty. URL @ {}".format(link))
+                print("[WARNING] The office location is empty. URL @ {}".format(url))
         else:
             print("[ERROR] Couldn't extract the office location @ the URL {}. "
                   "The location should be found in "
-                  "header.job-details--header > div.grid--cell > .fc-black-700 > .fc-black-500".format(link))
+                  "header.job-details--header > div.grid--cell > .fc-black-700 > .fc-black-500".format(url))
 
         # 3. Get the other job data on the next line after the company name and location
         div_tag = bsObj.select_one("header.job-details--header > div.grid--cell > div.mt12")
@@ -237,14 +239,14 @@ if __name__ == '__main__':
                         job_data_value = child.text.strip()
                         entries_data[job_id]["job_data_in_header"]["other_job_data"][job_data_type] = job_data_value
                     else:
-                        print("[ERROR] No text found for the job data type {}. URL @ {}".format(job_data_type, link))
+                        print("[ERROR] No text found for the job data type {}. URL @ {}".format(job_data_type, url))
                 else:
                     print("[ERROR] The <span>'s class doesn't start with '-'. "
-                          "Thus, we can't extract the job data. URL @ {}".format(link))
+                          "Thus, we can't extract the job data. URL @ {}".format(url))
         else:
             print("[WARNING] Couldn't extract other job data @ the URL {}. "
                   "The other job data should be found in "
-                  "header.job-details--header > div.grid--cell > .mt12".format(link))
+                  "header.job-details--header > div.grid--cell > .mt12".format(url))
 
         # Get job data from the Overview section. There are two places within
         # Overview section that will be extracted for more job data:
@@ -270,7 +272,7 @@ if __name__ == '__main__':
             print("[ERROR] Couldn't extract job data from the 'About this job'"
                   "section @ the URL {}. "
                   "The job data should be found in "
-                  "#overview-items > .mb32 > .job-details--about > .grid--cell6".format(link))
+                  "#overview-items > .mb32 > .job-details--about > .grid--cell6".format(url))
 
         # [overview-items]
         # 2. Get the list of technologies, e.g. ruby, python, html5
@@ -282,14 +284,14 @@ if __name__ == '__main__':
                 if technology:
                     entries_data[job_id]["overview_items"]["technologies"].append(technology)
                 else:
-                    print("[ERROR] No text found for the technology with href={}. URL @ {}".format(link_tag["href"], link))
+                    print("[ERROR] No text found for the technology with href={}. URL @ {}".format(link_tag["href"], url))
         else:
             print("[ERROR] Couldn't extract technologies from the 'Technologies'"
                   "section @ the URL {}. "
                   "The technologies should be found in "
-                  "#overview-items > .mb32 > div > a.job-link".format(link))
+                  "#overview-items > .mb32 > div > a.job-link".format(url))
 
-        print("[INFO] Finished Processing {}".format(link))
+        print("[INFO] Finished Processing {}".format(url))
 
         # TODO: debug code
         if DEBUG and count == 30:
