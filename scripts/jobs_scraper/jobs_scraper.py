@@ -21,7 +21,7 @@ DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
 # NOTE: if `CACHED_WEBPAGES_DIRPATH` is None, then the webpages will not be cached
 # The webpages will then be retrieved from the internet.
 CACHED_WEBPAGES_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/cached/webpages/stackoverflow_job_posts/")
-DELAY_BETWEEN_REQUESTS = 15
+DELAY_BETWEEN_REQUESTS = 2
 DEBUG = True
 
 
@@ -60,23 +60,20 @@ def select_all_jobid_author_and_url(conn):
 
 
 if __name__ == '__main__':
-    ipdb.set_trace()
     if not gu.check_dir_exists(CACHED_WEBPAGES_DIRPATH):
         print("[ERROR] The cached webpages directory doesn't exist: {}".format(CACHED_WEBPAGES_DIRPATH))
         print("Do you want to create the directory?")
-        answer = input("Y/N: ").strip().capitalize()
-        if answer == "Y":
+        answer = input("Y/N: ").strip().lower().startswith("y")
+        if answer:
             print("[INFO] The directory {} will be created".format(CACHED_WEBPAGES_DIRPATH))
             # NOTE: only works on Python 3.4+ (however Python 3.4 pathlib is
             # missing `exist_ok` option
             # see https://stackoverflow.com/a/14364249 for different methods of
             # creating directories in Python 2.7+, 3.2+, 3.5+
-            pathlib.Path(CACHED_WEBPAGES_DIRPATH).mkdir(parents=True, exist_ok=True)
+            #pathlib.Path(CACHED_WEBPAGES_DIRPATH).mkdir(parents=True, exist_ok=True)
         else:
             print("[WARNING] The program will exit")
             sys.exit(1)
-
-    ipdb.set_trace()
 
     session = requests.Session()
     headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit 537.36 (KHTML, like Gecko) Chrome",
@@ -121,9 +118,8 @@ if __name__ == '__main__':
             # Get the webpage HTML
             current_delay = time.time() - last_request_time
             diff_between_delays = current_delay - DELAY_BETWEEN_REQUESTS
-            ipdb.set_trace()
             if diff_between_delays < 0:
-                print("[INFO] Waiting before sending next HTTP request...")
+                print("[INFO] Waiting {} seconds before sending next HTTP request...".format(abs(diff_between_delays)))
                 time.sleep(abs(diff_between_delays))
                 print("[INFO] Time is up! HTTP request will be sent.")
             try:
