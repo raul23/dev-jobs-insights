@@ -70,7 +70,7 @@ if __name__ == '__main__':
             # missing `exist_ok` option
             # see https://stackoverflow.com/a/14364249 for different methods of
             # creating directories in Python 2.7+, 3.2+, 3.5+
-            #pathlib.Path(CACHED_WEBPAGES_DIRPATH).mkdir(parents=True, exist_ok=True)
+            pathlib.Path(CACHED_WEBPAGES_DIRPATH).mkdir(parents=True, exist_ok=True)
         else:
             print("[WARNING] The program will exit")
             sys.exit(1)
