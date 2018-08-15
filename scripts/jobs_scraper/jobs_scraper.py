@@ -114,13 +114,18 @@ if __name__ == '__main__':
                 time.sleep(diff_between_delays)
                 print("[INFO] Time is up! HTTP request will be sent.")
             try:
-                req = session.get(url, headers=headers)
+                req = session.get(url, headers=headers, timeout=5)
                 html = req.text
             except OSError as e:
                 # TODO: process this exception
                 print("[ERROR] {}".format(e))
                 print("[WARNING] The current URL {} will be skipped.".format(url))
                 continue
+            else:
+                if req.status_code == 404:
+                    print("[ERROR] PAGE NOT FOUND. The URL {} returned a 404 status code.".format(url))
+                    print("[WARNING] The current URL {} will be skipped.".format(url))
+                    continue
             last_request_time = time.time()
             print("[INFO] The web page is retrieved from {}".format(url))
 
@@ -133,6 +138,7 @@ if __name__ == '__main__':
                     print("[INFO] The web page is saved in {}. URL is {}".format(filepath, url))
                 except OSError as e:
                     print("[ERROR] {}".format(e))
+                    print("[WARNING] The web page URL will not be saved locally")
 
         bsObj = BeautifulSoup(html, "lxml")
 
