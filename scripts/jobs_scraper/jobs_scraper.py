@@ -59,7 +59,7 @@ def select_all_jobid_author_and_url(conn):
     return cur.fetchall()
 
 
-if __name__ == '__main__':
+def main():
     if not gu.check_dir_exists(CACHED_WEBPAGES_DIRPATH):
         print("[ERROR] The cached webpages directory doesn't exist: {}".format(CACHED_WEBPAGES_DIRPATH))
         print("Do you want to create the directory?")
@@ -329,3 +329,10 @@ if __name__ == '__main__':
     f.close()
 
     ipdb.set_trace()
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
