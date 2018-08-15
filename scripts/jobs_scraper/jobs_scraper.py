@@ -13,12 +13,13 @@ import ipdb
 # Own code
 # TODO: path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
+from utility import genutil
 
 
 DB_FILENAME = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
-# NOTE: if `CACHED_WEB_PAGES_PATH` is None, then the web pages will not be cached
-# The web pages will then be retrieved from the internet.
-CACHED_WEB_PAGES_PATH = os.path.expanduser("~/data/dev_jobs_insights/cached/web_pages/stackoverflow_job_posts/")
+# NOTE: if `CACHED_WEBPAGES_PATH` is None, then the webpages will not be cached
+# The webpages will then be retrieved from the internet.
+CACHED_WEBPAGES_PATH = os.path.expanduser("~/data/dev_jobs_insights/cached/webpages/stackoverflow_job_posts/")
 DELAY_BETWEEN_REQUESTS = 15
 DEBUG = True
 
@@ -58,12 +59,17 @@ def select_all_jobid_author_and_url(conn):
 
 
 if __name__ == '__main__':
-    """
-    if not genutil.check_dir_exists(CACHED_WEB_PAGES_PATH):
-        print("[ERROR] The cached web pages directory doesn't exist: {}".format(CACHED_WEB_PAGES_PATH))
-        # TODO: ask user if directory should be created
-        sys.exit(1)
-    """
+    if not genutil.check_dir_exists(CACHED_WEBPAGES_PATH):
+        print("[ERROR] The cached webpages directory doesn't exist: {}".format(CACHED_WEBPAGES_PATH))
+        print("Do you want to create the directory?")
+        answer = input("Y or N: ").capitalize()
+        if answer == "Y":
+            print("[INFO] The directory {} will be created".format(CACHED_WEBPAGES_PATH))
+        else:
+            print("[WARNING] The program will exit")
+            sys.exit(1)
+
+    ipdb.set_trace()
 
     session = requests.Session()
     headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit 537.36 (KHTML, like Gecko) Chrome",
@@ -91,22 +97,22 @@ if __name__ == '__main__':
         entries_data[job_id]["url"] = url
 
         ipdb.set_trace()
-        # Path where cached web page's HTML will be saved
-        filepath = os.path.join(CACHED_WEB_PAGES_PATH, "{}.html".format(job_id))
+        # Path where cached webpage's HTML will be saved
+        filepath = os.path.join(CACHED_WEBPAGES_PATH, "{}.html".format(job_id))
 
-        get_web_page = True
+        get_webpage = True
         try:
-            # Load the cached web page's HTML if it is found
+            # Load the cached webpage's HTML if it is found
             with open(filepath, 'r') as f:
                 html = f.read()
-            print("[INFO] The cached web page HTML is loaded from {}".format(filepath))
-            get_web_page = False
+            print("[INFO] The cached webpage HTML is loaded from {}".format(filepath))
+            get_webpage = False
         except OSError as e:
             print("[ERROR] {}".format(e))
-            print("[INFO] The web page HTML @ {} will be retrieved".format(url))
+            print("[INFO] The webpage HTML @ {} will be retrieved".format(url))
 
-        if get_web_page:
-            # Get the web page HTML
+        if get_webpage:
+            # Get the webpage HTML
             current_delay = time.time() - last_request_time
             diff_between_delays = current_delay - DELAY_BETWEEN_REQUESTS
             if diff_between_delays < 0:
@@ -127,23 +133,23 @@ if __name__ == '__main__':
                     print("[WARNING] The current URL {} will be skipped.".format(url))
                     continue
             last_request_time = time.time()
-            print("[INFO] The web page is retrieved from {}".format(url))
+            print("[INFO] The webpage is retrieved from {}".format(url))
 
-            # Save the web page's HTML locally
-            if CACHED_WEB_PAGES_PATH:
+            # Save the webpage's HTML locally
+            if CACHED_WEBPAGES_PATH:
                 # TODO: file path specified as argument to script
                 try:
                     with open(filepath, 'w') as f:
                         f.write(html)
-                    print("[INFO] The web page is saved in {}. URL is {}".format(filepath, url))
+                    print("[INFO] The webpage is saved in {}. URL is {}".format(filepath, url))
                 except OSError as e:
                     print("[ERROR] {}".format(e))
-                    print("[WARNING] The web page URL will not be saved locally")
+                    print("[WARNING] The webpage URL will not be saved locally")
 
         bsObj = BeautifulSoup(html, "lxml")
 
         # Get job data from <script type="application/ld+json">:
-        # On the web page of a job post, important data about the job post
+        # On the webpage of a job post, important data about the job post
         # (e.g. job location or salary) can be found in <script type="application/ld+json">
         script_tag = bsObj.find(attrs={"type": "application/ld+json"})
         entries_data[job_id]["json_job_data"] = {}

@@ -40,7 +40,7 @@ create table job_posts (
 		title               text,
 		hiring_organization text,
 		employment_type     text,
-		cached_webpage      text,   -- filename of job post's cached web page
+		cached_webpage      text,   -- filename of job post's cached webpage
         date_posted         date,
 		valid_through       date,
 		webpage_accessed    date
