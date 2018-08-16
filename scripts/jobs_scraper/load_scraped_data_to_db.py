@@ -169,6 +169,7 @@ if __name__ == '__main__':
         job_overview = []
 
         count = 1
+        print("[INFO] Total job posts to process = {}".format(len(scraped_data)))
         for job_id, job_data in scraped_data.items():
             ipdb.set_trace()
             """
@@ -180,10 +181,24 @@ if __name__ == '__main__':
                     values.append(v.strip())
                 job_data_value = values
             """
-            print(count)
+            print("\n[INFO] #{} Processing job post with job_id={}".format(count, job_id))
             count += 1
-            author = job_data['author']
+
+            # Extract the relevant job data that will be used to populate the tables in the sqlite db
             url = job_data['url']
+            job_notice = job_data['job_notice']
+            webpage_accessed = job_data['webpage_accessed']
+
+            # From the header section
+            title = job_data['header']['title']
+            company_name = job_data['header']['company_name']
+
+            # From the linked data
+            job_post_description = job_data['linked_data']['']
+            org_description = job_data['linked_data']['hiringOrganization']["description"]
+            org_name = job_data['linked_data']['hiringOrganization']['name']
+            org_site_url = job_data['linked_data']['hiringOrganization']['sameAs']
+
             # `location` can have two locations in one separated by ;
             # e.g. Teunz, Germany; Kastl, Germany
             location = job_data['location']
@@ -204,17 +219,3 @@ if __name__ == '__main__':
         # TODO: uncomment when done with debugging
         #cur.executemany("INSERT INTO job_overview (job_id, name, value) VALUES(?, ?, ?)", job_overview)
         conn.commit()
-
-"""
-$120k - 130k
-A$100k - 130k
-C$100k - 170k
-CHF 84k - 108k
-Equity
-NZD 80k - 100k
-RM72k - 96k
-zł13k - 19k
-£15k - 25k
-€30k - 49k
-₹1000k - 3000k
-"""

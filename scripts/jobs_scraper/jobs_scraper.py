@@ -170,29 +170,28 @@ def main():
         if aside_tag:
             entries_data[job_id]["job_post_notice"] = aside_tag.text
 
-        # Get job data from <script type="application/ld+json">:
+        # Get linked data from <script type="application/ld+json">:
         # On the webpage of a job post, important data about the job post
         # (e.g. job location or salary) can be found in <script type="application/ld+json">
-        # This job data is a JSON object that stores important job info like
+        # This linked data is a JSON object that stores important job info like
         # employmentType, experienceRequirements, jobLocation
         script_tag = bsObj.find(attrs={"type": "application/ld+json"})
-        entries_data[job_id]["json_job_data"] = {}
+        entries_data[job_id]["linked_data"] = {}
         if script_tag:
-            # TODO: Sanity check: there should be only one script tag with type="application/ld+json"
             """
-            The job data found in <script type="application/ld+json"> is a json
+            The linked data found in <script type="application/ld+json"> is a json
             object with the following keys:
             '@context', '@type', 'title', 'skills', 'description', 'datePosted',
             'validThrough', 'employmentType', 'experienceRequirements',
             'industry', 'jobBenefits', 'hiringOrganization', 'baseSalary', 'jobLocation'
             """
             # TODO: get_text()/getText() or get_text/getText
-            job_data = json.loads(script_tag.get_text())
-            entries_data[job_id]["json_job_data"] = job_data
+            linked_data = json.loads(script_tag.get_text())
+            entries_data[job_id]["linked_data"] = linked_data
         else:
-            # Reasons for not finding <script>: maybe the page is not found
-            # anymore (e.g. job post removed) or the company is not longer
-            # accepting applications
+            # Reasons for not finding <script type='application/ld+json'>:
+            # maybe the page is not found anymore (e.g. job post removed) or
+            # the company is not longer accepting applications
             print("[WARNING] the page @ URL {} doesn't contain any SCRIPT tag "
                   "with type='application/ld+json'".format(url))
 

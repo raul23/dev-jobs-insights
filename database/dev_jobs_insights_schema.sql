@@ -31,20 +31,26 @@ create table tags (
 );
 
 -- Job posts
--- TODO: check in data_loading.py, `locations` can refer to two locations separated by ;
--- e.g. Teunz, Germany; Kastl, Germany
 create table job_posts (
         job_id			    integer primary key not null references entries(job_id),
 		title               text, -- unlike entries(title), no company name and location
 		company_name		text, -- same entries(author)
 		url 				text,
-		hiring_organization text,
+		job_notice          text,
+		description         text, -- job post description
 		employment_type     text,
-		cached_webpage      text,   -- file path of job post's cached webpage
+		cached_webpage      text, -- file path of job post's cached webpage
         date_posted         date,
 		valid_through       date,
 		webpage_accessed    date
 );
+
+create table hiring_organization (
+        job_id				integer not null references entries(job_id),
+        description         text,
+        name                text,
+        url                 text, -- company site URL
+)
 
 create table exp_level (
 		job_id				integer not null references job_posts(job_id),
@@ -59,7 +65,7 @@ create table industry (
 );
 
 
--- TODO: check if skills = tags? If yer, then this table might be redundant
+-- TODO: check if skills = tags? If yes, then this table might be redundant
 create table skills (
 		job_id				integer not null references job_posts(job_id),
 		skill				text not null,
