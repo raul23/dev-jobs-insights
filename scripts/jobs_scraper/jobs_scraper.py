@@ -335,7 +335,7 @@ def main():
     #ipdb.set_trace()
 
     # Load json data (scraped data)
-    f = codecs.open('data.json', 'r', 'utf8')
+    f = codecs.open('entries_data.json', 'r', 'utf8')
     # TODO: json.load or json.loads?
     data = json.load(f)
     f.close()
