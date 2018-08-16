@@ -169,13 +169,12 @@ def main():
         entries_data[job_id]["job_post_notice"] = None
         if aside_tag:
             entries_data[job_id]["job_post_notice"] = aside_tag.text
-        else:
-            print("[WARNING] the page @ URL {} doesn't contain any ASIDE tag. "
-                  "Notice text couldn't be extracted.".format(url))
 
         # Get job data from <script type="application/ld+json">:
         # On the webpage of a job post, important data about the job post
         # (e.g. job location or salary) can be found in <script type="application/ld+json">
+        # This job data is a JSON object that stores important job info like
+        # employmentType, experienceRequirements, jobLocation
         script_tag = bsObj.find(attrs={"type": "application/ld+json"})
         entries_data[job_id]["json_job_data"] = {}
         if script_tag:
@@ -330,7 +329,7 @@ def main():
     # Save scraped data into json file
     # ref.: https://stackoverflow.com/a/31343739 (presence of unicode strings,
     # e.g. EURO currency symbol)
-    with codecs.open('data.json', 'w', 'utf8') as f:
+    with codecs.open('entries_data.json', 'w', 'utf8') as f:
         f.write(json.dumps(entries_data, sort_keys=True, ensure_ascii=False))
 
     #ipdb.set_trace()

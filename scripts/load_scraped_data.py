@@ -9,8 +9,8 @@ import ipdb
 import requests
 
 
-DB_FILENAME = os.path.expanduser("~/databases/jobs_insights.sqlite")
-CURRENCY_FILENAME = os.path.expanduser("~/databases/currencies.json")
+DB_FILENAME = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
+CURRENCY_FILENAME = os.path.expanduser("~/data/dev_jobs_insights/currencies.json")
 CURRENCY_DATA = None
 DEST_CURRENCY = "USD"
 DEST_SYMBOL = "$"
