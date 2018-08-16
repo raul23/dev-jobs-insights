@@ -36,10 +36,10 @@ create table job_posts (
 		title               text, -- unlike entries(title), no company name and location
 		company_name		text, -- same entries(author)
 		url 				text,
-		job_notice          text,
+		job_post_notice     text,
 		description         text, -- job post description
 		employment_type     text,
-		cached_webpage      text, -- file path of job post's cached webpage
+		cached_webpage_path text, -- file path of job post's cached webpage
         date_posted         date,
 		valid_through       date,
 		webpage_accessed    date

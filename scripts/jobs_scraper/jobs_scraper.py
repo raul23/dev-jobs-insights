@@ -25,27 +25,6 @@ DELAY_BETWEEN_REQUESTS = 2
 DEBUG = False
 
 
-# TODO: utility function
-def create_connection(db_filepath, autocommit=False):
-    """
-    Creates a database connection to the SQLite database specified by `db_filepath`
-
-    :param db_filepath: database filepath
-    :param autocommit: TODO
-    :return: Connection object or None
-    """
-    try:
-        if autocommit:
-            conn = sqlite3.connect(db_filepath, isolation_level=None)
-        else:
-            conn = sqlite3.connect(db_filepath)
-        return conn
-    except sqlite3.Error as e:
-        print(e)
-
-    return None
-
-
 def select_all_jobid_author_and_url(conn):
     """
     Returns all job_id, author and url from the `entries` table
@@ -60,7 +39,7 @@ def select_all_jobid_author_and_url(conn):
 
 
 def main():
-    if not gu.check_dir_exists(CACHED_WEBPAGES_DIRPATH):
+    if not os.path.isdir(CACHED_WEBPAGES_DIRPATH):
         print("[ERROR] The cached webpages directory doesn't exist: {}".format(CACHED_WEBPAGES_DIRPATH))
         print("Do you want to create the directory?")
         answer = input("Y/N: ").strip().lower().startswith("y")
@@ -78,7 +57,7 @@ def main():
     session = requests.Session()
     headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit 537.36 (KHTML, like Gecko) Chrome",
                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"}
-    conn = create_connection(DB_FILEPATH)
+    conn = gu.connect_db(DB_FILEPATH)
     with conn:
         # Get all the entries' URLs
         # TODO: check case where there is an error in executing the SQL query, e.g.
@@ -97,6 +76,7 @@ def main():
         entries_data.setdefault(job_id, {})
         entries_data[job_id]["url"] = url
         entries_data[job_id]["webpage_accessed"] = None
+        entries_data[job_id]["cached_webpage_path"] = None
 
         # Path where cached webpage's HTML will be saved
         filepath = os.path.join(CACHED_WEBPAGES_DIRPATH, "{}.html".format(job_id))
@@ -109,6 +89,7 @@ def main():
                 with open(filepath, 'r') as f:
                     html = f.read()
                 print("[INFO] The cached webpage HTML is loaded from {}".format(filepath))
+                entries_data[job_id]["cached_webpage_path"] = filepath
                 get_webpage = False
                 # entries_data[job_id]["webpage_accessed"] = gu.creation_date(filepath)
                 entries_data[job_id]["webpage_accessed"] = os.path.getmtime(filepath)
@@ -148,6 +129,7 @@ def main():
                     with open(filepath, 'w') as f:
                         f.write(html)
                     print("[INFO] The webpage is saved in {}. URL is {}".format(filepath, url))
+                    entries_data[job_id]["cached_webpage_path"] = filepath
                 except OSError as e:
                     print("[ERROR] {}".format(e))
                     print("[WARNING] The webpage URL will not be saved locally")

@@ -154,6 +154,12 @@ def get_min_max_salary(salary_range):
     return min_salary, max_salary
 
 
+def str_to_list(str_v):
+    # If string of comma-separated values (e.g. 'Architecture, Developer APIs, Healthcare'),
+    # return a list of values instead, e.g. ['Architecture', 'Developer APIs', 'Healthcare']
+    return [v.strip() for v in str_v.split(",")]
+
+
 if __name__ == '__main__':
     with open(CURRENCY_FILEPATH) as f1, codecs.open(SCRAPED_JOB_DATA_FILEPATH, 'r', 'utf8') as f2:
         currency_data = json.loads(f1.read())
@@ -171,22 +177,15 @@ if __name__ == '__main__':
         count = 1
         print("[INFO] Total job posts to process = {}".format(len(scraped_data)))
         for job_id, job_data in scraped_data.items():
-            ipdb.set_trace()
-            """
-            # If string of comma-separated values (e.g. 'Architecture, Developer APIs, Healthcare'),
-            # return a list of values instead, e.g. ['Architecture', 'Developer APIs', 'Healthcare']
-            if ',' in job_data_value:
-                values = []
-                for v in job_data_value.split(","):
-                    values.append(v.strip())
-                job_data_value = values
-            """
             print("\n[INFO] #{} Processing job post with job_id={}".format(count, job_id))
             count += 1
 
+            ipdb.set_trace()
+
             # Extract the relevant job data that will be used to populate the tables in the sqlite db
             url = job_data['url']
-            job_notice = job_data['job_notice']
+            job_notice = job_data['job_post_notice']
+            cached_webpage_path = job_data['cached_webpage_path']
             webpage_accessed = job_data['webpage_accessed']
 
             # From the header section
@@ -194,10 +193,18 @@ if __name__ == '__main__':
             company_name = job_data['header']['company_name']
 
             # From the linked data
-            job_post_description = job_data['linked_data']['']
-            org_description = job_data['linked_data']['hiringOrganization']["description"]
+            job_post_title = job_data['linked_data']["title"]
+            job_post_description = job_data['linked_data']['description']
+            date_posted = job_data['linked_data']["datePosted"]
+            valid_through = job_data['linked_data']["validThrough"]
+            # [hiringOrganization]
+            org_description = job_data['linked_data']['hiringOrganization']['description']
             org_name = job_data['linked_data']['hiringOrganization']['name']
             org_site_url = job_data['linked_data']['hiringOrganization']['sameAs']
+            # [experienceRequirements]
+            ipdb.set_trace()
+            exp_levels = str_to_list(job_data['linked_data']['experienceRequirements'])
+
 
             # `location` can have two locations in one separated by ;
             # e.g. Teunz, Germany; Kastl, Germany

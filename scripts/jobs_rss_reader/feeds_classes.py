@@ -24,7 +24,7 @@ class Feed:
                 hasattr(feed_dict.title_detail, "value"):  # Fallback
             self.title = feed_dict.title_detail.value
         else:
-            print("WARNING: no title could be extracted from the RSS feed {}".format(url))
+            print("[WARNING] no title could be extracted from the RSS feed {}".format(url))
 
         # Extract `updated_parsed` which is of `time.struct_time` type
         if hasattr(feed_dict, "updated_parsed"):
@@ -32,7 +32,7 @@ class Feed:
             # Convert UTC to local time
             self.updated = get_local_time(feed_dict.updated_parsed)
         else:
-            print("WARNING: no updated date could be extracted from the "
+            print("[WARNING] no updated date could be extracted from the "
                   "RSS feed {}".format(url))
             self.updated = get_local_time()
 
@@ -75,7 +75,7 @@ class Entry:
                 for tag in entry_dict.tags:
                     self.tags.append(tag.term)
         else:
-            print("ERROR: Entry from {} doesn't have an id" % self.feed_name)
+            print("[ERROR] Entry from {} doesn't have an id" % self.feed_name)
 
 
 def parse_summary(raw_summary):
@@ -96,7 +96,7 @@ def extract_value(entry_dict, key):
     if hasattr(entry_dict, key):
         ret_val = entry_dict[key]
     else:
-        print("WARNING: Entry {} doesn't have the key {}".format(entry_dict.id, key))
+        print("[WARNING] Entry {} doesn't have the key {}".format(entry_dict.id, key))
     return ret_val
 
 
