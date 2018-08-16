@@ -8,8 +8,8 @@ import time
 
 # Third-party code
 from bs4 import BeautifulSoup
-import requests
 import ipdb
+import requests
 
 # Own code
 # TODO: path insertion is hardcoded
@@ -332,15 +332,7 @@ def main():
     with codecs.open('entries_data.json', 'w', 'utf8') as f:
         f.write(json.dumps(entries_data, sort_keys=True, ensure_ascii=False))
 
-    #ipdb.set_trace()
-
-    # Load json data (scraped data)
-    f = codecs.open('entries_data.json', 'r', 'utf8')
-    # TODO: json.load or json.loads?
-    data = json.load(f)
-    f.close()
-
-    #ipdb.set_trace()
+    ipdb.set_trace()
 
 
 if __name__ == '__main__':

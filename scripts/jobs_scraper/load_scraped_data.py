@@ -1,39 +1,24 @@
+import codecs
 import json
 import os
-import pickle
 import re
 import sqlite3
+import sys
 
 from forex_python.converter import convert, get_symbol, RatesNotAvailableError
 import ipdb
 import requests
 
+# Own code
+# TODO: path insertion is hardcoded
+sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
+from utility import genutil as gu
 
-DB_FILENAME = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
-CURRENCY_FILENAME = os.path.expanduser("~/data/dev_jobs_insights/currencies.json")
-CURRENCY_DATA = None
+
+DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
+CURRENCY_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/currencies.json")
 DEST_CURRENCY = "USD"
 DEST_SYMBOL = "$"
-
-
-# TODO: utility function
-def create_connection(db_file, autocommit=False):
-    """
-    Creates a database connection to the SQLite database specified by the db_file
-
-    :param db_file: database file
-    :return: Connection object or None
-    """
-    try:
-        if autocommit:
-            conn = sqlite3.connect(db_file, isolation_level=None)
-        else:
-            conn = sqlite3.connect(db_file)
-        return conn
-    except sqlite3.Error as e:
-        print(e)
-
-    return None
 
 
 def replace_letter(string):
@@ -43,15 +28,12 @@ def replace_letter(string):
     return new_string
 
 
-def get_currency_code(currency_symbol):
+def get_currency_code(currency_symbol, currency_data):
     # NOTE: there is a not 1-to-1 mapping when going from currency symbols
     # to currency code
     # e.g. the currency symbol £ is used for the currency codes EGP, FKP, GDP,
     # GIP, LBP, and SHP
-    #
-    # Sanity check for CURRENCY_DATA
-    assert CURRENCY_DATA is not None, "CURRENCY_DATA is None; not loaded with data."
-    results = [item for item in CURRENCY_DATA if item["symbol"] == currency_symbol]
+    results = [item for item in currency_data if item["symbol"] == currency_symbol]
     # NOTE: C$ is used as a currency symbol for Canadian Dollar instead of $
     # However, C$ is already the official currency symbol for Nicaragua Cordoba (NIO)
     # Thus we will assume that C$ is related to the Canadian Dollar.
@@ -174,14 +156,14 @@ def get_min_max_salary(salary_range):
 
 if __name__ == '__main__':
     ipdb.set_trace()
-    with open(CURRENCY_FILENAME) as f:
-        CURRENCY_DATA = json.loads(f.read())
+    with open(CURRENCY_FILEPATH) as f1, codecs.open('entries_data.json', 'r', 'utf8') as f2:
+        currency_data = json.loads(f1.read())
+        # TODO: json.load or json.loads?
+        data = json.load(f2)
+    ipdb.set_trace()
 
-    conn = create_connection(DB_FILENAME)
+    conn = gu.connect_db(DB_FILEPATH)
     with conn:
-        f = open("entries_data.pkl", "rb")
-        data = pickle.load(f)
-        f.close()
 
         job_posts = []
         job_perks = []
