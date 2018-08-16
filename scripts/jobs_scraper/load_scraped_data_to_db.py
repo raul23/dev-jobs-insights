@@ -171,6 +171,15 @@ if __name__ == '__main__':
         count = 1
         for job_id, job_data in scraped_data.items():
             ipdb.set_trace()
+            """
+            # If string of comma-separated values (e.g. 'Architecture, Developer APIs, Healthcare'),
+            # return a list of values instead, e.g. ['Architecture', 'Developer APIs', 'Healthcare']
+            if ',' in job_data_value:
+                values = []
+                for v in job_data_value.split(","):
+                    values.append(v.strip())
+                job_data_value = values
+            """
             print(count)
             count += 1
             author = job_data['author']

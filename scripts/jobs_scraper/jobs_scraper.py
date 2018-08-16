@@ -318,13 +318,6 @@ def main():
                 # The field names should all be lowercase and spaces be replaced with underscores
                 # e.g. Job type ---> job_type
                 job_data_key = job_data_key.replace(" ", "_").lower()
-                # If string of comma-separated values (e.g. 'Architecture, Developer APIs, Healthcare'),
-                # return a list of values instead, e.g. ['Architecture', 'Developer APIs', 'Healthcare']
-                if ',' in job_data_value:
-                    values = []
-                    for v in job_data_value.split(","):
-                        values.append(v.strip())
-                    job_data_value = values
                 entries_data[job_id]["overview_items"][job_data_key] = job_data_value
         else:
             print("[ERROR] Couldn't extract job data from the 'About this job'"
@@ -334,6 +327,8 @@ def main():
 
         # [overview-items]
         # 2. Get the list of technologies, e.g. ruby, python, html5
+        # NOTE: unlike the other job data in "overview_items", the technologies
+        # are given as a list
         pattern = "#overview-items > .mb32 > div > a.job-link"
         link_tags = bsObj.select(pattern)
         entries_data[job_id]["overview_items"]["technologies"] = []
