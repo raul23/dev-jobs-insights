@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 from utility import genutil as gu
 
 
+ENTRIES_DATA_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/scraped_job_data.json")
 DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
 CURRENCY_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/currencies.json")
 DEST_CURRENCY = "USD"
@@ -156,7 +157,7 @@ def get_min_max_salary(salary_range):
 
 if __name__ == '__main__':
     ipdb.set_trace()
-    with open(CURRENCY_FILEPATH) as f1, codecs.open('entries_data.json', 'r', 'utf8') as f2:
+    with open(CURRENCY_FILEPATH) as f1, codecs.open(ENTRIES_DATA_FILEPATH, 'r', 'utf8') as f2:
         currency_data = json.loads(f1.read())
         # TODO: json.load or json.loads?
         data = json.load(f2)

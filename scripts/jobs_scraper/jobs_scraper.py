@@ -85,8 +85,7 @@ def main():
         # sqlite3.OperationalError: no such column: id
         job_ids_authors_urls = select_all_jobid_author_and_url(conn)
 
-    # For each entry's URL, get extra information from the given URL such as
-    # location and perks
+    # For each entry's URL, scrape more job data from the job post's webpage
     entries_data = {}
     count = 1
     last_request_time = -sys.float_info.max
@@ -329,7 +328,7 @@ def main():
     # Save scraped data into json file
     # ref.: https://stackoverflow.com/a/31343739 (presence of unicode strings,
     # e.g. EURO currency symbol)
-    with codecs.open('entries_data.json', 'w', 'utf8') as f:
+    with codecs.open('scraped_job_data.json', 'w', 'utf8') as f:
         f.write(json.dumps(entries_data, sort_keys=True, ensure_ascii=False))
 
     ipdb.set_trace()
