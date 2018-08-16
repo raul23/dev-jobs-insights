@@ -14,9 +14,9 @@ sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 from utility import genutil as gu
 
 
-ENTRIES_DATA_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/scraped_job_data.json")
+SCRAPED_JOB_DATA_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/scraped_job_data.json")
 DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
-CURRENCY_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/countries.json")
+CURRENCY_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/currencies.json")
 DEST_CURRENCY = "USD"
 DEST_SYMBOL = "$"
 
@@ -156,10 +156,10 @@ def get_min_max_salary(salary_range):
 
 if __name__ == '__main__':
     ipdb.set_trace()
-    with open(CURRENCY_FILEPATH) as f1, codecs.open(ENTRIES_DATA_FILEPATH, 'r', 'utf8') as f2:
+    with open(CURRENCY_FILEPATH) as f1, codecs.open(SCRAPED_JOB_DATA_FILEPATH, 'r', 'utf8') as f2:
         currency_data = json.loads(f1.read())
         # TODO: json.load or json.loads?
-        data = json.load(f2)
+        scraped_data = json.load(f2)
     ipdb.set_trace()
 
     conn = gu.connect_db(DB_FILEPATH)
@@ -171,18 +171,18 @@ if __name__ == '__main__':
         job_overview = []
 
         count = 1
-        for k, v in data.items():
+        ipdb.set_trace()
+        for job_id, job_data in scraped_data.items():
             print(count)
             count += 1
-            id = k
-            author = v['author']
-            link = v['link']
+            author = job_data['author']
+            url = job_data['url']
             # `location` can have two locations in one separated by ;
             # e.g. Teunz, Germany; Kastl, Germany
-            location = v['location']
-            job_posts.append((id, author, link, location))
-            perks = v['perks']
-            overview_items = v['overview_items']
+            location = job_data['location']
+            job_posts.append((id, author, url, location))
+            perks = job_data['perks']
+            overview_items = job_data['overview_items']
             append_perks(prefix_item=id, input_items=perks, output_items={'job_perks': job_perks,
                                                                           'job_salary': job_salary})
             # TODO: uncomment when done with debugging

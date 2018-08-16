@@ -35,12 +35,12 @@ create table tags (
 -- e.g. Teunz, Germany; Kastl, Germany
 create table job_posts (
         job_id			    integer primary key not null references entries(job_id),
-        author				text,
+		title               text, -- unlike entries(title), no company name and location
+		company_name		text, -- same entries(author)
 		url 				text,
-		title               text,
 		hiring_organization text,
 		employment_type     text,
-		cached_webpage      text,   -- filename of job post's cached webpage
+		cached_webpage      text,   -- file path of job post's cached webpage
         date_posted         date,
 		valid_through       date,
 		webpage_accessed    date
