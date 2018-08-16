@@ -155,12 +155,10 @@ def get_min_max_salary(salary_range):
 
 
 if __name__ == '__main__':
-    ipdb.set_trace()
     with open(CURRENCY_FILEPATH) as f1, codecs.open(SCRAPED_JOB_DATA_FILEPATH, 'r', 'utf8') as f2:
         currency_data = json.loads(f1.read())
         # TODO: json.load or json.loads?
         scraped_data = json.load(f2)
-    ipdb.set_trace()
 
     conn = gu.connect_db(DB_FILEPATH)
     with conn:
@@ -171,8 +169,8 @@ if __name__ == '__main__':
         job_overview = []
 
         count = 1
-        ipdb.set_trace()
         for job_id, job_data in scraped_data.items():
+            ipdb.set_trace()
             print(count)
             count += 1
             author = job_data['author']

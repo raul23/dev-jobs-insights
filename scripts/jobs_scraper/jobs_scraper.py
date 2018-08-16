@@ -21,7 +21,8 @@ DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
 CACHED_WEBPAGES_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/cache/webpages/stackoverflow_job_posts/")
 SCRAPED_JOB_DATA_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/scraped_job_data.json")
 DELAY_BETWEEN_REQUESTS = 2
-DEBUG = True
+# TODO: debug code
+DEBUG = False
 
 
 # TODO: utility function
@@ -279,13 +280,13 @@ def main():
                     # len(classes) == 1
                     # Get the <div>'s class name without the '-' at the beginning,
                     # this will correspond to the type of job data (e.g. salary, remote)
-                    job_data_type = child_class[0][1:]
+                    job_data_key = child_class[0][1:]
                     # Get the text (e.g. $71k - 85l) by removing any \r and \n around the string
                     if child.text:
                         job_data_value = child.text.strip()
-                        entries_data[job_id]["header"]["other_job_data"][job_data_type] = job_data_value
+                        entries_data[job_id]["header"]["other_job_data"][job_data_key] = job_data_value
                     else:
-                        print("[ERROR] No text found for the job data type {}. URL @ {}".format(job_data_type, url))
+                        print("[ERROR] No text found for the job data type {}. URL @ {}".format(job_data_key, url))
                 else:
                     print("[ERROR] The <span>'s class doesn't start with '-'. "
                           "Thus, we can't extract the job data. URL @ {}".format(url))
@@ -313,8 +314,18 @@ def main():
             for div_tag in div_tags:
                 # Sample raw text: '\nJob type: \nContract\n'
                 temp = div_tag.text.strip().split(":")
-                job_data_type, job_data_value = temp[0].strip(), temp[1].strip()
-                entries_data[job_id]["overview_items"][job_data_type] = job_data_value
+                job_data_key, job_data_value = temp[0].strip(), temp[1].strip()
+                # The field names should all be lowercase and spaces be replaced with underscores
+                # e.g. Job type ---> job_type
+                job_data_key = job_data_key.replace(" ", "_").lower()
+                # If string of comma-separated values (e.g. 'Architecture, Developer APIs, Healthcare'),
+                # return a list of values instead, e.g. ['Architecture', 'Developer APIs', 'Healthcare']
+                if ',' in job_data_value:
+                    values = []
+                    for v in job_data_value.split(","):
+                        values.append(v.strip())
+                    job_data_value = values
+                entries_data[job_id]["overview_items"][job_data_key] = job_data_value
         else:
             print("[ERROR] Couldn't extract job data from the 'About this job'"
                   "section @ the URL {}. "
@@ -342,8 +353,8 @@ def main():
         print("[INFO] Finished Processing {}".format(url))
 
         # TODO: debug code
-        #if DEBUG and count == 30:
-         #   ipdb.set_trace()
+        if DEBUG and count == 30:
+            ipdb.set_trace()
 
     ipdb.set_trace()
 
@@ -352,8 +363,6 @@ def main():
     # e.g. EURO currency symbol)
     with codecs.open(SCRAPED_JOB_DATA_FILEPATH, 'w', 'utf8') as f:
         f.write(json.dumps(entries_data, sort_keys=True, ensure_ascii=False))
-
-    ipdb.set_trace()
 
 
 if __name__ == '__main__':
