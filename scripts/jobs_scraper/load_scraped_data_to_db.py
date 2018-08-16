@@ -189,22 +189,49 @@ if __name__ == '__main__':
             webpage_accessed = job_data['webpage_accessed']
 
             # From the header section
+            # TODO: fallback if linked data's job_post_title not found
             title = job_data['header']['title']
+            # TODO: fallback if linked data's company_name not found
             company_name = job_data['header']['company_name']
+            office_location = job_data['header']['office_location']
+            other_job_data = job_data['header']['other_job_data']
 
-            # From the linked data
+            # From the overview-items section
+            company_size = job_data['overview_items']['company_size']
+            # TODO: fallback if linked data's experience_level not found
+            experience_level = job_data['overview_items']['experience_level']
+            # TODO: fallback if linked data's industry not found
+            industry = job_data['overview_items']['industry']
+            # TODO: fallback if linked data's employment_type not found
+            job_type = job_data['overview_items']['job_type']
+            role = job_data['overview_items']['role']
+            # TODO: fallback if linked data's skills not found
+            technologies = job_data['overview_items']['technologies']
+
+            # From the linked data section
             job_post_title = job_data['linked_data']["title"]
             job_post_description = job_data['linked_data']['description']
+            employment_type = job_data['linked_data']['employmentType']
             date_posted = job_data['linked_data']["datePosted"]
             valid_through = job_data['linked_data']["validThrough"]
+            experience_level = str_to_list(job_data['linked_data']['experienceRequirements'])
+            industry = job_data['linked_data']['industry']
+            skills = job_data['linked_data']['skills']
+            job_benefits = job_data['linked_data']['jobBenefits']
             # [hiringOrganization]
-            org_description = job_data['linked_data']['hiringOrganization']['description']
-            org_name = job_data['linked_data']['hiringOrganization']['name']
-            org_site_url = job_data['linked_data']['hiringOrganization']['sameAs']
-            # [experienceRequirements]
+            company_description = job_data['linked_data']['hiringOrganization']['description']
+            company_name = job_data['linked_data']['hiringOrganization']['name']
+            company_site_url = job_data['linked_data']['hiringOrganization']['sameAs']
+            # [baseSalary]
+            min_value = job_data['linked_data']['baseSalary']['value']['minValue']
+            max_value = job_data['linked_data']['baseSalary']['value']['maxValue']
+            currency = job_data['linked_data']['baseSalary']['currency']
+            # [jobLocation]
+            locations = []
+            for location in job_data['linked_data']['jobLocation']:
+                locations.append({'city': location['address']['addressLocality'],
+                                 'country': location['address']['addressCountry']})
             ipdb.set_trace()
-            exp_levels = str_to_list(job_data['linked_data']['experienceRequirements'])
-
 
             # `location` can have two locations in one separated by ;
             # e.g. Teunz, Germany; Kastl, Germany

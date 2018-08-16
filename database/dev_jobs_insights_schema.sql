@@ -45,14 +45,15 @@ create table job_posts (
 		webpage_accessed    date
 );
 
-create table hiring_organization (
+create table hiring_company (
         job_id				integer not null references entries(job_id),
         description         text,
         name                text,
         url                 text, -- company site URL
-)
+        size                integer -- company size (number of people)
+);
 
-create table exp_level (
+create table experience_level (
 		job_id				integer not null references job_posts(job_id),
 		level			    text not null,
 		primary key(job_id, exp_level)
@@ -60,7 +61,7 @@ create table exp_level (
 
 create table industry (
 		job_id				integer not null references job_posts(job_id),
-		name			    text not null,
+		name    			text not null,
 		primary key(job_id, name)
 );
 
@@ -89,6 +90,6 @@ create table job_salary (
 create table location (
         loc_id              integer primary key,
 		job_id				integer not null references job_posts(job_id),
-		country				text not null,
-		city                text not null
+		city                text not null,
+		country				text not null
 );
