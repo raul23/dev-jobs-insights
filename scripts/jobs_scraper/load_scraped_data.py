@@ -9,7 +9,6 @@ from forex_python.converter import convert, get_symbol, RatesNotAvailableError
 import ipdb
 import requests
 
-# Own code
 # TODO: path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 from utility import genutil as gu
@@ -17,7 +16,7 @@ from utility import genutil as gu
 
 ENTRIES_DATA_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/scraped_job_data.json")
 DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
-CURRENCY_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/currencies.json")
+CURRENCY_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/countries.json")
 DEST_CURRENCY = "USD"
 DEST_SYMBOL = "$"
 

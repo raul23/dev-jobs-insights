@@ -1,8 +1,13 @@
+import codecs
 import json
-import ipdb
+import os
 
+import ipdb
 import iso3166
 from pycountry_convert import country_alpha2_to_continent_code
+
+
+COUNTRIES_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/countries.json")
 
 
 if __name__ == '__main__':
@@ -19,5 +24,5 @@ if __name__ == '__main__':
                           "alpha2": alpha2}
                          })
     ipdb.set_trace()
-    with open("countries.json", "w") as f:
-        json.dump(countries, f)
+    with codecs.open(COUNTRIES_FILEPATH, 'w', 'utf8') as f:
+        f.write(json.dumps(countries, sort_keys=True, ensure_ascii=False))

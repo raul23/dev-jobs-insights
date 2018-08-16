@@ -6,12 +6,10 @@ import sqlite3
 import sys
 import time
 
-# Third-party code
 from bs4 import BeautifulSoup
 import ipdb
 import requests
 
-# Own code
 # TODO: path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 from utility import genutil as gu
@@ -102,6 +100,7 @@ def main():
         # Path where cached webpage's HTML will be saved
         filepath = os.path.join(CACHED_WEBPAGES_DIRPATH, "{}.html".format(job_id))
 
+        # TODO: don't use a flag, use html=None instead
         get_webpage = True
         # Load the cached webpage's HTML if it is found
         if CACHED_WEBPAGES_DIRPATH:
@@ -110,7 +109,8 @@ def main():
                     html = f.read()
                 print("[INFO] The cached webpage HTML is loaded from {}".format(filepath))
                 get_webpage = False
-                entries_data[job_id]["webpage_accessed"] = gu.creation_date(filepath)
+                # entries_data[job_id]["webpage_accessed"] = gu.creation_date(filepath)
+                entries_data[job_id]["webpage_accessed"] = os.path.getmtime(filepath)
             except OSError as e:
                 print("[ERROR] {}".format(e))
                 print("[INFO] The webpage HTML @ {} will be retrieved".format(url))
