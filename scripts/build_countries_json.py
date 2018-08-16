@@ -2,7 +2,7 @@ import json
 import ipdb
 
 import iso3166
-from pycountry_convert import convert_country_alpha2_to_continent
+from pycountry_convert import country_alpha2_to_continent_code
 
 
 if __name__ == '__main__':
@@ -10,7 +10,7 @@ if __name__ == '__main__':
     invalid_countries = []
     for alpha2, country in iso3166.countries_by_alpha2.items():
         try:
-            continent = convert_country_alpha2_to_continent(alpha2)
+            continent = country_alpha2_to_continent_code(alpha2)
         except KeyError:
             invalid_countries.append(country)
             continue
@@ -19,5 +19,5 @@ if __name__ == '__main__':
                           "alpha2": alpha2}
                          })
     ipdb.set_trace()
-    with open("countries_info.json", "w") as f:
+    with open("countries.json", "w") as f:
         json.dump(countries, f)
