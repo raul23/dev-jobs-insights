@@ -123,3 +123,6 @@ temp-plot.html
 
 # Project sandbox
 sandbox/
+
+# Test files
+test*.py

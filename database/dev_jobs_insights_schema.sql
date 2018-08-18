@@ -66,7 +66,7 @@ create table industry (
 );
 
 
--- TODO: check if skills = tags? If yes, then this table might be redundant
+-- TODO: check if skills = tags = technologies? If yes, then this table might be redundant
 create table skills (
 		job_id				integer not null references job_posts(job_id),
 		skill				text not null,

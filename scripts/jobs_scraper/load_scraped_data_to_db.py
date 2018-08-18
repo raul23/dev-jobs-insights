@@ -9,7 +9,7 @@ from forex_python.converter import convert, get_symbol, RatesNotAvailableError
 import ipdb
 import requests
 
-# TODO: path insertion is hardcoded
+# TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 from utility import genutil as gu
 
@@ -154,6 +154,17 @@ def get_min_max_salary(salary_range):
     return min_salary, max_salary
 
 
+# Build SQL query for the job_posts table
+def build_job_posts_query(job_data):
+    if hasattr(job_data, 'linked_data'):
+        # Get job post title: try first to get it from the linked data
+        title = job_data['linked_data'].get(['title'], "")
+
+    else:
+        # Fallback
+        pass
+
+
 def str_to_list(str_v):
     # If string of comma-separated values (e.g. 'Architecture, Developer APIs, Healthcare'),
     # return a list of values instead, e.g. ['Architecture', 'Developer APIs', 'Healthcare']
@@ -169,10 +180,15 @@ if __name__ == '__main__':
     conn = gu.connect_db(DB_FILEPATH)
     with conn:
 
-        job_posts = []
-        job_perks = []
-        job_salary = []
-        job_overview = []
+        # Initialize SQL queries
+        job_posts_queries = []
+        hiring_company_queries = []
+        experience_level_queries = []
+        industry_queries = []
+        skills_queries = []
+        job_benefits_queries = []
+        job_salary_queries = []
+        location_queries = []
 
         count = 1
         print("[INFO] Total job posts to process = {}".format(len(scraped_data)))
@@ -209,7 +225,7 @@ if __name__ == '__main__':
             technologies = job_data['overview_items']['technologies']
 
             # From the linked data section
-            job_post_title = job_data['linked_data']["title"]
+            job_post_title = job_data['linked_data']['title']
             job_post_description = job_data['linked_data']['description']
             employment_type = job_data['linked_data']['employmentType']
             date_posted = job_data['linked_data']["datePosted"]
@@ -217,7 +233,7 @@ if __name__ == '__main__':
             experience_level = str_to_list(job_data['linked_data']['experienceRequirements'])
             industry = job_data['linked_data']['industry']
             skills = job_data['linked_data']['skills']
-            job_benefits = job_data['linked_data']['jobBenefits']
+            job_benefits = job_data['linked_data']['job_benefits']
             # [hiringOrganization]
             company_description = job_data['linked_data']['hiringOrganization']['description']
             company_name = job_data['linked_data']['hiringOrganization']['name']
@@ -232,6 +248,13 @@ if __name__ == '__main__':
                 locations.append({'city': location['address']['addressLocality'],
                                  'country': location['address']['addressCountry']})
             ipdb.set_trace()
+
+            # Build SQL query for the job_posts table
+            # Get job post title: try first from the linked data
+            title = job_data['linked_data']["title"]
+
+            query = (job_id)
+            job_posts_queries.append(query)
 
             # `location` can have two locations in one separated by ;
             # e.g. Teunz, Germany; Kastl, Germany
