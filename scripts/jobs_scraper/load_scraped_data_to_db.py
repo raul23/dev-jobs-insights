@@ -213,6 +213,11 @@ if __name__ == '__main__':
             other_job_data = job_data['header']['other_job_data']
 
             # From the overview-items section
+            """
+            industry: list
+            experience level: list
+            role: list
+            """
             company_size = job_data['overview_items']['company_size']
             # TODO: fallback if linked data's experience_level not found
             experience_level = job_data['overview_items']['experience_level']

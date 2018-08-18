@@ -39,6 +39,9 @@ create table job_posts (
 		job_post_notice     text,
 		description         text, -- job post description
 		employment_type     text,
+		remote              text,
+		relocation          text,
+		visa                text,
 		cached_webpage_path text, -- file path of job post's cached webpage
         date_posted         date,
 		valid_through       date,
@@ -81,8 +84,8 @@ create table job_benefits (
 
 create table job_salary (
 		job_id				integer primary key not null references job_posts(job_id),
-		min_value           integer not null,
-		max_value           integer not null,
+		min_salary          integer not null,
+		max_salary          integer not null,
 		currency            text not null
 );
 
