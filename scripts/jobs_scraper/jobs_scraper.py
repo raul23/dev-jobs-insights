@@ -6,7 +6,7 @@ import sys
 import time
 
 from bs4 import BeautifulSoup
-from forex_python.converter import convert, get_rate, get_symbol, RatesNotAvailableError
+from forex_python.converter import get_rate, get_symbol, RatesNotAvailableError
 import ipdb
 import requests
 
@@ -44,8 +44,9 @@ class JobsScraper:
         self.job_data_keys = ['title', 'url', 'job_post_notice', 'job_post_description', 'employment_type', 'remote',
                               'relocation', 'visa', 'cached_webpage_path', 'date_posted', 'valid_through',
                               'webpage_accessed', 'company_name', 'company_description', 'company_url', 'company_size',
-                              'experience_level', 'industry', 'skills', 'job_benefits', 'min_salary',
-                              'max_salary', 'currency', 'job_location']
+                              'experience_level', 'industry', 'skills', 'job_benefits', 'equity', 'min_salary',
+                              'max_salary', 'currency', 'min_salary_'+DEST_CURRENCY, 'max_salary'+DEST_CURRENCY,
+                              'currency'+DEST_CURRENCY, 'currency_conversion_time', 'job_location']
         # Current `job_id` being processed
         self.job_id = None
         # `currency_data` is a list of dicts. Each item in `currency_data` is a
@@ -257,20 +258,20 @@ class JobsScraper:
 
         # 1. Get title of job post
         pattern = "header.job-details--header > div.grid--cell > h1.fs-headline1 > a"
-        self.process_text(job_id, bsObj, pattern, 'title')
+        self.process_text_in_tag(job_id, bsObj, pattern, 'title')
 
         # 2. Get company name
         pattern = "header.job-details--header > div.grid--cell > div.fc-black-700 > a"
-        self.process_text(job_id, bsObj, pattern, 'company_name')
+        self.process_text_in_tag(job_id, bsObj, pattern, 'company_name')
 
         # 3. Get the office location which is located on the same line as the company name
         pattern = "header.job-details--header > div.grid--cell > div.fc-black-700 > span.fc-black-500"
-        self.process_text(job_id, bsObj, pattern, 'job_location', self.transform_location_text)
+        self.process_text_in_tag(job_id, bsObj, pattern, 'job_location', self.process_location_text)
 
         ipdb.set_trace()
 
         # 4. Get the other job data on the next line after the company name and location
-        # TODO: simplify the scraping of these other job data, should call process_text()
+        # TODO: simplify the scraping of these other job data
         pattern = "header.job-details--header > div.grid--cell > div.mt12"
         div_tag = bsObj.select_one(pattern)
         if div_tag:
@@ -284,23 +285,27 @@ class JobsScraper:
                 # NOTE: we need the child element's class that starts with '-' because
                 # we will then know how to name the extracted job data item
                 child_class = [tag_class for tag_class in child.attrs['class'] if tag_class.startswith('-')]
-                if child_class:
+                if child_class: # class that starts with '-'
                     # Get the <div>'s class name without the '-' at the beginning,
                     # this will correspond to the type of job data (e.g. salary, remote, relocation, visa)
                     key_name = child_class[0][1:]
                     ipdb.set_trace()
                     value = child.text
-                    if value:
+                    if value:  # value = text
                         print("[INFO] [{}] The {} is found. URL @ {}".format(job_id, key_name, url))
                         # Get the text (e.g. $71k - 85k) by removing any \r and \n around the string
                         value = value.strip()
                         if key_name == 'salary':
-                            updated_values = self.transform_salary_text(job_id, value)
-                            self.update_scraped_job_post(job_id, updated_values)
+                            updated_values = self.process_salary_text(job_id, value)
+                            if updated_values:
+                                self.update_scraped_job_post(job_id, updated_values)
+                            else:
+                                pass
                         else:
                             self.update_scraped_job_post(job_id, {key_name: value})
                     else:
-                        print("[ERROR] [{}] No text found for the job data type {}. URL @ {}".format(job_id, job_data_key, url))
+                        print("[ERROR] [{}] No text found for the job data key {}. URL @ {}".format(
+                            job_id, key_name, url))
                 else:
                     print("[ERROR] [{}] The <span>'s class doesn't start with '-'. "
                           "Thus, we can't extract the job data. URL @ {}".format(job_id, url))
@@ -354,7 +359,7 @@ class JobsScraper:
 
     def process_notice(self, job_id, bsObj):
         pattern = "body > div.container > div#content > aside.s-notice"
-        self.process_text(job_id, bsObj, pattern, 'job_post_notice')
+        self.process_text_in_tag(job_id, bsObj, pattern, 'job_post_notice')
 
     def process_overview_items(self, job_id, bsObj):
         # Get job data from the Overview section. There are two places within
@@ -414,15 +419,15 @@ class JobsScraper:
                   "The technologies should be found in "
                   "{}".format(job_id, url, pattern))
 
-    def process_text(self, job_id, bsObj, pattern, key_name, transform_text=None):
+    def process_text_in_tag(self, job_id, bsObj, pattern, key_name, process_text_method=None):
         url = self.get_value_from_scraped_job_post(job_id, 'url')
         tag = bsObj.select_one(pattern)
         if tag:
             value = tag.text
             if value:
                 print("[INFO] [{}] The {} is found. URL @ {}".format(job_id, key_name, url))
-                if transform_text:
-                    value = transform_text(job_id, value)
+                if process_text_method:
+                    value = process_text_method(job_id, value)
                 self.update_scraped_job_post(job_id, {key_name: value})
             else:
                 print("[WARNING] [{}] The {} is empty. URL @ {}".format(job_id, key_name, url))
@@ -432,7 +437,7 @@ class JobsScraper:
                   "{}".format(job_id, key_name, url, key_name, pattern))
 
     @staticmethod
-    def transform_location_text(job_id, text):
+    def process_location_text(job_id, text):
         # The text where you find the location looks like this:
         # '\n|\r\nNo office location                    '
         # strip() removes the first '\n' and the right spaces. Then split('\n')[-1]
@@ -444,63 +449,87 @@ class JobsScraper:
             print("[DEBUG] [{}] No country or city found in job location: {}".format(job_id, text))
         return [text]
 
-    def transform_salary_text(self, job_id, text):
-        updated_values = {}
+    def process_salary_text(self, job_id, text):
+        updated_values = None
         # Check if the salary text contains 'Equity', e.g. '€42k - 75k | Equity'
         if 'Equity' in text:
             print("[DEBUG] [{}] Equity found in the salary text {}".format(job_id, text))
             # Split the salary text to get the `salary_range` and `equity`
             # e.g. '€42k - 75k | Equity' will be splitted as '€42k - 75k' and 'Equity'
             salary_range, equity = [v.strip() for v in text.split('|')]
-            # Extract the currency symbol at the beginning of the salary range text
-            # e.g. '€' will be extracted from €42k - 75k'
-            # `results` is either:
-            #       - a tuple (currency_symbol, end) or
-            #       - None (if no currency symbol could be extracted)
-            #
-            # NOTE: `end` refers to the position of the first number in the
-            # `salary_range` text, e.g. end=1 if salary_range='€42k - 75k'
-            results = self.get_currency_symbol(salary_range)
-            if results:
-                # `results` is a tuple
-                currency_symbol, end = results
-                # Get the currency code based on the currency symbol
-                currency_code = self.get_currency_code(currency_symbol)
-                # Get the salary range only without the currency symbol at the beginning
-                # e.g. '€42k - 75k' --> '42k - 75k'
-                salary_range = salary_range[end:]
-                # Replace the letter 'k' with '000', e.g. 42k --> 42000
-                salary_range = salary_range.replace("k", "000")
-                # Get the minimum and maximum salary separately
-                # e.g. '42000 - 75000' --> min_salary=42000, max_salary=75000
-                min_salary, max_salary = self.get_min_max_salary(salary_range[end:])
-                # Convert the salary to DEST_CURRENCY (default is USD)
-                if currency_code != DEST_CURRENCY:
-                    pass
-                else:
-                    print("[DEBUG] [{}] The salary {} will not be converted to {} "
-                          "because it is already in the desired currency.".format(self.job_id, text, DEST_CURRENCY))
-            else:
-                print("[WARNING] [{}] No currency symbol could be retrieved "
-                      "from the salary text {}".format(self.job_id, text))
-                return None
-            """
-            min_salary, max_salary = self.get_min_max_salary(salary_range)
-            updated_values = {'min_salary': min_salary,
-                              'max_salary': max_salary,
-                              'currency': currency
-                              }
-            """
+            updated_values['equity'] = equity
         else:
             print("[DEBUG] [{}] Equity is not found in the salary text {}".format(job_id, text))
-        return updated_values
+        updated_values = self.process_salary_range(salary_range)
+        if updated_values:
+            print("[DEBUG] [{}] salary text {} was successfully transformed to {}")
+            return updated_values
+
+    def process_salary_range(self, salary_range):
+        # Dict that will be returned if everything goes right. If not, then
+        # `None` will be returned
+        updated_values = {'min_salary': None,
+                          'max_salary': None,
+                          'currency': None,
+                          'min_salary' + DEST_CURRENCY: None,
+                          'max_salary' + DEST_CURRENCY: None,
+                          'currency' + DEST_CURRENCY: None,
+                          'currency_conversion_time': None
+                          }
+        # Extract the currency symbol at the beginning of the salary range text
+        # e.g. '€' will be extracted from €42k - 75k'
+        # `results` is either:
+        #       - a tuple (currency_symbol, end) or
+        #       - None (if no currency symbol could be extracted)
+        #
+        # NOTE: `end` refers to the position of the first number in the
+        # `salary_range` text, e.g. end=1 if salary_range='€42k - 75k'
+        results = self.get_currency_symbol(salary_range)
+        if results:
+            # `results` is a tuple
+            currency_symbol, end = results
+            # Get the currency code based on the currency symbol
+            currency_code = self.get_currency_code(currency_symbol)
+            updated_values['currency'] = currency_code
+            # Get the salary range only without the currency symbol at the beginning
+            # e.g. '€42k - 75k' --> '42k - 75k'
+            salary_range = salary_range[end:]
+            # Replace the letter 'k' with '000', e.g. 42k --> 42000
+            salary_range = salary_range.replace("k", "000")
+            # Get the minimum and maximum salary separately
+            # e.g. '42000 - 75000' --> min_salary=42000, max_salary=75000
+            min_salary, max_salary = self.get_min_max_salary(salary_range[end:])
+            updated_values['min_salary'] = min_salary
+            updated_values['max_salary'] = max_salary
+            # Convert the salary to DEST_CURRENCY (default is USD)
+            if currency_code != DEST_CURRENCY:
+                try:
+                    updated_values['currency'+DEST_CURRENCY] = DEST_CURRENCY
+                    min_salary_converted, timestamp = self.convert_currency(min_salary, currency_code, DEST_CURRENCY)
+                    updated_values['min_salary' + DEST_CURRENCY] = min_salary_converted
+                    updated_values['currency_conversion_time'] = timestamp
+                    max_salary_converted, _ = self.convert_currency(max_salary, currency_code, DEST_CURRENCY)
+                    updated_values['max_salary' + DEST_CURRENCY] = max_salary_converted
+                    return updated_values
+                except TypeError:
+                    # g_util.print_exception("TypeError")
+                    print("[ERROR] [{}] TypeError: {}".format(self.job_id, e))
+                    return None
+            else:
+                print("[DEBUG] [{}] The salary {} will not be converted to {} "
+                      "because it is already in the desired currency".format(self.job_id, salary_range, DEST_CURRENCY))
+                return updated_values
+        else:
+            print("[WARNING] [{}] No currency symbol could be retrieved "
+                  "from the salary text {}".format(self.job_id, salary_range))
+            return None
 
     # Get currency symbol located at the BEGINNING of the string, e.g. '€42k - 75k'
-    # returned values is either:
-    #   - a tuple (currency_symbol, end) or
-    #   - None
-    # NOTE: end refers to the position of the first number in the salary `text`
     def get_currency_symbol(self, text):
+        # returned value is either:
+        #   - a tuple (currency_symbol, end) or
+        #   - None
+        # NOTE: `end` refers to the position of the first number in the salary `text`
         regex = r"^(\D+)"
         match = re.search(regex, text)
         if match:
@@ -542,18 +571,7 @@ class JobsScraper:
             return currency_code
 
     def convert_currency(self, amount, base_cur_code, dest_cur_code="USD"):
-        # These are the data that will be returned.
-        # `rate_used' is the rate used at time `timestamp` when converting from
-        # `base_cur_code` to `dest_cur_code`
-        currency_data = {
-            'converted_amount': None,
-            'base_cur_code': base_cur_code,
-            'dest_cur_code': dest_cur_code,
-            'rate_used': None,
-            'timestamp': None
-        }
         converted_amount = None
-        rate_used = None
         # Sanity check on `amount`
         if type(amount) not in [float, int]:
             print("[ERROR] [{}] The amount {} is not of type int or float".format(self.job_id, amount))
@@ -589,15 +607,13 @@ class JobsScraper:
             print("[ERROR] [{}] No connection to api.fixer.io (e.g. working offline)".format(self.job_id))
             return None
         else:
-            currency_data['converted_amount'] = int(round(converted_amount))
-            currency_data['rate_used'] = rate_used
-            currency_data['timestamp'] = time.time()
+            converted_amount = int(round(converted_amount))
             # NOTE: round(a, 2) doesn't work in python 2.7:
             # >> a = 0.3333333
             # >> round(a, 2),
             # Use the following in python2.7:
             # >> float(format(a, '.2f'))
-            return currency_data
+            return converted_amount, time.time()
 
     @staticmethod
     def save_webpage_locally(url, filepath, html):
