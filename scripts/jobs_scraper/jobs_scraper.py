@@ -66,19 +66,20 @@ class JobsScraper:
             except sqlite3.OperationalError as e:
                 # g_util.print_exception("sqlite3.OperationalError")
                 print("[ERROR] sqlite3.OperationalError: {}".format(e))
-                print("[WARNING] Web scraping will end!")
+                self.print_log("ERROR", "sqlite3.OperationalError: {}".format(e))
+                self.print_log("WARNING", "Web scraping will end!")
                 return
             else:
                 if not rows:
-                    print("[ERROR] The returned SQL result set is empty. Web "
-                          "scraping will end!")
+                    self.print_log("ERROR",
+                                   "The returned SQL result set is empty. Web craping will end!")
                     return
 
         # For each entry's URL, scrape more job data from the job post's webpage
         count = 1
         at_least_one_succeeded = False
         n_skipped = 0
-        print("[INFO] Total URLs to process = {}".format(len(rows)))
+        self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
         for job_id, author, url in rows:
             self.job_id = job_id
 
@@ -86,17 +87,17 @@ class JobsScraper:
                 continue
 
             try:
-                print("\n[INFO] [{}] #{} Processing {}".format(job_id, count, url))
+                self.print_log("INFO", "#{} Processing {}".format(count, url))
                 count += 1
 
                 # Initialize the dict that will store scraped data from the given job post
                 # and update the job post's URL
-                self.init_dict(job_id, {'url': url})
+                self.init_dict({'url': url})
 
                 # Load cached webpage or retrieve it online
-                html = self.load_cached_webpage(job_id)
+                html = self.load_cached_webpage()
                 if not html:
-                    print("[WARNING] [{}] The current URL {} will be skipped.".format(job_id, url))
+                    self.print_log("WARNING", "The current URL {} will be skipped.".format(url))
                     continue
 
                 bsObj = BeautifulSoup(html, "lxml")
@@ -108,23 +109,23 @@ class JobsScraper:
                 # body > div.container > div#content > aside.s-notice
                 # NOTE: Usually when this notice is present in a job post, the json job
                 # data is not found anymore within the html of the job post
-                self.process_notice(job_id, bsObj)
+                self.process_notice(bsObj)
 
                 # Get linked data from <script type="application/ld+json">
-                self.process_linked_data(job_id, bsObj)
+                self.process_linked_data(bsObj)
 
                 # Get job data (e.g. salary, remote, location) from the <header>
-                self.process_header(job_id, bsObj)
+                self.process_header(bsObj)
 
                 # Get job data from the Overview section
-                self.process_overview_items(job_id, bsObj)
+                self.process_overview_items(bsObj)
 
                 at_least_one_succeeded = True
-                print("[INFO] [{}] Finished Processing {}".format(job_id, url))
+                self.print_log("INFO", "Finished Processing {}".format(url))
             except KeyError as e:
                 # g_util.print_exception("[job_id={}] KeyError")
-                print("[ERROR] [{}] KeyError: {}".format(job_id, e))
-                print("[WARNING] [{}] The current URL {} will be skipped".format(job_id, url))
+                self.print_log("ERROR", "KeyError: {}".format(e))
+                self.print_log("WARNING", "The current URL {} will be skipped".format(url))
                 n_skipped += 1
                 continue
         print()
@@ -132,36 +133,40 @@ class JobsScraper:
         # ref.: https://stackoverflow.com/a/31343739 (presence of unicode strings,
         # e.g. EURO currency symbol)
         if at_least_one_succeeded and g_util.dump_json_with_codecs(SCRAPED_JOB_DATA_FILEPATH, self.scraped_job_posts) == 0:
-            print("[INFO] Scraped data saved in {}".format(SCRAPED_JOB_DATA_FILEPATH))
+            self.print_log("INFO", "Scraped data saved in {}".format(SCRAPED_JOB_DATA_FILEPATH))
         else:
-            print("[ERROR] Scraped data couldn't be saved")
-            print("[INFO] Skipped URLs={}/{}".format(n_skipped, len(rows)))
+            self.print_log("ERROR", "Scraped data couldn't be saved")
+            self.print_log("INFO", "Skipped URLs={}/{}".format(n_skipped, len(rows)))
 
-    def init_dict(self, job_id, updated_values):
-        self.scraped_job_posts[job_id] = {}.fromkeys(self.job_data_keys)
+    def init_dict(self, updated_values):
+        self.scraped_job_posts[self.job_id] = {}.fromkeys(self.job_data_keys)
         # Add updated values
-        self.update_dict(job_id, updated_values)
+        self.update_dict(updated_values)
 
-    def get_dict_value(self, job_id, key):
-        return self.scraped_job_posts[job_id][key]
+    def get_dict_value(self, key):
+        return self.scraped_job_posts[self.job_id][key]
 
-    def update_dict(self, job_id, updated_values):
+    def update_dict(self, updated_values):
         for key, new_value in updated_values.items():
-            print("[DEBUG] [{}] Trying to add the [key, value]=['{}', '{}']".format(job_id, key, new_value))
-            current_value = self.scraped_job_posts[job_id].get(key)
+            self.print_log("DEBUG", "Trying to update the [key, value]=['{}', '{}']".format(key, new_value))
+            current_value = self.scraped_job_posts[self.job_id].get(key)
             if current_value:
-                print("[DEBUG] [{}] The key='{}' already has a value='{}'. Thus the "
-                      "new_value='{}' will be ignored.".format(job_id, key, current_value, new_value))
+                self.print_log("DEBUG",
+                               "The key='{}' already has a value='{}'. Thus the new_value='{}' will be ignored.".format(
+                                   key, current_value, new_value
+                               ))
                 if current_value != new_value:
-                    print("[CRITICAL] [{}] The new_value='{}' is not equal to "
-                          "current_value='{}'".format(job_id, new_value, current_value))
+                    self.print_log("CRITICAL", "The new_value='{}' is not equal to current_value='{}'".format(
+                        new_value, current_value
+                    ))
                 return 1
             else:
-                self.scraped_job_posts[job_id].update({key: new_value})
-                print("[DEBUG] [{}] The key='{}' was updated with value='{}'".format(job_id, key, new_value))
+                self.scraped_job_posts[self.job_id].update({key: new_value})
+                self.print_log("DEBUG", "The key='{}' was updated with value='{}'".format(key, new_value))
         return 0
 
     @staticmethod
+    # Get the location data in a linked data JSON object
     def get_loc_in_ld(linked_data):
         job_locations = linked_data.get('jobLocation')
         if job_locations:
@@ -185,60 +190,60 @@ class JobsScraper:
         current_delay = time.time() - self.last_request_time
         diff_between_delays = current_delay - DELAY_BETWEEN_REQUESTS
         if diff_between_delays < 0:
-            print("[INFO] Waiting {} seconds before sending next HTTP request...".format(abs(diff_between_delays)))
+            self.print_log("INFO",
+                           "Waiting {} seconds before sending next HTTP request...".format(abs(diff_between_delays)))
             time.sleep(abs(diff_between_delays))
-            print("[INFO] Time is up! HTTP request will be sent.")
+            self.print_log("INFO", "Time is up! HTTP request will be sent.")
         try:
             req = self.session.get(url, headers=self.headers, timeout=HTTP_GET_TIMEOUT)
             html = req.text
         except OSError as e:
             # g_util.print_exception("OSError")
-            print("[ERROR] OSError: {}".format(e))
+            self.print_log("ERROR", "OSError: {}".format(e))
             return None
         else:
             if req.status_code == 404:
-                print("[ERROR] PAGE NOT FOUND. The URL {} returned a 404 status code.".format(url))
+                self.print_log("ERROR", "PAGE NOT FOUND. The URL {} returned a 404 status code.".format(url))
                 return None
         self.last_request_time = time.time()
-        print("[INFO] The webpage is retrieved from {}".format(url))
-
+        self.print_log("INFO", "The webpage is retrieved from {}".format(url))
         return html
 
     # Load the cached webpage HTML if the webpage is found locally. If it isn't found
     # locally, then we will try to retrieve it with a GET request
-    def load_cached_webpage(self, job_id):
+    def load_cached_webpage(self):
         html = None
-        url = self.get_dict_value(job_id, 'url')
+        url = self.get_dict_value('url')
         # Path where the cached webpage's HTML will be saved
-        filepath = os.path.join(CACHED_WEBPAGES_DIRPATH, "{}.html".format(job_id))
+        filepath = os.path.join(CACHED_WEBPAGES_DIRPATH, "{}.html".format(self.job_id))
 
         if CACHED_WEBPAGES_DIRPATH:
             html = g_util.read_file(filepath)
         else:
-            print("[WARNING] [{}] The caching option is disabled".format(job_id))
-
+            self.print_log("WARNING", "The caching option is disabled")
         if html:
-            print("[INFO] [{}] The cached webpage HTML is loaded from {}".format(job_id, filepath))
+            self.print_log("INFO", "The cached webpage HTML is loaded from {}".format(filepath))
             # Update cached webpage path and its datetime modified
-            self.update_dict(job_id, {'cached_webpage_path': filepath,
-                                                  'webpage_accessed': os.path.getmtime(filepath)})
+            self.update_dict({'cached_webpage_path': filepath,
+                              'webpage_accessed': os.path.getmtime(filepath)})
         else:
-            print("[INFO] Instead the webpage HTML @ {} will be retrieved with a GET request".format(url))
+            self.print_log("INFO",
+                           "Instead the webpage HTML @ {} will be retrieved with a GET request".format(url))
             # Get the webpage HTML
-            html = self.get_webpage(job_id, url)
+            html = self.get_webpage(url)
             if html:
                 # Update the datetime the webpage was retrieved (though not 100% accurate)
-                self.update_dict(job_id, {'webpage_accessed': time.time()})
+                self.update_dict({'webpage_accessed': time.time()})
                 if self.save_webpage_locally(url, filepath, html) == 0:
                     # Update the path the webpage is cached
-                    self.update_dict(job_id, {'cached_webpage_path': filepath})
+                    self.update_dict({'cached_webpage_path': filepath})
             else:
                 # No html retrieved at all
                 return None
 
         return html
 
-    def process_header(self, job_id, bsObj):
+    def process_header(self, bsObj):
         # Get more job data (e.g. salary, remote, location) from the <header>
         # The job data in the <header> are found in this order:
         # 1. Title of job post
@@ -250,19 +255,19 @@ class JobsScraper:
         # the same line (after the company name and office location) and these
         # job data are all part of a class that starts with '-', e.g. '-salary',
         # '-remote' or '-visa'
-        url = self.get_dict_value(job_id, 'url')
+        url = self.get_dict_value('url')
 
         # 1. Get title of job post
         pattern = "header.job-details--header > div.grid--cell > h1.fs-headline1 > a"
-        self.process_text_in_tag(job_id, bsObj, pattern, 'title')
+        self.process_text_in_tag(bsObj, pattern, 'title')
 
         # 2. Get company name
         pattern = "header.job-details--header > div.grid--cell > div.fc-black-700 > a"
-        self.process_text_in_tag(job_id, bsObj, pattern, 'company_name')
+        self.process_text_in_tag(bsObj, pattern, 'company_name')
 
         # 3. Get the office location which is located on the same line as the company name
         pattern = "header.job-details--header > div.grid--cell > div.fc-black-700 > span.fc-black-500"
-        self.process_text_in_tag(job_id, bsObj, pattern, 'job_location', self.process_location_text)
+        self.process_text_in_tag(bsObj, pattern, 'job_location', self.process_location_text)
 
         ipdb.set_trace()
 
@@ -288,36 +293,35 @@ class JobsScraper:
                     ipdb.set_trace()
                     value = child.text
                     if value:  # value = text
-                        print("[INFO] [{}] The {} is found. URL @ {}".format(job_id, key_name, url))
+                        self.print_log("INFO", "The {} is found. URL @ {}".format(key_name, url))
                         # Get the text (e.g. $71k - 85k) by removing any \r and \n around the string
                         value = value.strip()
                         if key_name == 'salary':
-                            updated_values = self.process_salary_text(job_id, value)
+                            updated_values = self.process_salary_text(value)
                             if updated_values:
-                                self.update_dict(job_id, updated_values)
+                                self.update_dict(updated_values)
                             else:
                                 pass
                         else:
-                            self.update_dict(job_id, {key_name: value})
+                            self.update_dict({key_name: value})
                     else:
-                        print("[ERROR] [{}] No text found for the job data key {}. URL @ {}".format(
-                            job_id, key_name, url))
+                        self.print_log("ERROR", "No text found for the job data key {}. URL @ {}".format(
+                            key_name, url))
                 else:
-                    print("[ERROR] [{}] The <span>'s class doesn't start with '-'. "
-                          "Thus, we can't extract the job data. URL @ {}".format(job_id, url))
+                    self.print_log("ERROR", "The <span>'s class doesn't start with '-'. URL @ {}".format(url))
         else:
-            print("[WARNING] [{}] Couldn't extract other job data @ the URL {}. "
-                  "The other job data should be found in "
-                  "{}".format(job_id, url, pattern))
+            msg = "Couldn't extract the other job data @ URL {}. The other " \
+                  "job data should be found in {}".format(url, pattern)
+            self.print_log("WARNING", msg)
 
-    def process_linked_data(self, job_id, bsObj):
+    def process_linked_data(self, bsObj):
         # Get linked data from <script type="application/ld+json">:
         # On the webpage of a job post, important data about the job post
         # (e.g. job location or salary) can be found in <script type="application/ld+json">
         # This linked data is a JSON object that stores important job info like
         # employmentType, experienceRequirements, jobLocation
         script_tag = bsObj.find(attrs={"type": "application/ld+json"})
-        url = self.get_dict_value(job_id, 'url')
+        url = self.get_dict_value('url')
         if script_tag:
             """
             The linked data found in <script type="application/ld+json"> is a json
@@ -344,27 +348,27 @@ class JobsScraper:
                               'currency': linked_data.get('baseSalary').get('currency'),
                               'job_location': self.get_loc_in_ld(linked_data)
                               }
-            self.update_dict(job_id, updated_values)
-            print("[INFO] [{}] The linked data from URL {} were successfully scraped".format(job_id, url))
+            self.update_dict(updated_values)
+            self.print_log("INFO", " The linked data from URL {} were successfully scraped".format(url))
         else:
             # Reasons for not finding <script type='application/ld+json'>:
             # maybe the page is not found anymore (e.g. job post removed) or
             # the company is not longer accepting applications
-            print("[WARNING] [{}] The page @ URL {} doesn't contain any SCRIPT tag "
-                  "with type='application/ld+json'".format(job_id, url))
+            msg = "The page @ URL {} doesn't contain any SCRIPT tag with type='application/ld+json'".format(url)
+            self.print_log("WARNING", msg)
 
-    def process_notice(self, job_id, bsObj):
+    def process_notice(self, bsObj):
         pattern = "body > div.container > div#content > aside.s-notice"
-        self.process_text_in_tag(job_id, bsObj, pattern, 'job_post_notice')
+        self.process_text_in_tag(bsObj, pattern, 'job_post_notice')
 
-    def process_overview_items(self, job_id, bsObj):
+    def process_overview_items(self, bsObj):
         # Get job data from the Overview section. There are two places within
         # Overview section that will be extracted for more job data:
         # 1. in the "About this job" sub-section of Overview
         # 2. in the "Technologies" sub-section of Overview
         # NOTE: both sub-sections are located within <div id=""overview-items>
         # [overview-items]
-        url = self.get_dict_value(job_id, 'url')
+        url = self.get_dict_value('url')
         convert_keys = {'job_type': 'employment_type',
                         'technologies': 'skills'}
 
@@ -386,12 +390,11 @@ class JobsScraper:
                 job_data_key = job_data_key.replace(" ", "_").lower()
                 # Convert the key name to use the standard key name
                 job_data_key = convert_keys.get(job_data_key, job_data_key)
-                self.update_dict(job_id, {job_data_key: job_data_value})
+                self.update_dict({job_data_key: job_data_value})
         else:
-            print("[ERROR] [{}] Couldn't extract job data from the 'About this job'"
-                  "section @ the URL {}. "
-                  "The job data should be found in "
-                  "{}".format(job_id, url, pattern))
+            msg = "Couldn't extract job data from the 'About this job' section @ the URL {}. " \
+                  "The job data should be found in {}".format(url, pattern)
+            self.print_log("ERROR", msg)
 
         # [overview-items]
         # 2. Get the list of technologies, e.g. ruby, python, html5
@@ -406,34 +409,31 @@ class JobsScraper:
                     pass
                     #entries_data[job_id]["overview_items"]["technologies"].append(technology)
                 else:
-                    print(
-                        "[ERROR] [{}] No text found for the technology with href={}. "
-                        "URL @ {}".format(job_id, link_tag["href"], url))
+                    msg = "No text found for the technology with href={}. URL @ {}".format(link_tag["href"], url)
+                    self.print_log("ERROR", msg)
         else:
-            print("[ERROR] [{}] Couldn't extract technologies from the 'Technologies'"
-                  "section @ the URL {}. "
-                  "The technologies should be found in "
-                  "{}".format(job_id, url, pattern))
+            msg = "Couldn't extract technologies from the 'Technologies' section @ the URL {}. " \
+                  "The technologies should be found in {}".format(url, pattern)
+            self.print_log("ERROR", msg)
 
-    def process_text_in_tag(self, job_id, bsObj, pattern, key_name, process_text_method=None):
-        url = self.get_dict_value(job_id, 'url')
+    def process_text_in_tag(self, bsObj, pattern, key_name, process_text_method=None):
+        url = self.get_dict_value('url')
         tag = bsObj.select_one(pattern)
         if tag:
             value = tag.text
             if value:
-                print("[INFO] [{}] The {} is found. URL @ {}".format(job_id, key_name, url))
+                self.print_log("INFO", "The {} is found. URL @ {}".format(key_name, url))
                 if process_text_method:
-                    value = process_text_method(job_id, value)
-                self.update_dict(job_id, {key_name: value})
+                    value = process_text_method(value)
+                self.update_dict({key_name: value})
             else:
-                print("[WARNING] [{}] The {} is empty. URL @ {}".format(job_id, key_name, url))
+                self.print_log("WARNING", "The {} is empty. URL @ {}".format(key_name, url))
         else:
-            print("[WARNING] [{}] Couldn't extract the {} @ the URL {}. "
-                  "The {} should be found in "
-                  "{}".format(job_id, key_name, url, key_name, pattern))
+            msg = "Couldn't extract the {} @ the URL {}. The {} should be found in {}".format(
+                key_name, url, key_name, pattern)
+            self.print_log("WARNING", msg)
 
-    @staticmethod
-    def process_location_text(job_id, text):
+    def process_location_text(self, text):
         # The text where you find the location looks like this:
         # '\n|\r\nNo office location                    '
         # strip() removes the first '\n' and the right spaces. Then split('\n')[-1]
@@ -442,24 +442,24 @@ class JobsScraper:
         if ',' in text:
             text = dict(zip(['city', 'country'], text.split(',')))
         else:
-            print("[DEBUG] [{}] No country or city found in job location: {}".format(job_id, text))
+            self.print_log("DEBUG", "No country or city found in job location: {}".format(text))
         return [text]
 
-    def process_salary_text(self, job_id, salary_text):
+    def process_salary_text(self, salary_text):
         updated_values = None
         # Check if the salary text contains 'Equity', e.g. '€42k - 75k | Equity'
         if 'Equity' in salary_text:
-            print("[DEBUG] [{}] Equity found in the salary text {}".format(job_id, salary_text))
+            self.print_log("DEBUG", "Equity found in the salary text {}".format(salary_text))
             # Split the salary text to get the `salary_range` and `equity`
             # e.g. '€42k - 75k | Equity' will be splitted as '€42k - 75k' and 'Equity'
             salary_range, equity = [v.strip() for v in salary_text.split('|')]
             updated_values['equity'] = equity
         else:
-            print("[DEBUG] [{}] Equity is not found in the salary text {}".format(job_id, salary_text))
+            self.print_log("DEBUG", "Equity is not found in the salary text {}".format(salary_text))
             salary_range = salary_text
         updated_values = self.process_salary_range(salary_range)
         if updated_values:
-            print("[DEBUG] [{}] salary text {} was successfully transformed to {}")
+            self.print_log("DEBUG", "salary text {} was successfully processed!")
             return updated_values
 
     def process_salary_range(self, salary_range):
@@ -510,15 +510,16 @@ class JobsScraper:
                     return updated_values
                 except TypeError:
                     # g_util.print_exception("TypeError")
-                    print("[ERROR] [{}] TypeError: {}".format(self.job_id, e))
+                    self.print_log("ERROR", "TypeError: {}".format(e))
                     return None
             else:
-                print("[DEBUG] [{}] The salary {} will not be converted to {} "
-                      "because it is already in the desired currency".format(self.job_id, salary_range, DEST_CURRENCY))
+                msg = "The salary {} will not be converted to {} because it is already in the desired currency".format(
+                    salary_range, DEST_CURRENCY)
+                self.print_log("DEBUG", msg)
                 return updated_values
         else:
-            print("[WARNING] [{}] No currency symbol could be retrieved "
-                  "from the salary text {}".format(self.job_id, salary_range))
+            self.print_log("WARNING",
+                           "No currency symbol could be retrieved from the salary text {}".format(salary_range))
             return None
 
     # Get currency symbol located at the BEGINNING of the string, e.g. '€42k - 75k'
@@ -530,10 +531,10 @@ class JobsScraper:
         regex = r"^(\D+)"
         match = re.search(regex, text)
         if match:
-            print("[DEBUG] [{}] Found currency {} in text {}".format(self.job_id, match.group(), text))
+            self.print_log("DEBUG", "Found currency {} in text {}".format(match.group(), text))
             return match.group(), match.end()
         else:
-            print("[ERROR] [{}] No currency found in text {}".format(self.job_id, text))
+            self.print_log("ERROR", "No currency found in text {}".format(text))
             return None
 
     def get_currency_code(self, currency_symbol):
@@ -571,37 +572,38 @@ class JobsScraper:
         converted_amount = None
         # Sanity check on `amount`
         if type(amount) not in [float, int]:
-            print("[ERROR] [{}] The amount {} is not of type int or float".format(self.job_id, amount))
+            self.print_log("ERROR", "The amount {} is not of type int or float".format(amount))
             return None
         # Sanity check for `base_currency` to make sure it is a valid currency code
         if not get_symbol(base_cur_code):
-            print("[ERROR] [{}] The currency code {} is not a valid currency".format(self.job_id, base_cur_code))
+            self.print_log("ERROR", "The currency code {} is not a valid currency".format(base_cur_code))
             return None
         try:
             # Get the rate from cache
             rate_used = self.cached_rates.get(base_cur_code).get(dest_cur_code)
             if rate_used:
-                print("[DEBUG] [{}] The cached rate {} is used for {}-->{}".format(
-                    self.job_id, rate_used, base_cur_code, dest_cur_code))
+                self.print_log("DEBUG",
+                               "The cached rate {} is used for {}-->{}".format(
+                                   rate_used, base_cur_code, dest_cur_code))
             else:
-                print("[DEBUG] [{}] No cache rate found for {}-->{}".format(
-                    self.job_id, base_cur_code, dest_cur_code))
+                self.print_log("DEBUG",
+                               "No cache rate found for {}-->{}".format(base_cur_code, dest_cur_code))
                 # Get the rate and cache it
-                print("[DEBUG] [{}] The rate {} is cached for {}-->{}".format(
-                    self.job_id, rate_used, base_cur_code, dest_cur_code))
+                self.print_log("DEBUG", "The rate {} is cached for {}-->{}".format(rate_used, base_cur_code, dest_cur_code))
                 rate_used = get_rate(base_cur_code, dest_cur_code)
                 self.cached_rates[base_cur_code][dest_cur_code] = rate_used
             # Convert the base currency to the desired currency with the retrieved rate
             converted_amount = rate_used * amount
         except RatesNotAvailableError:
             # g_util.print_exception("RatesNotAvailableError")
-            print("[ERROR] [{}] RatesNotAvailableError: {}".format(self.job_id, e))
-            print("[ERROR] [{}] The amount {} in {} couldn't be converted to {}".format(
-                self.job_id, amount, base_cur_code, dest_cur_code))
+            self.print_log("ERROR", "RatesNotAvailableError: {}".format(e))
+            self.print_log("ERROR",
+                           "The amount {} in {} couldn't be converted to {}".format(
+                               amount, base_cur_code, dest_cur_code))
             return None
         except requests.exceptions.ConnectionError:
-            print("[ERROR] [{}] requests.exceptions.ConnectionError: {}".format(self.job_id, e))
-            print("[ERROR] [{}] No connection to api.fixer.io (e.g. working offline)".format(self.job_id))
+            self.print_log("ERROR", "requests.exceptions.ConnectionError: {}".format(e))
+            self.print_log("ERROR", "No connection to api.fixer.io (e.g. working offline)")
             return None
         else:
             converted_amount = int(round(converted_amount))
@@ -612,18 +614,21 @@ class JobsScraper:
             # >> float(format(a, '.2f'))
             return converted_amount, time.time()
 
-    @staticmethod
-    def save_webpage_locally(url, filepath, html):
+    def print_log(self, level, msg, length_msg=100):
+        print("[{}] [{}] {}".format(level, self.job_id, msg[:length_msg]))
+
+    def save_webpage_locally(self, url, filepath, html):
         if CACHED_WEBPAGES_DIRPATH:
             if g_util.write_file(filepath, html) == 0:
-                print("[INFO] The webpage is saved in {}. URL is {}".format(filepath, url))
+                self.print_log("INFO", "The webpage is saved in {}. URL is {}".format(filepath, url))
                 return 0
             else:
-                print("[WARNING] The webpage @ URL {} will not be saved locally".format(url))
+                self.print_log("WARNING", "The webpage @ URL {} will not be saved locally".format(url))
                 return 1
         else:
-            print("[WARNING] The caching option is disabled. Thus, the webpage"
-                  "@ URL {} will not be saved locally.".format(url))
+            msg = "The caching option is disabled. Thus, the webpage @ URL {} " \
+                  "will not be saved locally.".format(url)
+            self.print_log("WARNING", msg)
             return 1
 
     @staticmethod
