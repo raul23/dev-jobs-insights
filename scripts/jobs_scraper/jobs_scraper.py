@@ -41,8 +41,8 @@ class JobsScraper:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"}
         self.scraped_job_posts = {}
         self.last_request_time = -sys.float_info.max
-        self.job_data_keys = ['title', 'url', 'job_post_notice', 'job_post_description', 'employment_type', 'remote',
-                              'relocation', 'visa', 'cached_webpage_path', 'date_posted', 'valid_through',
+        self.job_data_keys = ['title', 'url', 'job_post_notice', 'job_post_description', 'employment_type', 'role',
+                              'remote', 'relocation', 'visa', 'cached_webpage_path', 'date_posted', 'valid_through',
                               'webpage_accessed', 'company_name', 'company_description', 'company_url', 'company_size',
                               'experience_level', 'industry', 'skills', 'job_benefits', 'equity', 'min_salary',
                               'max_salary', 'currency', 'min_salary_'+DEST_CURRENCY, 'max_salary_'+DEST_CURRENCY,
@@ -120,8 +120,6 @@ class JobsScraper:
 
                 # Get job data (e.g. salary, remote, location) from the <header>
                 self.process_header(bsObj)
-
-                ipdb.set_trace()
 
                 # Get job data from the Overview section
                 self.process_overview_items(bsObj)
@@ -289,39 +287,42 @@ class JobsScraper:
             for child in children:
                 # Each job data text is found within <span> with a class that starts
                 # with '-', e.g. <span class='-salary pr16'>
-                # NOTE: we need the child element's class that starts with '-' because
-                # we will then know how to name the extracted job data item
+                # NOTE: we need the child element's class that starts with '-'
+                # because we will then know how to name the extracted job data item
                 child_class = [tag_class for tag_class in child.attrs['class'] if tag_class.startswith('-')]
                 if child_class: # class that starts with '-'
                     # Get the <div>'s class name without the '-' at the beginning,
-                    # this will correspond to the type of job data (e.g. salary, remote, relocation, visa)
+                    # this will correspond to the type of job data (e.g. salary,
+                    # remote, relocation, visa)
                     key_name = child_class[0][1:]
                     value = child.text
                     if value:  # value = text
                         self.print_log("INFO", "The {} is found. URL @ {}".format(key_name, url))
-                        # Get the text (e.g. $71k - 85k) by removing any \r and \n around the string
+                        # Get the text (e.g. $71k - 85k) by removing any \r and
+                        # \n around the string
                         value = value.strip()
                         if key_name == 'salary':
                             updated_values = self.process_salary_text(value)
                             if updated_values:
-                                self.print_log("DEBUG",
-                                               "Updating dict with salary values (min_salary, max_salary, ...)")
+                                log_msg = "Updating dict with salary values " \
+                                          "(min_salary, max_salary, ...)"
+                                self.print_log("DEBUG", log_msg)
                                 self.update_dict(updated_values)
                             else:
                                 self.print_log("WARNING", "Salary will be ignored")
                         else:
-                            self.print_log("DEBUG",
-                                           "Updating dict with {{{}:{}}})".format(key_name, value))
+                            self.print_log("DEBUG", "Updating dict with {{{}:{}}})".format(key_name, value))
                             self.update_dict({key_name: value})
                     else:
-                        self.print_log("ERROR", "No text found for the job data key {}. URL @ {}".format(
-                            key_name, url))
+                        log_msg = "No text found for the job data key {}. " \
+                                  "URL @ {}".format(key_name, url)
+                        self.print_log("ERROR", log_msg)
                 else:
                     self.print_log("ERROR", "The <span>'s class doesn't start with '-'. URL @ {}".format(url))
         else:
-            msg = "Couldn't extract the other job data @ URL {}. The other " \
-                  "job data should be found in {}".format(url, pattern)
-            self.print_log("WARNING", msg)
+            log_msg = "Couldn't extract the other job data @ URL {}. The other " \
+                      "job data should be found in {}".format(url, pattern)
+            self.print_log("WARNING", log_msg)
 
     def process_linked_data(self, bsObj):
         # Get linked data from <script type="application/ld+json">:
@@ -363,8 +364,9 @@ class JobsScraper:
             # Reasons for not finding <script type='application/ld+json'>:
             # maybe the page is not found anymore (e.g. job post removed) or
             # the company is not longer accepting applications
-            msg = "The page @ URL {} doesn't contain any SCRIPT tag with type='application/ld+json'".format(url)
-            self.print_log("WARNING", msg)
+            log_msg = "The page @ URL {} doesn't contain any SCRIPT tag with " \
+                      "type='application/ld+json'".format(url)
+            self.print_log("WARNING", log_msg)
 
     def process_notice(self, bsObj):
         pattern = "body > div.container > div#content > aside.s-notice"
@@ -388,25 +390,36 @@ class JobsScraper:
         pattern = "#overview-items > .mb32 > .job-details--about > .grid--cell6 > .mb8"
         div_tags = bsObj.select(pattern)
 
-        ipdb.set_trace()
-
         if div_tags:
             # Each `div_tag` corresponds to a job data item
             # e.g. Job type: Full-time, Company type: Private
             for div_tag in div_tags:
                 # Sample raw text: '\nJob type: \nContract\n'
                 temp = div_tag.text.strip().split(":")
-                job_data_key, job_data_value = temp[0].strip(), temp[1].strip()
+                key_name, value = temp[0].strip(), temp[1].strip()
                 # The field names should all be lowercase and spaces be replaced
                 # with underscores e.g. Job type ---> job_type
-                job_data_key = job_data_key.replace(" ", "_").lower()
+                key_name = key_name.replace(" ", "_").lower()
                 # Convert the key name to use the standard key name
-                job_data_key = convert_keys.get(job_data_key, job_data_key)
-                self.update_dict({job_data_key: job_data_value})
+                key_name = convert_keys.get(key_name, key_name)
+                # Comma-separated values should be converted to a list
+                # These comma-separated values are: experience_level, role, industry
+                # e.g. Mid-Level, Senior, Lead  --> [Mid-Level, Senior, Lead]
+                ipdb.set_trace()
+                if key_name in ['experience_level', 'role', 'industry']:
+                    self.print_log("DEBUG", "The value {} will be converted to a list".format(value))
+                    value = self.str_to_list(value)
+                elif key_name == 'company_size':
+                    # '1k-5k people' --> '1000-5000'
+                    old_value = value
+                    value = self.process_company_size(old_value)
+                    log_msg = "The company size {} was processed to {}".format(old_value, value)
+                    self.print_log("DEBUG", log_msg)
+                self.update_dict({key_name: value})
         else:
-            msg = "Couldn't extract job data from the 'About this job' section @ the URL {}. " \
-                  "The job data should be found in {}".format(url, pattern)
-            self.print_log("ERROR", msg)
+            log_msg = "Couldn't extract job data from the 'About this job' section @ the URL {}. " \
+                      "The job data should be found in {}".format(url, pattern)
+            self.print_log("ERROR", log_msg)
 
         ipdb.set_trace()
 
@@ -429,6 +442,15 @@ class JobsScraper:
             msg = "Couldn't extract technologies from the 'Technologies' section @ the URL {}. " \
                   "The technologies should be found in {}".format(url, pattern)
             self.print_log("ERROR", msg)
+
+    @staticmethod
+    def process_company_size(company_size):
+        # Example: '1k-5k people' --> '1000-5000'
+        # Replace the letter 'k' with '000'
+        company_size = company_size.replace('k', '000')
+        # Remove 'people' and remove any whitespace around the string
+        company_size = company_size.split('people')[0].strip()
+        return company_size
 
     def process_text_in_tag(self, bsObj, pattern, key_name, process_text_method=None):
         url = self.get_dict_value('url')
