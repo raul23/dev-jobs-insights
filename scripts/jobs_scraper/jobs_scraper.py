@@ -121,6 +121,8 @@ class JobsScraper:
                 # Get job data (e.g. salary, remote, location) from the <header>
                 self.process_header(bsObj)
 
+                ipdb.set_trace()
+
                 # Get job data from the Overview section
                 self.process_overview_items(bsObj)
 
@@ -152,22 +154,24 @@ class JobsScraper:
 
     def update_dict(self, updated_values):
         for key, new_value in updated_values.items():
-            self.print_log("DEBUG", "Trying to update the [key, value]=['{}', '{}']".format(key, new_value))
+            msg = "Trying to update the [key, value]=[{}, {}]"
+            msg = msg.format(key, new_value)
+            self.print_log("DEBUG", msg)
             current_value = self.scraped_job_posts[self.job_id].get(key)
             if current_value:
-                self.print_log("DEBUG",
-                               "The key='{}' already has a value='{}'. Thus the new_value='{}' will be ignored.".format(
-                                   key, current_value, new_value
-                               ))
+                msg = "The key={} already has a value={}. Thus the " \
+                      "new_value={} will be ignored."
+                msg = msg.format(key, current_value, new_value)
+                self.print_log("DEBUG", msg)
                 if current_value != new_value:
-                    self.print_log("CRITICAL", "The new_value='{}' is not equal to current_value='{}'".format(
-                        new_value, current_value
-                    ))
-                return 1
+                    msg = "The new_value={} is not equal to current_value={}"
+                    msg = msg.format(new_value, current_value)
+                    self.print_log("CRITICAL", msg)
             else:
                 self.scraped_job_posts[self.job_id].update({key: new_value})
-                self.print_log("DEBUG", "The key='{}' was updated with value='{}'".format(key, new_value))
-        return 0
+                msg = "The key={} was updated with value={}"
+                msg = msg.format(key, new_value)
+                self.print_log("DEBUG", msg)
 
     @staticmethod
     # Get the location data in a linked data JSON object
@@ -273,8 +277,6 @@ class JobsScraper:
         pattern = "header.job-details--header > div.grid--cell > div.fc-black-700 > span.fc-black-500"
         self.process_text_in_tag(bsObj, pattern, 'job_location', self.process_location_text)
 
-        ipdb.set_trace()
-
         # 4. Get the other job data on the next line after the company name and location
         # TODO: simplify the scraping of these other job data
         pattern = "header.job-details--header > div.grid--cell > div.mt12"
@@ -294,7 +296,6 @@ class JobsScraper:
                     # Get the <div>'s class name without the '-' at the beginning,
                     # this will correspond to the type of job data (e.g. salary, remote, relocation, visa)
                     key_name = child_class[0][1:]
-                    ipdb.set_trace()
                     value = child.text
                     if value:  # value = text
                         self.print_log("INFO", "The {} is found. URL @ {}".format(key_name, url))
@@ -303,10 +304,14 @@ class JobsScraper:
                         if key_name == 'salary':
                             updated_values = self.process_salary_text(value)
                             if updated_values:
+                                self.print_log("DEBUG",
+                                               "Updating dict with salary values (min_salary, max_salary, ...)")
                                 self.update_dict(updated_values)
                             else:
-                                pass
+                                self.print_log("WARNING", "Salary will be ignored")
                         else:
+                            self.print_log("DEBUG",
+                                           "Updating dict with {{{}:{}}})".format(key_name, value))
                             self.update_dict({key_name: value})
                     else:
                         self.print_log("ERROR", "No text found for the job data key {}. URL @ {}".format(
@@ -382,6 +387,9 @@ class JobsScraper:
         # NOTE: these job data are presented in two columns, with three items per column
         pattern = "#overview-items > .mb32 > .job-details--about > .grid--cell6 > .mb8"
         div_tags = bsObj.select(pattern)
+
+        ipdb.set_trace()
+
         if div_tags:
             # Each `div_tag` corresponds to a job data item
             # e.g. Job type: Full-time, Company type: Private
@@ -399,6 +407,8 @@ class JobsScraper:
             msg = "Couldn't extract job data from the 'About this job' section @ the URL {}. " \
                   "The job data should be found in {}".format(url, pattern)
             self.print_log("ERROR", msg)
+
+        ipdb.set_trace()
 
         # [overview-items]
         # 2. Get the list of technologies, e.g. ruby, python, html5
@@ -450,7 +460,6 @@ class JobsScraper:
         return [text]
 
     def process_salary_text(self, salary_text):
-        ipdb.set_trace()
         updated_values = {}
         # Check if the salary text contains 'Equity', e.g. '€42k - 75k | Equity'
         if 'Equity' in salary_text:
@@ -462,9 +471,15 @@ class JobsScraper:
         else:
             self.print_log("DEBUG", "Equity is not found in the salary text {}".format(salary_text))
             salary_range = salary_text
-        updated_values = self.process_salary_range(salary_range)
+        try:
+            results = self.process_salary_range(salary_range)
+            updated_values.update(results)
+        except KeyError as e:
+            # g_util.print_exception("KeyError")
+            self.print_log("ERROR", "KeyError: {}".format(e))
+            return None
         if updated_values:
-            self.print_log("DEBUG", "salary text {} was successfully processed!")
+            self.print_log("DEBUG", "Salary text {} was successfully processed!")
             return updated_values
         else:
             return None
@@ -479,7 +494,6 @@ class JobsScraper:
                           'max_salary_' + DEST_CURRENCY: None,
                           'currency_conversion_time': None
                           }
-        ipdb.set_trace()
         # Extract the currency symbol at the beginning of the salary range text
         # e.g. '€' will be extracted from €42k - 75k'
         # `results` is either:
@@ -494,7 +508,6 @@ class JobsScraper:
             currency_symbol, end = results
             # Get the currency code based on the currency symbol
             currency_code = self.get_currency_code(currency_symbol)
-            updated_values['currency'] = currency_code
             # Get the salary range only without the currency symbol at the beginning
             # e.g. '€42k - 75k' --> '42k - 75k'
             salary_range = salary_range[end:]
@@ -503,22 +516,25 @@ class JobsScraper:
             # Get the minimum and maximum salary separately
             # e.g. '42000 - 75000' --> min_salary=42000, max_salary=75000
             min_salary, max_salary = self.get_min_max_salary(salary_range)
-            updated_values['min_salary'] = min_salary
-            updated_values['max_salary'] = max_salary
-            # Convert the salary to DEST_CURRENCY (default is USD)
+            updated_values.update({'currency': currency_code,
+                                   'min_salary': min_salary,
+                                   'max_salary': max_salary
+                                   })
+            # Convert the salary to DEST_CURRENCY
             if currency_code != DEST_CURRENCY:
-                try:
-                    updated_values['currency'+DEST_CURRENCY] = DEST_CURRENCY
-                    ipdb.set_trace()
-                    min_salary_converted, timestamp = self.convert_currency(min_salary, currency_code, DEST_CURRENCY)
-                    updated_values['min_salary' + DEST_CURRENCY] = min_salary_converted
-                    updated_values['currency_conversion_time'] = timestamp
-                    max_salary_converted, _ = self.convert_currency(max_salary, currency_code, DEST_CURRENCY)
-                    updated_values['max_salary' + DEST_CURRENCY] = max_salary_converted
+                self.print_log("DEBUG", "The salary {} will be converted from {} to {}".format(
+                    salary_range, currency_code, DEST_CURRENCY))
+                min_results = self.convert_currency(min_salary, currency_code, DEST_CURRENCY)
+                max_results = self.convert_currency(max_salary, currency_code, DEST_CURRENCY)
+                if min_results and max_results:
+                    min_salary_converted, timestamp = min_results
+                    max_salary_converted, _ = max_results
+                    updated_values.update({'min_salary_' + DEST_CURRENCY: min_salary_converted,
+                                           'max_salary_' + DEST_CURRENCY: max_salary_converted,
+                                           'currency_conversion_time': timestamp,
+                                           })
                     return updated_values
-                except TypeError:
-                    # g_util.print_exception("TypeError")
-                    self.print_log("ERROR", "TypeError: {}".format(e))
+                else:
                     return None
             else:
                 msg = "The salary {} will not be converted to {} because it is already in the desired currency".format(
@@ -577,11 +593,10 @@ class JobsScraper:
             return currency_code
 
     def convert_currency(self, amount, base_cur_code, dest_cur_code='USD'):
-        ipdb.set_trace()
         converted_amount = None
         try:
             # Get the rate from cache
-            rate_used = self.cached_rates.get['{}_{}'.format(base_cur_code, dest_cur_code)]
+            rate_used = self.cached_rates.get('{}_{}'.format(base_cur_code, dest_cur_code))
             if rate_used:
                 self.print_log("DEBUG",
                                "The cached rate {} is used for {}-->{}".format(
