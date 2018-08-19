@@ -45,8 +45,8 @@ class JobsScraper:
                               'relocation', 'visa', 'cached_webpage_path', 'date_posted', 'valid_through',
                               'webpage_accessed', 'company_name', 'company_description', 'company_url', 'company_size',
                               'experience_level', 'industry', 'skills', 'job_benefits', 'equity', 'min_salary',
-                              'max_salary', 'currency', 'min_salary_'+DEST_CURRENCY, 'max_salary'+DEST_CURRENCY,
-                              'currency'+DEST_CURRENCY, 'currency_conversion_time', 'job_location']
+                              'max_salary', 'currency', 'min_salary_'+DEST_CURRENCY, 'max_salary_'+DEST_CURRENCY,
+                              'currency_conversion_time', 'job_location']
         # Current `job_id` being processed
         self.job_id = None
         # `currency_data` is a list of dicts. Each item in `currency_data` is a
@@ -55,6 +55,10 @@ class JobsScraper:
         # Cache the rates that were already used for converting one currency to another
         # Hence, we won't have to send HTTP requests to get these rates if they
         # are already cached
+        # `cached_rates` has for keys the name of the rates and the values are
+        # the associated rates.
+        # The name of the rate is built like this: {base_cur}_{dest_cur}
+        # e.g. {'EUR_USD': 1.1391, 'EUR_CAD': 1.4976}
         self.cached_rates = {}
 
     def start_scraping(self):
@@ -100,7 +104,7 @@ class JobsScraper:
                     self.print_log("WARNING", "The current URL {} will be skipped.".format(url))
                     continue
 
-                bsObj = BeautifulSoup(html, "lxml")
+                bsObj = BeautifulSoup(html, 'lxml')
 
                 # Before extracting any job data from the job post, check if the job is
                 # accepting applications by extracting the message
@@ -320,7 +324,7 @@ class JobsScraper:
         # (e.g. job location or salary) can be found in <script type="application/ld+json">
         # This linked data is a JSON object that stores important job info like
         # employmentType, experienceRequirements, jobLocation
-        script_tag = bsObj.find(attrs={"type": "application/ld+json"})
+        script_tag = bsObj.find(attrs={'type': 'application/ld+json'})
         url = self.get_dict_value('url')
         if script_tag:
             """
@@ -446,7 +450,8 @@ class JobsScraper:
         return [text]
 
     def process_salary_text(self, salary_text):
-        updated_values = None
+        ipdb.set_trace()
+        updated_values = {}
         # Check if the salary text contains 'Equity', e.g. '€42k - 75k | Equity'
         if 'Equity' in salary_text:
             self.print_log("DEBUG", "Equity found in the salary text {}".format(salary_text))
@@ -461,6 +466,8 @@ class JobsScraper:
         if updated_values:
             self.print_log("DEBUG", "salary text {} was successfully processed!")
             return updated_values
+        else:
+            return None
 
     def process_salary_range(self, salary_range):
         # Dict that will be returned if everything goes right. If not, then
@@ -468,11 +475,11 @@ class JobsScraper:
         updated_values = {'min_salary': None,
                           'max_salary': None,
                           'currency': None,
-                          'min_salary' + DEST_CURRENCY: None,
-                          'max_salary' + DEST_CURRENCY: None,
-                          'currency' + DEST_CURRENCY: None,
+                          'min_salary_' + DEST_CURRENCY: None,
+                          'max_salary_' + DEST_CURRENCY: None,
                           'currency_conversion_time': None
                           }
+        ipdb.set_trace()
         # Extract the currency symbol at the beginning of the salary range text
         # e.g. '€' will be extracted from €42k - 75k'
         # `results` is either:
@@ -492,16 +499,17 @@ class JobsScraper:
             # e.g. '€42k - 75k' --> '42k - 75k'
             salary_range = salary_range[end:]
             # Replace the letter 'k' with '000', e.g. 42k --> 42000
-            salary_range = salary_range.replace("k", "000")
+            salary_range = salary_range.replace('k', '000')
             # Get the minimum and maximum salary separately
             # e.g. '42000 - 75000' --> min_salary=42000, max_salary=75000
-            min_salary, max_salary = self.get_min_max_salary(salary_range[end:])
+            min_salary, max_salary = self.get_min_max_salary(salary_range)
             updated_values['min_salary'] = min_salary
             updated_values['max_salary'] = max_salary
             # Convert the salary to DEST_CURRENCY (default is USD)
             if currency_code != DEST_CURRENCY:
                 try:
                     updated_values['currency'+DEST_CURRENCY] = DEST_CURRENCY
+                    ipdb.set_trace()
                     min_salary_converted, timestamp = self.convert_currency(min_salary, currency_code, DEST_CURRENCY)
                     updated_values['min_salary' + DEST_CURRENCY] = min_salary_converted
                     updated_values['currency_conversion_time'] = timestamp
@@ -568,19 +576,12 @@ class JobsScraper:
                 return None
             return currency_code
 
-    def convert_currency(self, amount, base_cur_code, dest_cur_code="USD"):
+    def convert_currency(self, amount, base_cur_code, dest_cur_code='USD'):
+        ipdb.set_trace()
         converted_amount = None
-        # Sanity check on `amount`
-        if type(amount) not in [float, int]:
-            self.print_log("ERROR", "The amount {} is not of type int or float".format(amount))
-            return None
-        # Sanity check for `base_currency` to make sure it is a valid currency code
-        if not get_symbol(base_cur_code):
-            self.print_log("ERROR", "The currency code {} is not a valid currency".format(base_cur_code))
-            return None
         try:
             # Get the rate from cache
-            rate_used = self.cached_rates.get(base_cur_code).get(dest_cur_code)
+            rate_used = self.cached_rates.get['{}_{}'.format(base_cur_code, dest_cur_code)]
             if rate_used:
                 self.print_log("DEBUG",
                                "The cached rate {} is used for {}-->{}".format(
@@ -591,7 +592,7 @@ class JobsScraper:
                 # Get the rate and cache it
                 self.print_log("DEBUG", "The rate {} is cached for {}-->{}".format(rate_used, base_cur_code, dest_cur_code))
                 rate_used = get_rate(base_cur_code, dest_cur_code)
-                self.cached_rates[base_cur_code][dest_cur_code] = rate_used
+                self.cached_rates['{}_{}'.format(base_cur_code, dest_cur_code)] = rate_used
             # Convert the base currency to the desired currency with the retrieved rate
             converted_amount = rate_used * amount
         except RatesNotAvailableError:
@@ -614,8 +615,11 @@ class JobsScraper:
             # >> float(format(a, '.2f'))
             return converted_amount, time.time()
 
-    def print_log(self, level, msg, length_msg=100):
-        print("[{}] [{}] {}".format(level, self.job_id, msg[:length_msg]))
+    def print_log(self, level, msg, length_msg=300):
+        if len(msg) > length_msg:
+            msg = msg[:length_msg] + " [...]"
+        if level != "DEBUG":
+            print("[{}] [{}] {}".format(level, self.job_id, msg))
 
     def save_webpage_locally(self, url, filepath, html):
         if CACHED_WEBPAGES_DIRPATH:
