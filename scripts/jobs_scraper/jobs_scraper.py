@@ -91,7 +91,7 @@ class JobsScraper:
 
                 # Initialize the dict that will store scraped data from the given job post
                 # and update the job post's URL
-                self.init_scraped_job_post(job_id, {'url': url})
+                self.init_dict(job_id, {'url': url})
 
                 # Load cached webpage or retrieve it online
                 html = self.load_cached_webpage(job_id)
@@ -137,18 +137,15 @@ class JobsScraper:
             print("[ERROR] Scraped data couldn't be saved")
             print("[INFO] Skipped URLs={}/{}".format(n_skipped, len(rows)))
 
-    # TODO: change name to `init_dict`
-    def init_scraped_job_post(self, job_id, updated_values):
+    def init_dict(self, job_id, updated_values):
         self.scraped_job_posts[job_id] = {}.fromkeys(self.job_data_keys)
         # Add updated values
-        self.update_scraped_job_post(job_id, updated_values)
+        self.update_dict(job_id, updated_values)
 
-    # TODO: change name to `get_dict_value`
-    def get_value_from_scraped_job_post(self, job_id, key):
+    def get_dict_value(self, job_id, key):
         return self.scraped_job_posts[job_id][key]
 
-    # TODO: change name to `update_dict`
-    def update_scraped_job_post(self, job_id, updated_values):
+    def update_dict(self, job_id, updated_values):
         for key, new_value in updated_values.items():
             print("[DEBUG] [{}] Trying to add the [key, value]=['{}', '{}']".format(job_id, key, new_value))
             current_value = self.scraped_job_posts[job_id].get(key)
@@ -164,9 +161,8 @@ class JobsScraper:
                 print("[DEBUG] [{}] The key='{}' was updated with value='{}'".format(job_id, key, new_value))
         return 0
 
-    # TODO: change name to `get_loc_in_ld`
     @staticmethod
-    def get_location_in_linked_data(linked_data):
+    def get_loc_in_ld(linked_data):
         job_locations = linked_data.get('jobLocation')
         if job_locations:
             processed_locations = []
@@ -212,7 +208,7 @@ class JobsScraper:
     # locally, then we will try to retrieve it with a GET request
     def load_cached_webpage(self, job_id):
         html = None
-        url = self.get_value_from_scraped_job_post(job_id, 'url')
+        url = self.get_dict_value(job_id, 'url')
         # Path where the cached webpage's HTML will be saved
         filepath = os.path.join(CACHED_WEBPAGES_DIRPATH, "{}.html".format(job_id))
 
@@ -224,7 +220,7 @@ class JobsScraper:
         if html:
             print("[INFO] [{}] The cached webpage HTML is loaded from {}".format(job_id, filepath))
             # Update cached webpage path and its datetime modified
-            self.update_scraped_job_post(job_id, {'cached_webpage_path': filepath,
+            self.update_dict(job_id, {'cached_webpage_path': filepath,
                                                   'webpage_accessed': os.path.getmtime(filepath)})
         else:
             print("[INFO] Instead the webpage HTML @ {} will be retrieved with a GET request".format(url))
@@ -232,10 +228,10 @@ class JobsScraper:
             html = self.get_webpage(job_id, url)
             if html:
                 # Update the datetime the webpage was retrieved (though not 100% accurate)
-                self.update_scraped_job_post(job_id, {'webpage_accessed': time.time()})
+                self.update_dict(job_id, {'webpage_accessed': time.time()})
                 if self.save_webpage_locally(url, filepath, html) == 0:
                     # Update the path the webpage is cached
-                    self.update_scraped_job_post(job_id, {'cached_webpage_path': filepath})
+                    self.update_dict(job_id, {'cached_webpage_path': filepath})
             else:
                 # No html retrieved at all
                 return None
@@ -254,7 +250,7 @@ class JobsScraper:
         # the same line (after the company name and office location) and these
         # job data are all part of a class that starts with '-', e.g. '-salary',
         # '-remote' or '-visa'
-        url = self.get_value_from_scraped_job_post(job_id, 'url')
+        url = self.get_dict_value(job_id, 'url')
 
         # 1. Get title of job post
         pattern = "header.job-details--header > div.grid--cell > h1.fs-headline1 > a"
@@ -298,11 +294,11 @@ class JobsScraper:
                         if key_name == 'salary':
                             updated_values = self.process_salary_text(job_id, value)
                             if updated_values:
-                                self.update_scraped_job_post(job_id, updated_values)
+                                self.update_dict(job_id, updated_values)
                             else:
                                 pass
                         else:
-                            self.update_scraped_job_post(job_id, {key_name: value})
+                            self.update_dict(job_id, {key_name: value})
                     else:
                         print("[ERROR] [{}] No text found for the job data key {}. URL @ {}".format(
                             job_id, key_name, url))
@@ -321,7 +317,7 @@ class JobsScraper:
         # This linked data is a JSON object that stores important job info like
         # employmentType, experienceRequirements, jobLocation
         script_tag = bsObj.find(attrs={"type": "application/ld+json"})
-        url = self.get_value_from_scraped_job_post(job_id, 'url')
+        url = self.get_dict_value(job_id, 'url')
         if script_tag:
             """
             The linked data found in <script type="application/ld+json"> is a json
@@ -346,9 +342,9 @@ class JobsScraper:
                               'min_salary': linked_data.get('baseSalary').get('value').get('minValue'),
                               'max_salary': linked_data.get('baseSalary').get('value').get('maxValue'),
                               'currency': linked_data.get('baseSalary').get('currency'),
-                              'job_location': self.get_location_in_linked_data(linked_data)
+                              'job_location': self.get_loc_in_ld(linked_data)
                               }
-            self.update_scraped_job_post(job_id, updated_values)
+            self.update_dict(job_id, updated_values)
             print("[INFO] [{}] The linked data from URL {} were successfully scraped".format(job_id, url))
         else:
             # Reasons for not finding <script type='application/ld+json'>:
@@ -368,7 +364,7 @@ class JobsScraper:
         # 2. in the "Technologies" sub-section of Overview
         # NOTE: both sub-sections are located within <div id=""overview-items>
         # [overview-items]
-        url = self.get_value_from_scraped_job_post(job_id, 'url')
+        url = self.get_dict_value(job_id, 'url')
         convert_keys = {'job_type': 'employment_type',
                         'technologies': 'skills'}
 
@@ -390,7 +386,7 @@ class JobsScraper:
                 job_data_key = job_data_key.replace(" ", "_").lower()
                 # Convert the key name to use the standard key name
                 job_data_key = convert_keys.get(job_data_key, job_data_key)
-                self.update_scraped_job_post(job_id, {job_data_key: job_data_value})
+                self.update_dict(job_id, {job_data_key: job_data_value})
         else:
             print("[ERROR] [{}] Couldn't extract job data from the 'About this job'"
                   "section @ the URL {}. "
@@ -420,7 +416,7 @@ class JobsScraper:
                   "{}".format(job_id, url, pattern))
 
     def process_text_in_tag(self, job_id, bsObj, pattern, key_name, process_text_method=None):
-        url = self.get_value_from_scraped_job_post(job_id, 'url')
+        url = self.get_dict_value(job_id, 'url')
         tag = bsObj.select_one(pattern)
         if tag:
             value = tag.text
@@ -428,7 +424,7 @@ class JobsScraper:
                 print("[INFO] [{}] The {} is found. URL @ {}".format(job_id, key_name, url))
                 if process_text_method:
                     value = process_text_method(job_id, value)
-                self.update_scraped_job_post(job_id, {key_name: value})
+                self.update_dict(job_id, {key_name: value})
             else:
                 print("[WARNING] [{}] The {} is empty. URL @ {}".format(job_id, key_name, url))
         else:
@@ -449,17 +445,18 @@ class JobsScraper:
             print("[DEBUG] [{}] No country or city found in job location: {}".format(job_id, text))
         return [text]
 
-    def process_salary_text(self, job_id, text):
+    def process_salary_text(self, job_id, salary_text):
         updated_values = None
         # Check if the salary text contains 'Equity', e.g. '€42k - 75k | Equity'
-        if 'Equity' in text:
-            print("[DEBUG] [{}] Equity found in the salary text {}".format(job_id, text))
+        if 'Equity' in salary_text:
+            print("[DEBUG] [{}] Equity found in the salary text {}".format(job_id, salary_text))
             # Split the salary text to get the `salary_range` and `equity`
             # e.g. '€42k - 75k | Equity' will be splitted as '€42k - 75k' and 'Equity'
-            salary_range, equity = [v.strip() for v in text.split('|')]
+            salary_range, equity = [v.strip() for v in salary_text.split('|')]
             updated_values['equity'] = equity
         else:
-            print("[DEBUG] [{}] Equity is not found in the salary text {}".format(job_id, text))
+            print("[DEBUG] [{}] Equity is not found in the salary text {}".format(job_id, salary_text))
+            salary_range = salary_text
         updated_values = self.process_salary_range(salary_range)
         if updated_values:
             print("[DEBUG] [{}] salary text {} was successfully transformed to {}")
