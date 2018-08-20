@@ -41,6 +41,17 @@ class SameCurrencyError(Exception):
     i.e. an amount is being converted to the same currency it is already"""
 
 
+class NoCurrencySymbolError(Exception):
+    """Raised when a currency symbol couldn't be found at the start of a salary
+     range, e.g. '42k - 75k' doesn't have any currency symbol (e.g. $) at
+     the beginning."""
+
+
+class SameComputationError(Exception):
+    """Raised when the same computation will be performed that was already made,
+    e.g. an amount is being converted again to a specified currency"""
+
+
 class JobsScraper:
     def __init__(self, autocommit=False):
         self.autocommit = autocommit
@@ -55,11 +66,11 @@ class JobsScraper:
         self.last_request_time = -sys.float_info.max
         self.job_data_keys = ['title', 'url', 'job_post_notice', 'job_post_description', 'employment_type',
                               'date_posted', 'valid_through', 'experience_level', 'industry', 'skills', 'job_benefits',
-                              'company_description', 'company_name', 'company_site_url', 'company_size', 'equity',
-                              'min_salary', 'max_salary', 'currency', 'job_locations', 'min_salary_'+DEST_CURRENCY,
-                              'max_salary_'+DEST_CURRENCY, 'currency_conversion_time', 'official_job_location',
-                              'high_response_rate', 'role', 'remote', 'relocation', 'visa', 'webpage_accessed',
-                              'cached_webpage_path']
+                              'company_description', 'company_name', 'company_site_url', 'company_size', 'company_type',
+                              'equity', 'min_salary', 'max_salary', 'currency', 'job_locations',
+                              'min_salary_'+DEST_CURRENCY, 'max_salary_'+DEST_CURRENCY, 'currency_conversion_time',
+                              'office_location', 'high_response_rate', 'role', 'remote', 'relocation', 'visa',
+                              'webpage_accessed', 'cached_webpage_path']
         # Current `job_id` being processed
         self.job_id = None
         # `currency_data` is a list of dicts. Each item in `currency_data` is a
@@ -80,6 +91,12 @@ class JobsScraper:
         # The name of the rate is built like this: {base_cur}_{dest_cur}
         # e.g. {'EUR_USD': 1.1391, 'EUR_CAD': 1.4976}
         self.cached_rates = {}
+
+    def init_session(self, job_id):
+        self.job_id = job_id
+
+    def reset_session(self):
+        self.job_id = None
 
     def start_scraping(self):
         self.conn = g_util.connect_db(DB_FILEPATH)
@@ -105,7 +122,6 @@ class JobsScraper:
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
         for job_id, author, url in rows:
-            self.job_id = job_id
 
             if job_id != 199111:
                 # 199422: Toronto, ON, Canada; C$
@@ -115,8 +131,12 @@ class JobsScraper:
                 continue
 
             try:
+                print()
                 self.print_log("INFO", "#{} Processing {}".format(count, url))
                 count += 1
+
+                self.init_session(job_id)
+                self.print_log("INFO", "Session initialized")
 
                 # Initialize the dict that will store scraped data from the given job post
                 # and update the job post's URL
@@ -155,7 +175,10 @@ class JobsScraper:
                 self.print_log("ERROR", "KeyError: {}".format(e))
                 self.print_log("WARNING", "The current URL {} will be skipped".format(url))
                 n_skipped += 1
-                continue
+            finally:
+                self.print_log("INFO", "Session ending")
+                self.reset_session()
+
         print()
         # Save scraped data into json file
         # ref.: https://stackoverflow.com/a/31343739 (presence of unicode strings,
@@ -298,7 +321,7 @@ class JobsScraper:
 
         # 3. Get the office location which is located on the same line as the company name
         pattern = "header.job-details--header > div.grid--cell > div.fc-black-700 > span.fc-black-500"
-        self.process_text_in_tag(bsObj, pattern, key_name='official_location',
+        self.process_text_in_tag(bsObj, pattern, key_name='office_location',
                                  process_text_method=self.process_location_text
                                  )
 
@@ -614,16 +637,22 @@ class JobsScraper:
             salary_range = salary_text
         try:
             results = self.process_salary_range(salary_range)
-            updated_values.update(results)
         except KeyError as e:
             # g_util.print_exception("KeyError")
             self.print_log("ERROR", "KeyError: {}".format(e))
             return None
-        if updated_values:
-            self.print_log("DEBUG", "Salary text {} was successfully processed!")
-            return updated_values
-        else:
+        except SameComputationError as e:
+            # g_util.print_exception("SameComputationError")
+            self.print_log("ERROR", "SameComputationError: {}".format(e))
             return None
+        except NoCurrencySymbolError as e:
+            # g_util.print_exception("NoCurrencySymbolError")
+            self.print_log("ERROR", "NoCurrencySymbolError: {}".format(e))
+            return None
+        else:
+            self.print_log("DEBUG", "The salary text {} was successfully processed!")
+            updated_values.update(results)
+            return updated_values
 
     def process_salary_range(self, salary_range):
         # Dict that will be returned if everything goes right. If not, then
@@ -663,15 +692,14 @@ class JobsScraper:
                                    })
             # Before converting the min and max salaries, check if they were already
             # computed from the linked data. We want to avoid making wasteful
-            # computations when performing the currency conversion.
-            ipdb.set_trace()
+            # computations when performing the currency conversions.
+            #ipdb.set_trace()
             converted_min_salary = self.get_dict_value('min_salary_'+DEST_CURRENCY)
-            converted_max_salary = self.get_dict_value('max_salary'+DEST_CURRENCY)
+            converted_max_salary = self.get_dict_value('max_salary_'+DEST_CURRENCY)
             if converted_min_salary is not None and converted_max_salary is not None:
-                log_msg = "The min and max salaries ({}-{}) were already " \
-                          "computed from the linked data".format(min_salary, max_salary)
-                self.print_log("DEBUG", log_msg)
-                return None
+                error_msg = "The min and max salaries ({}-{}) were already " \
+                            "computed from the linked data".format(min_salary, max_salary)
+                raise SameComputationError(error_msg)
             # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
             try:
                 results = self.convert_min_and_max_salaries(min_salary, max_salary, currency_code)
@@ -683,9 +711,9 @@ class JobsScraper:
                 updated_values.update(results)
                 return updated_values
         else:
-            self.print_log("WARNING",
-                           "No currency symbol could be retrieved from the salary text {}".format(salary_range))
-            return None
+            error_msg = "No currency symbol could be retrieved from the " \
+                        "salary text {}".format(salary_range)
+            raise NoCurrencySymbolError(error_msg)
 
     def convert_min_and_max_salaries(self, min_salary, max_salary, current_currency):
         # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
@@ -804,7 +832,10 @@ class JobsScraper:
         if len(msg) > length_msg:
             msg = msg[:length_msg] + " [...]"
         if level != "DEBUG":
-            print("[{}] [{}] {}".format(level, self.job_id, msg))
+            if self.job_id is None:
+                print("[{}] {}".format(level, msg))
+            else:
+                print("[{}] [{}] {}".format(level, self.job_id, msg))
 
     def save_webpage_locally(self, url, filepath, html):
         if CACHED_WEBPAGES_DIRPATH:
