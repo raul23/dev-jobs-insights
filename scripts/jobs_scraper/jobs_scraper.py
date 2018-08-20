@@ -172,17 +172,17 @@ class JobsScraper:
         self.update_dict(updated_values)
 
     def get_dict_value(self, key):
-        return self.scraped_job_posts[self.job_id][key]
+        return self.scraped_job_posts[self.job_id].get(key)
 
     def update_dict(self, updated_values):
         for key, new_value in updated_values.items():
             log_msg = "Trying to update the [key, value]=[{}, {}]".format(key, new_value)
             self.print_log("DEBUG", log_msg)
-            current_value = self.scraped_job_posts[self.job_id].get(key)
+            current_value = self.get_dict_value(key)
             if current_value is None:
-                self.scraped_job_posts[self.job_id].update({key: new_value})
                 # Check that the key is a valid job data key
-                if self.scraped_job_posts[self.job_id][key]:
+                if key in self.scraped_job_posts[self.job_id]:
+                    self.scraped_job_posts[self.job_id].update({key: new_value})
                     log_msg = "The key={} was updated with value={}".format(key, new_value)
                     self.print_log("DEBUG", log_msg)
                 else:
@@ -359,7 +359,6 @@ class JobsScraper:
         # employmentType, experienceRequirements, jobLocation
         script_tag = bsObj.find(attrs={'type': 'application/ld+json'})
         url = self.get_dict_value('url')
-        ipdb.set_trace()
         if script_tag:
             """
             The linked data found in <script type="application/ld+json"> is a json
@@ -371,6 +370,7 @@ class JobsScraper:
             linked_data = json.loads(script_tag.get_text())
             min_salary = linked_data.get('baseSalary').get('value').get('minValue')
             max_salary = linked_data.get('baseSalary').get('value').get('maxValue')
+            currency = linked_data.get('baseSalary').get('currency')
             updated_values = {'title': linked_data.get('title'),
                               'job_post_description': linked_data.get('description'),
                               'employment_type': linked_data.get('employmentType'),
@@ -385,7 +385,7 @@ class JobsScraper:
                               'company_site_url': linked_data.get('hiringOrganization').get('sameAs'),
                               'min_salary': min_salary,
                               'max_salary': max_salary,
-                              'currency': linked_data.get('baseSalary').get('currency'),
+                              'currency': currency,
                               'job_locations': self.get_loc_in_ld(linked_data)
                               }
             # Convert the minimum and maximum salaries to DEST_CURRENCY (e.g. USD)
@@ -394,7 +394,7 @@ class JobsScraper:
                                   'currency_conversion_time': None
                                   }
             try:
-                results = self.convert_min_and_max_salaries(min_salary, max_salary)
+                results = self.convert_min_and_max_salaries(min_salary, max_salary, currency)
             except CurrencyConversionError as e:
                 self.print_log("ERROR", e)
             except SameCurrencyError as e:
@@ -661,16 +661,27 @@ class JobsScraper:
                                    'min_salary': min_salary,
                                    'max_salary': max_salary
                                    })
-            # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
+            # Before converting the min and max salaries, check if they were already
+            # computed from the linked data. We want to avoid making wasteful
+            # computations when performing the currency conversion.
             ipdb.set_trace()
+            converted_min_salary = self.get_dict_value('min_salary_'+DEST_CURRENCY)
+            converted_max_salary = self.get_dict_value('max_salary'+DEST_CURRENCY)
+            if converted_min_salary is not None and converted_max_salary is not None:
+                log_msg = "The min and max salaries ({}-{}) were already " \
+                          "computed from the linked data".format(min_salary, max_salary)
+                self.print_log("DEBUG", log_msg)
+                return None
+            # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
             try:
-                results = self.convert_min_and_max_salaries(min_salary, max_salary)
+                results = self.convert_min_and_max_salaries(min_salary, max_salary, currency_code)
             except CurrencyConversionError as e:
                 raise CurrencyConversionError(e)
             except SameCurrencyError:
                 return updated_values
             else:
-                return updated_values.update(results)
+                updated_values.update(results)
+                return updated_values
         else:
             self.print_log("WARNING",
                            "No currency symbol could be retrieved from the salary text {}".format(salary_range))
@@ -754,15 +765,18 @@ class JobsScraper:
             # Get the rate from cache
             rate_used = self.cached_rates.get('{}_{}'.format(base_cur_code, dest_cur_code))
             if rate_used:
-                self.print_log("DEBUG",
-                               "The cached rate {} is used for {}-->{}".format(
-                                   rate_used, base_cur_code, dest_cur_code))
+                log_msg = "The cached rate {} is used for " \
+                          "{}-->{}".format(rate_used, base_cur_code, dest_cur_code)
+                self.print_log("DEBUG", log_msg)
             else:
-                self.print_log("DEBUG",
-                               "No cache rate found for {}-->{}".format(base_cur_code, dest_cur_code))
+                log_msg = "No cache rate found for " \
+                          "{}-->{}".format(base_cur_code, dest_cur_code)
+                self.print_log("DEBUG", log_msg)
                 # Get the rate and cache it
-                self.print_log("DEBUG", "The rate {} is cached for {}-->{}".format(rate_used, base_cur_code, dest_cur_code))
                 rate_used = get_rate(base_cur_code, dest_cur_code)
+                log_msg = "The rate {} is cached for " \
+                          "{}-->{}".format(rate_used, base_cur_code, dest_cur_code)
+                self.print_log("DEBUG", log_msg)
                 self.cached_rates['{}_{}'.format(base_cur_code, dest_cur_code)] = rate_used
             # Convert the base currency to the desired currency with the retrieved rate
             converted_amount = rate_used * amount
