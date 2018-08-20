@@ -6,8 +6,9 @@ import sys
 import time
 
 from bs4 import BeautifulSoup
-from forex_python.converter import get_rate, get_symbol, RatesNotAvailableError
+from forex_python.converter import get_rate, RatesNotAvailableError
 import ipdb
+from pycountry_convert import country_name_to_country_alpha2
 import requests
 
 # TODO: module path insertion is hardcoded
@@ -21,12 +22,23 @@ DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
 CACHED_WEBPAGES_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/cache/webpages/stackoverflow_job_posts/")
 SCRAPED_JOB_DATA_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/scraped_job_data.json")
 CURRENCY_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/currencies.json")
+US_STATES_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/us_states.json")
 DELAY_BETWEEN_REQUESTS = 2
 HTTP_GET_TIMEOUT = 5
 # TODO: debug code
 DEBUG = False
 DEST_CURRENCY = "USD"
 DEST_SYMBOL = "$"
+
+
+class CurrencyConversionError(Exception):
+    """Raised when there is an error in converting a currency when using
+    forex_python.converter.get_rate"""
+
+
+class SameCurrencyError(Exception):
+    """Raised when the specified base and destination currencies are the same,
+    i.e. an amount is being converted to the same currency it is already"""
 
 
 class JobsScraper:
@@ -41,17 +53,25 @@ class JobsScraper:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"}
         self.scraped_job_posts = {}
         self.last_request_time = -sys.float_info.max
-        self.job_data_keys = ['title', 'url', 'job_post_notice', 'job_post_description', 'employment_type', 'role',
-                              'remote', 'relocation', 'visa', 'cached_webpage_path', 'date_posted', 'valid_through',
-                              'webpage_accessed', 'company_name', 'company_description', 'company_url', 'company_size',
-                              'experience_level', 'industry', 'skills', 'job_benefits', 'equity', 'min_salary',
-                              'max_salary', 'currency', 'min_salary_'+DEST_CURRENCY, 'max_salary_'+DEST_CURRENCY,
-                              'currency_conversion_time', 'job_location']
+        self.job_data_keys = ['title', 'url', 'job_post_notice', 'job_post_description', 'employment_type',
+                              'date_posted', 'valid_through', 'experience_level', 'industry', 'skills', 'job_benefits',
+                              'company_description', 'company_name', 'company_site_url', 'company_size', 'equity',
+                              'min_salary', 'max_salary', 'currency', 'job_locations', 'min_salary_'+DEST_CURRENCY,
+                              'max_salary_'+DEST_CURRENCY, 'currency_conversion_time', 'official_job_location',
+                              'high_response_rate', 'role', 'remote', 'relocation', 'visa', 'webpage_accessed',
+                              'cached_webpage_path']
         # Current `job_id` being processed
         self.job_id = None
         # `currency_data` is a list of dicts. Each item in `currency_data` is a
         # dict with the keys ['cc', 'symbol', 'name'] where 'cc' is short for currency code
         self.currency_data = g_util.load_json(CURRENCY_FILEPATH)
+        # Load the dict of US states where the keys are the USPS 2-letter codes
+        # for the U.S. state and the values are the names
+        # e.g. 'AZ': 'Arizona'
+        self.us_states = g_util.load_json(US_STATES_FILEPATH)
+        # Reverse the dict of U.S. states to search based on the full name
+        # instead of the 2-letter codes
+        self.reversed_us_states = self.us_states.__class__(map(reversed, self.us_states.items()))
         # Cache the rates that were already used for converting one currency to another
         # Hence, we won't have to send HTTP requests to get these rates if they
         # are already cached
@@ -87,7 +107,11 @@ class JobsScraper:
         for job_id, author, url in rows:
             self.job_id = job_id
 
-            if job_id != 198845:
+            if job_id != 199111:
+                # 199422: Toronto, ON, Canada; C$
+                # 198845: Finland; Equity; €42k - 75k
+                # 199193: Irvine, CA;
+                # 199111: London, UK; £55k - 65k; High response rate
                 continue
 
             try:
@@ -152,24 +176,24 @@ class JobsScraper:
 
     def update_dict(self, updated_values):
         for key, new_value in updated_values.items():
-            msg = "Trying to update the [key, value]=[{}, {}]"
-            msg = msg.format(key, new_value)
-            self.print_log("DEBUG", msg)
+            log_msg = "Trying to update the [key, value]=[{}, {}]".format(key, new_value)
+            self.print_log("DEBUG", log_msg)
             current_value = self.scraped_job_posts[self.job_id].get(key)
-            if current_value:
-                msg = "The key={} already has a value={}. Thus the " \
-                      "new_value={} will be ignored."
-                msg = msg.format(key, current_value, new_value)
-                self.print_log("DEBUG", msg)
-                if current_value != new_value:
-                    msg = "The new_value={} is not equal to current_value={}"
-                    msg = msg.format(new_value, current_value)
-                    self.print_log("CRITICAL", msg)
-            else:
+            if current_value is None:
                 self.scraped_job_posts[self.job_id].update({key: new_value})
-                msg = "The key={} was updated with value={}"
-                msg = msg.format(key, new_value)
-                self.print_log("DEBUG", msg)
+                # Check that the key is a valid job data key
+                if self.scraped_job_posts[self.job_id][key]:
+                    log_msg = "The key={} was updated with value={}".format(key, new_value)
+                    self.print_log("DEBUG", log_msg)
+                else:
+                    self.print_log("CRITICAL", "The key={} is not a valid job data key.".format(key))
+            else:
+                log_msg = "The key={} already has a value={}. Thus the " \
+                          "new_value={} will be ignored.".format(key, current_value, new_value)
+                self.print_log("DEBUG", log_msg)
+                if current_value != new_value:
+                    log_msg = "The new_value={} is not equal to current_value={}".format(new_value, current_value)
+                    self.print_log("CRITICAL", log_msg)
 
     @staticmethod
     # Get the location data in a linked data JSON object
@@ -179,6 +203,7 @@ class JobsScraper:
             processed_locations = []
             for location in job_locations:
                 processed_locations.append({'city': location['address']['addressLocality'],
+                                            'region': location['address']['addressRegion'],
                                             'country': location['address']['addressCountry']})
             return processed_locations
         else:
@@ -265,15 +290,17 @@ class JobsScraper:
 
         # 1. Get title of job post
         pattern = "header.job-details--header > div.grid--cell > h1.fs-headline1 > a"
-        self.process_text_in_tag(bsObj, pattern, 'title')
+        self.process_text_in_tag(bsObj, pattern, key_name='title')
 
         # 2. Get company name
         pattern = "header.job-details--header > div.grid--cell > div.fc-black-700 > a"
-        self.process_text_in_tag(bsObj, pattern, 'company_name')
+        self.process_text_in_tag(bsObj, pattern, key_name='company_name')
 
         # 3. Get the office location which is located on the same line as the company name
         pattern = "header.job-details--header > div.grid--cell > div.fc-black-700 > span.fc-black-500"
-        self.process_text_in_tag(bsObj, pattern, 'job_location', self.process_location_text)
+        self.process_text_in_tag(bsObj, pattern, key_name='official_location',
+                                 process_text_method=self.process_location_text
+                                 )
 
         # 4. Get the other job data on the next line after the company name and location
         # TODO: simplify the scraping of these other job data
@@ -332,6 +359,7 @@ class JobsScraper:
         # employmentType, experienceRequirements, jobLocation
         script_tag = bsObj.find(attrs={'type': 'application/ld+json'})
         url = self.get_dict_value('url')
+        ipdb.set_trace()
         if script_tag:
             """
             The linked data found in <script type="application/ld+json"> is a json
@@ -341,6 +369,8 @@ class JobsScraper:
             'industry', 'jobBenefits', 'hiringOrganization', 'baseSalary', 'jobLocation'
             """
             linked_data = json.loads(script_tag.get_text())
+            min_salary = linked_data.get('baseSalary').get('value').get('minValue')
+            max_salary = linked_data.get('baseSalary').get('value').get('maxValue')
             updated_values = {'title': linked_data.get('title'),
                               'job_post_description': linked_data.get('description'),
                               'employment_type': linked_data.get('employmentType'),
@@ -353,11 +383,25 @@ class JobsScraper:
                               'company_description': linked_data.get('hiringOrganization').get('description'),
                               'company_name': linked_data.get('hiringOrganization').get('name'),
                               'company_site_url': linked_data.get('hiringOrganization').get('sameAs'),
-                              'min_salary': linked_data.get('baseSalary').get('value').get('minValue'),
-                              'max_salary': linked_data.get('baseSalary').get('value').get('maxValue'),
+                              'min_salary': min_salary,
+                              'max_salary': max_salary,
                               'currency': linked_data.get('baseSalary').get('currency'),
-                              'job_location': self.get_loc_in_ld(linked_data)
+                              'job_locations': self.get_loc_in_ld(linked_data)
                               }
+            # Convert the minimum and maximum salaries to DEST_CURRENCY (e.g. USD)
+            converted_salaries = {'min_salary_' + DEST_CURRENCY: None,
+                                  'max_salary_' + DEST_CURRENCY: None,
+                                  'currency_conversion_time': None
+                                  }
+            try:
+                results = self.convert_min_and_max_salaries(min_salary, max_salary)
+            except CurrencyConversionError as e:
+                self.print_log("ERROR", e)
+            except SameCurrencyError as e:
+                self.print_log("DEBUG", e)
+            else:
+                converted_salaries.update(results)
+                updated_values.update(converted_salaries)
             self.update_dict(updated_values)
             self.print_log("INFO", " The linked data from URL {} were successfully scraped".format(url))
         else:
@@ -370,26 +414,32 @@ class JobsScraper:
 
     def process_notice(self, bsObj):
         pattern = "body > div.container > div#content > aside.s-notice"
-        self.process_text_in_tag(bsObj, pattern, 'job_post_notice')
+        self.process_text_in_tag(pattern=pattern, key_name='job_post_notice', bsObj=bsObj)
 
     def process_overview_items(self, bsObj):
-        # Get job data from the Overview section. There are two places within
-        # Overview section that will be extracted for more job data:
-        # 1. in the "About this job" sub-section of Overview
-        # 2. in the "Technologies" sub-section of Overview
-        # NOTE: both sub-sections are located within <div id=""overview-items>
+        # Get job data from the Overview section. There are three places within
+        # the Overview section that will be extracted for more job data:
+        # 1. in the "High response rate" sub-section of Overview
+        # 2. in the "About this job" sub-section of Overview
+        # 3. in the "Technologies" sub-section of Overview
+        # NOTE: these sub-sections are located within <div id=""overview-items>
         # [overview-items]
         url = self.get_dict_value('url')
         convert_keys = {'job_type': 'employment_type',
                         'technologies': 'skills'}
 
-        # 1. Get more job data (e.g. role, industry, company size) in the
+        # [high_response_rate]
+        # 1. The high response rate might not be present (it isn't often we get
+        # to see this notice)
+        self.process_text_in_tag(bsObj, pattern=".-high-response > .-text > .-title", key_name='high_response_rate')
+
+        # [about_this_job]
+        # 2. Get more job data (e.g. role, industry, company size) in the
         # "About this job" section. Each item is located in
         # "#overview-items > .mb32 > .job-details--about > .grid--cell6 > .mb8"
         # NOTE: these job data are presented in two columns, with three items per column
         pattern = "#overview-items > .mb32 > .job-details--about > .grid--cell6 > .mb8"
         div_tags = bsObj.select(pattern)
-
         if div_tags:
             # Each `div_tag` corresponds to a job data item
             # e.g. Job type: Full-time, Company type: Private
@@ -405,7 +455,6 @@ class JobsScraper:
                 # Comma-separated values should be converted to a list
                 # These comma-separated values are: experience_level, role, industry
                 # e.g. Mid-Level, Senior, Lead  --> [Mid-Level, Senior, Lead]
-                ipdb.set_trace()
                 if key_name in ['experience_level', 'role', 'industry']:
                     self.print_log("DEBUG", "The value {} will be converted to a list".format(value))
                     value = self.str_to_list(value)
@@ -413,7 +462,7 @@ class JobsScraper:
                     # '1k-5k people' --> '1000-5000'
                     old_value = value
                     value = self.process_company_size(old_value)
-                    log_msg = "The company size {} was processed to {}".format(old_value, value)
+                    log_msg = "The company size '{}' was processed to '{}'".format(old_value, value)
                     self.print_log("DEBUG", log_msg)
                 self.update_dict({key_name: value})
         else:
@@ -421,27 +470,35 @@ class JobsScraper:
                       "The job data should be found in {}".format(url, pattern)
             self.print_log("ERROR", log_msg)
 
-        ipdb.set_trace()
-
-        # [overview-items]
-        # 2. Get the list of technologies, e.g. ruby, python, html5
+        # [technologies]
+        # 3. Get the list of technologies, e.g. ruby, python, html5
         # NOTE: unlike the other job data in "overview_items", the technologies
         # are given as a list
         pattern = "#overview-items > .mb32 > div > a.job-link"
         link_tags = bsObj.select(pattern)
+        skills = []
         if link_tags:
             for link_tag in link_tags:
                 technology = link_tag.text
                 if technology:
-                    pass
-                    #entries_data[job_id]["overview_items"]["technologies"].append(technology)
+                    self.print_log("DEBUG", "Skill {} extracted".format(technology))
+                    skills.append(technology)
                 else:
-                    msg = "No text found for the technology with href={}. URL @ {}".format(link_tag["href"], url)
-                    self.print_log("ERROR", msg)
+                    log_msg = "[ERROR] No text found for the technology with " \
+                              "href={}. URL @ {}".format(link_tag["href"], url)
+                    self.print_log("ERROR", log_msg)
+            if skills:
+                log_msg = "These skills {} were successfully extracted from the " \
+                          "Technologies section".format(skills)
+                self.print_log("DEBUG", log_msg)
+                self.update_dict({'skills': skills})
+            else:
+                log_msg = "No skills extracted from the Technologies section"
+                self.print_log("DEBUG", log_msg)
         else:
-            msg = "Couldn't extract technologies from the 'Technologies' section @ the URL {}. " \
-                  "The technologies should be found in {}".format(url, pattern)
-            self.print_log("ERROR", msg)
+            log_msg = "[ERROR] Couldn't extract technologies from the Technologies " \
+                      "section @ the URL {}. The technologies should be found in {}".format(url, pattern)
+            self.print_log("ERROR", log_msg)
 
     @staticmethod
     def process_company_size(company_size):
@@ -459,27 +516,89 @@ class JobsScraper:
             value = tag.text
             if value:
                 self.print_log("INFO", "The {} is found. URL @ {}".format(key_name, url))
+                # Process the text with the specified method
+                # For example, in the case of a location text, we want to
+                # standardize the country (e.g. Finland --> FI)
                 if process_text_method:
                     value = process_text_method(value)
                 self.update_dict({key_name: value})
             else:
                 self.print_log("WARNING", "The {} is empty. URL @ {}".format(key_name, url))
         else:
-            msg = "Couldn't extract the {} @ the URL {}. The {} should be found in {}".format(
-                key_name, url, key_name, pattern)
-            self.print_log("WARNING", msg)
+            log_msg = "Couldn't extract the {} @ the URL {}. The {} should be " \
+                      "found in {}".format(key_name, url, key_name, pattern)
+            self.print_log("WARNING", log_msg)
+
+    def standardize_country(self, country):
+        # Converts a country name to the alpha2 code
+        # IMPORTANT: 'UK' is not recognized by `pycountry_convert` as an alpha2 code
+        # 'United Kingdom' is associated with the 'GB' alpha2 code instead
+        if country == 'UK':
+            log_msg = "The country {} is not a recognized alpha2 code. Instead, " \
+                      "GB will be used as the alpha2 code.".format(country)
+            self.print_log("DEBUG", log_msg)
+            return 'GB'
+        try:
+            alpha2 = country_name_to_country_alpha2(country)
+        except KeyError as e:
+            # g_util.print_exception("KeyError")
+            self.print_log("ERROR", "KeyError: {}".format(e))
+            log_msg = "The country {} seems to already be in the " \
+                      "standard format".format(country)
+            self.print_log("ERROR", log_msg)
+            return None
+        else:
+            log_msg = "The country {} will be updated to the " \
+                      "standard name {}.".format(country, alpha2)
+            self.print_log("WARNING", log_msg)
+            return alpha2
+
+    def is_a_us_state(self, name):
+        if self.us_states.get(name):
+            # `name` is a U.S. state
+            return True
+        else:
+            # `name` is not a U.S. state
+            return False
 
     def process_location_text(self, text):
         # The text where you find the location looks like this:
         # '\n|\r\nNo office location                    '
         # strip() removes the first '\n' and the right spaces. Then split('\n')[-1]
         # extracts the location string
-        text = text.strip().split('|')[-1].strip()
-        if ',' in text:
-            text = dict(zip(['city', 'country'], text.split(',')))
+        updated_values = {}
+        text = text.strip().split('|')[-1].strip().replace(' ', '')
+        if text.count(',') > 2 or text.count(',') == 0:
+            self.print_log("ERROR", "Invalid location text {}".format(text))
+            return None
+        elif text.count(',') == 2:
+            # e.g. Toronto, ON, Canada
+            self.print_log("DEBUG", "Found 2 commas in the location text {}".format(text))
+            updated_values = dict(zip(['city', 'region', 'country'], text.split(',')))
+            # Standardize the country, e.g. Finland -> FI
+            std_country = self.standardize_country(updated_values['country'])
+            if std_country:
+                updated_values['country'] = std_country
         else:
-            self.print_log("DEBUG", "No country or city found in job location: {}".format(text))
-        return [text]
+            # e.g. Bellevue, WA; Helsinki, Finland
+            self.print_log("DEBUG", "Found 1 comma in the location text {}".format(text))
+            updated_values = dict(zip(['city', 'country'], text.split(',')))
+            # First check if the extracted country refers to a US state or a country
+            name = updated_values['country']
+            if self.is_a_us_state(name):
+                self.print_log("DEBUG", "The location text {} refers to a place in the US".format(text))
+                # Fix the location information: the country is wrong and the
+                # region is missing
+                updated_values['region'] = name
+                updated_values['country'] = 'US'
+                # NOTE: No need to standardize the country name (like we do in
+                # the else block) because it is already standard
+            else:
+                # Standardize the country, e.g. Finland -> FI
+                std_country = self.standardize_country(updated_values['country'])
+                if std_country:
+                    updated_values['country'] = std_country
+        return updated_values
 
     def process_salary_text(self, salary_text):
         updated_values = {}
@@ -542,31 +661,46 @@ class JobsScraper:
                                    'min_salary': min_salary,
                                    'max_salary': max_salary
                                    })
-            # Convert the salary to DEST_CURRENCY
-            if currency_code != DEST_CURRENCY:
-                self.print_log("DEBUG", "The salary {} will be converted from {} to {}".format(
-                    salary_range, currency_code, DEST_CURRENCY))
-                min_results = self.convert_currency(min_salary, currency_code, DEST_CURRENCY)
-                max_results = self.convert_currency(max_salary, currency_code, DEST_CURRENCY)
-                if min_results and max_results:
-                    min_salary_converted, timestamp = min_results
-                    max_salary_converted, _ = max_results
-                    updated_values.update({'min_salary_' + DEST_CURRENCY: min_salary_converted,
-                                           'max_salary_' + DEST_CURRENCY: max_salary_converted,
-                                           'currency_conversion_time': timestamp,
-                                           })
-                    return updated_values
-                else:
-                    return None
-            else:
-                msg = "The salary {} will not be converted to {} because it is already in the desired currency".format(
-                    salary_range, DEST_CURRENCY)
-                self.print_log("DEBUG", msg)
+            # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
+            ipdb.set_trace()
+            try:
+                results = self.convert_min_and_max_salaries(min_salary, max_salary)
+            except CurrencyConversionError as e:
+                raise CurrencyConversionError(e)
+            except SameCurrencyError:
                 return updated_values
+            else:
+                return updated_values.update(results)
         else:
             self.print_log("WARNING",
                            "No currency symbol could be retrieved from the salary text {}".format(salary_range))
             return None
+
+    def convert_min_and_max_salaries(self, min_salary, max_salary, current_currency):
+        # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
+        updated_values = {}
+        if current_currency != DEST_CURRENCY:
+            log_msg = "The min and max salaries [{}-{}] will be converted from " \
+                      "{} to {}".format(min_salary, max_salary, current_currency, DEST_CURRENCY)
+            self.print_log("DEBUG", log_msg)
+            min_results = self.convert_currency(min_salary, current_currency, DEST_CURRENCY)
+            max_results = self.convert_currency(max_salary, current_currency, DEST_CURRENCY)
+            if min_results and max_results:
+                min_salary_converted, timestamp = min_results
+                max_salary_converted, _ = max_results
+                updated_values.update({'min_salary_' + DEST_CURRENCY: min_salary_converted,
+                                       'max_salary_' + DEST_CURRENCY: max_salary_converted,
+                                       'currency_conversion_time': timestamp
+                                       })
+                return updated_values
+            else:
+                error_msg = "There were errors in converting the min and max " \
+                            "salaries {} to {}".format(min_salary, max_results, DEST_CURRENCY)
+                raise CurrencyConversionError(error_msg)
+        else:
+            error_msg = "The min and max salaries [{}-{}] are already in the " \
+                      "desired currency {}".format(min_salary, max_salary, DEST_CURRENCY)
+            raise SameCurrencyError(error_msg)
 
     # Get currency symbol located at the BEGINNING of the string, e.g. '€42k - 75k'
     def get_currency_symbol(self, text):
