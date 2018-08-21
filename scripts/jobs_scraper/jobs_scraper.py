@@ -123,7 +123,8 @@ class JobsScraper:
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
         for job_id, author, url in rows:
 
-            if job_id != [199111, 199422, 198845, 199193]:
+            #if job_id not in [199111, 199422, 198845, 199193]:
+            if job_id != 199422:
                 # 199422: Toronto, ON, Canada; C$
                 # 198845: Finland; Equity; €42k - 75k
                 # 199193: Irvine, CA;
@@ -207,6 +208,13 @@ class JobsScraper:
             if current_value is None:
                 # Check that the key is a valid job data key
                 if key in self.scraped_job_posts[self.job_id]:
+                    # Do a last-resort processing of `value` if it is a string
+                    if type(new_value) is str:
+                        if new_value[0] == ' ' or new_value[-1] == ' ':
+                            log_msg = "There is a space in the value " \
+                                      "'{}'. key={}".format(new_value, key)
+                            self.print_log("WARNING", log_msg)
+                            new_value = new_value.strip()
                     self.scraped_job_posts[self.job_id].update({key: new_value})
                     log_msg = "The key={} was updated with value={}".format(key, new_value)
                     self.print_log("DEBUG", log_msg)
@@ -217,6 +225,7 @@ class JobsScraper:
                           "new_value={} will be ignored.".format(key, current_value, new_value)
                 self.print_log("DEBUG", log_msg)
                 if current_value != new_value:
+                    ipdb.set_trace()
                     log_msg = "The new_value={} is not equal to current_value={}".format(new_value, current_value)
                     self.print_log("CRITICAL", log_msg)
 
@@ -421,9 +430,9 @@ class JobsScraper:
             try:
                 results = self.convert_min_and_max_salaries(min_salary, max_salary, currency)
             except CurrencyConversionError as e:
-                self.print_log("ERROR", e)
+                self.print_log("ERROR", e.__str__())
             except SameCurrencyError as e:
-                self.print_log("DEBUG", e)
+                self.print_log("DEBUG", e.__str__())
             else:
                 converted_salaries.update(results)
                 updated_values.update(converted_salaries)
@@ -711,7 +720,7 @@ class JobsScraper:
             converted_min_salary = self.get_dict_value('min_salary_'+DEST_CURRENCY)
             converted_max_salary = self.get_dict_value('max_salary_'+DEST_CURRENCY)
             if converted_min_salary is not None and converted_max_salary is not None:
-                error_msg = "The min and max salaries ({}-{}) were already " \
+                error_msg = "SameComputationError: The min and max salaries ({}-{}) were already " \
                             "computed from the linked data".format(min_salary, max_salary)
                 raise SameComputationError(error_msg)
             # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
@@ -725,7 +734,7 @@ class JobsScraper:
                 updated_values.update(results)
                 return updated_values
         else:
-            error_msg = "No currency symbol could be retrieved from the " \
+            error_msg = "NoCurrencySymbolError: No currency symbol could be retrieved from the " \
                         "salary text {}".format(salary_range)
             raise NoCurrencySymbolError(error_msg)
 
@@ -747,11 +756,11 @@ class JobsScraper:
                                        })
                 return updated_values
             else:
-                error_msg = "There were errors in converting the min and max " \
+                error_msg = "CurrencyConversionError: There were errors in converting the min and max " \
                             "salaries {} to {}".format(min_salary, max_results, DEST_CURRENCY)
                 raise CurrencyConversionError(error_msg)
         else:
-            error_msg = "The min and max salaries [{}-{}] are already in the " \
+            error_msg = "SameCurrencyError: The min and max salaries [{}-{}] are already in the " \
                       "desired currency {}".format(min_salary, max_salary, DEST_CURRENCY)
             raise SameCurrencyError(error_msg)
 
@@ -783,8 +792,9 @@ class JobsScraper:
         # However, C$ is already the official currency symbol for Nicaragua Cordoba (NIO)
         # Thus we will assume that C$ is related to the Canadian Dollar.
         if currency_symbol != "C$" and len(results) == 1:
-            print("[DEBUG] [{}] Found only one currency code {} associated with "
-                  "the given currency symbol {}".format(self.job_id, results[0]["cc"], currency_symbol))
+            log_msg = "[{}] Found only one currency code {} associated with the " \
+                      "given currency symbol {}".format(self.job_id, results[0]["cc"], currency_symbol)
+            self.print_log("[DEBUG]", log_msg)
             return results[0]["cc"]
         else:
             # Two possible cases
