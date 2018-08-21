@@ -13,8 +13,7 @@ import requests
 
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from js_exceptions import (CurrencyConversionError, NoCurrencySymbolError,
-                           SameCurrencyError, SameComputationError)
+import js_exceptions as js_e
 from utility import genutil as g_util
 
 
@@ -86,7 +85,6 @@ class JobsScraper:
             try:
                 rows = self.select_entries()
             except sqlite3.OperationalError as e:
-                # g_util.print_exception("sqlite3.OperationalError")
                 print("[ERROR] sqlite3.OperationalError: {}".format(e))
                 self.print_log("ERROR", "sqlite3.OperationalError: {}".format(e))
                 self.print_log("WARNING", "Web scraping will end!")
@@ -104,8 +102,12 @@ class JobsScraper:
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
         for job_id, author, url in rows:
 
-            if job_id != 199111:
+            # TODO: debug code
+            if True and job_id != 124682:
                 continue
+
+            if count == 31:
+                break
 
             try:
                 print()
@@ -148,8 +150,7 @@ class JobsScraper:
                 at_least_one_succeeded = True
                 self.print_log("INFO", "Finished Processing {}".format(url))
             except KeyError as e:
-                # g_util.print_exception("[job_id={}] KeyError")
-                self.print_log("ERROR", "KeyError: {}".format(e))
+                self.print_log("ERROR", "KeyError: {}".format(e.__str__()))
                 self.print_log("WARNING", "The current URL {} will be skipped".format(url))
                 n_skipped += 1
             finally:
@@ -314,9 +315,9 @@ class JobsScraper:
             'industry', 'jobBenefits', 'hiringOrganization', 'baseSalary', 'jobLocation'
             """
             linked_data = json.loads(script_tag.get_text())
-            min_salary = linked_data.get('baseSalary').get('value').get('minValue')
-            max_salary = linked_data.get('baseSalary').get('value').get('maxValue')
-            currency = linked_data.get('baseSalary').get('currency')
+            min_salary = linked_data.get('baseSalary', {}).get('value', {}).get('minValue')
+            max_salary = linked_data.get('baseSalary', {}).get('value', {}).get('maxValue')
+            currency = linked_data.get('baseSalary', {}).get('currency')
             updated_values = {'title': linked_data.get('title'),
                               'job_post_description': linked_data.get('description'),
                               'employment_type': linked_data.get('employmentType'),
@@ -326,9 +327,9 @@ class JobsScraper:
                               'industry': linked_data.get('industry'),
                               'skills': linked_data.get('skills'),
                               'job_benefits': linked_data.get('jobBenefits'),
-                              'company_description': linked_data.get('hiringOrganization').get('description'),
-                              'company_name': linked_data.get('hiringOrganization').get('name'),
-                              'company_site_url': linked_data.get('hiringOrganization').get('sameAs'),
+                              'company_description': linked_data.get('hiringOrganization', {}).get('description'),
+                              'company_name': linked_data.get('hiringOrganization', {}).get('name'),
+                              'company_site_url': linked_data.get('hiringOrganization', {}).get('sameAs'),
                               'min_salary': min_salary,
                               'max_salary': max_salary,
                               'currency': currency,
@@ -341,10 +342,8 @@ class JobsScraper:
                                   }
             try:
                 results = self.convert_min_and_max_salaries(min_salary, max_salary, currency)
-            except CurrencyConversionError as e:
-                self.print_log("ERROR", e.__str__())
-            except SameCurrencyError as e:
-                self.print_log("DEBUG", e.__str__())
+            except (js_e.CurrencyRateError, js_e.NoneBaseCurrencyError) as e:
+                self.print_log("ERROR", exception=e)
             else:
                 converted_salaries.update(results)
                 updated_values.update(converted_salaries)
@@ -534,13 +533,13 @@ class JobsScraper:
             if converted_min_salary is not None and converted_max_salary is not None:
                 error_msg = "SameComputationError: The min and max salaries ({}-{}) were already " \
                             "computed from the linked data".format(min_salary, max_salary)
-                raise SameComputationError(error_msg)
+                raise js_e.SameComputationError(error_msg)
             # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
             try:
                 results = self.convert_min_and_max_salaries(min_salary, max_salary, currency_code)
-            except CurrencyConversionError as e:
-                raise CurrencyConversionError(e)
-            except SameCurrencyError:
+            except js_e.CurrencyConversionError as e:
+                raise js_e.CurrencyConversionError(e)
+            except js_e.SameCurrencyError:
                 return updated_values
             else:
                 updated_values.update(results)
@@ -548,7 +547,7 @@ class JobsScraper:
         else:
             error_msg = "NoCurrencySymbolError: No currency symbol could be retrieved from the " \
                         "salary text {}".format(salary_range)
-            raise NoCurrencySymbolError(error_msg)
+            raise js_e.NoCurrencySymbolError(error_msg)
 
     def process_salary_text(self, salary_text):
         updated_values = {}
@@ -565,15 +564,12 @@ class JobsScraper:
         try:
             results = self.process_salary_range(salary_range)
         except KeyError as e:
-            # g_util.print_exception("KeyError")
             self.print_log("ERROR", "KeyError: {}".format(e))
             return None
-        except SameComputationError as e:
-            # g_util.print_exception("SameComputationError")
+        except js_e.SameComputationError as e:
             self.print_log("ERROR", "SameComputationError: {}".format(e))
             return None
-        except NoCurrencySymbolError as e:
-            # g_util.print_exception("NoCurrencySymbolError")
+        except js_e.NoCurrencySymbolError as e:
             self.print_log("ERROR", "NoCurrencySymbolError: {}".format(e))
             return None
         else:
@@ -601,7 +597,34 @@ class JobsScraper:
                       "found in {}".format(key_name, url, key_name, pattern)
             self.print_log("WARNING", log_msg)
 
+    def convert_min_and_max_salaries(self, min_salary, max_salary, current_currency):
+        # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
+        updated_values = {}
+        if current_currency != DEST_CURRENCY:
+            log_msg = "The min and max salaries [{}-{}] will be converted from " \
+                      "{} to {}".format(min_salary, max_salary, current_currency, DEST_CURRENCY)
+            self.print_log("DEBUG", log_msg)
+            try:
+                min_salary_converted, timestamp = self.convert_currency(min_salary, current_currency, DEST_CURRENCY)
+                max_salary_converted, _ = self.convert_currency(max_salary, current_currency, DEST_CURRENCY)
+            except (RatesNotAvailableError, requests.exceptions.ConnectionError) as e:
+                raise js_e.CurrencyRateError(e.__str__())
+            except js_e.NoneBaseCurrencyError as e:
+                raise js_e.NoneBaseCurrencyError(e.__str__())
+            else:
+                updated_values.update({'min_salary_' + DEST_CURRENCY: min_salary_converted,
+                                       'max_salary_' + DEST_CURRENCY: max_salary_converted,
+                                       'currency_conversion_time': timestamp
+                                       })
+                return updated_values
+        else:
+            error_msg = "SameCurrencyError: The min and max salaries [{}-{}] are already in the " \
+                      "desired currency {}".format(min_salary, max_salary, DEST_CURRENCY)
+            raise js_e.SameCurrencyError(error_msg)
+
     def convert_currency(self, amount, base_cur_code, dest_cur_code='USD'):
+        if base_cur_code is None:
+            raise js_e.NoneBaseCurrencyError("The base currency code is None")
         converted_amount = None
         try:
             # Get the rate from cache
@@ -622,17 +645,16 @@ class JobsScraper:
                 self.cached_rates['{}_{}'.format(base_cur_code, dest_cur_code)] = rate_used
             # Convert the base currency to the desired currency with the retrieved rate
             converted_amount = rate_used * amount
-        except RatesNotAvailableError:
-            # g_util.print_exception("RatesNotAvailableError")
-            self.print_log("ERROR", "RatesNotAvailableError: {}".format(e))
-            self.print_log("ERROR",
-                           "The amount {} in {} couldn't be converted to {}".format(
-                               amount, base_cur_code, dest_cur_code))
-            return None
-        except requests.exceptions.ConnectionError:
-            self.print_log("ERROR", "requests.exceptions.ConnectionError: {}".format(e))
+        except RatesNotAvailableError as e:
+            log_msg = "The amount {} in {} couldn't be converted " \
+                      "to {}".format(amount, base_cur_code, dest_cur_code)
+            self.print_log("ERROR", log_msg)
+            error_msg = "RatesNotAvailableError: {}".format(e.__str__())
+            raise RatesNotAvailableError(error_msg)
+        except requests.exceptions.ConnectionError as e:
             self.print_log("ERROR", "No connection to api.fixer.io (e.g. working offline)")
-            return None
+            error_msg = "requests.exceptions.ConnectionError: {}".format(e.__str__())
+            raise requests.exceptions.ConnectionError(error_msg)
         else:
             converted_amount = int(round(converted_amount))
             # NOTE: round(a, 2) doesn't work in python 2.7:
@@ -641,32 +663,6 @@ class JobsScraper:
             # Use the following in python2.7:
             # >> float(format(a, '.2f'))
             return converted_amount, time.time()
-
-    def convert_min_and_max_salaries(self, min_salary, max_salary, current_currency):
-        # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
-        updated_values = {}
-        if current_currency != DEST_CURRENCY:
-            log_msg = "The min and max salaries [{}-{}] will be converted from " \
-                      "{} to {}".format(min_salary, max_salary, current_currency, DEST_CURRENCY)
-            self.print_log("DEBUG", log_msg)
-            min_results = self.convert_currency(min_salary, current_currency, DEST_CURRENCY)
-            max_results = self.convert_currency(max_salary, current_currency, DEST_CURRENCY)
-            if min_results and max_results:
-                min_salary_converted, timestamp = min_results
-                max_salary_converted, _ = max_results
-                updated_values.update({'min_salary_' + DEST_CURRENCY: min_salary_converted,
-                                       'max_salary_' + DEST_CURRENCY: max_salary_converted,
-                                       'currency_conversion_time': timestamp
-                                       })
-                return updated_values
-            else:
-                error_msg = "CurrencyConversionError: There were errors in converting the min and max " \
-                            "salaries {} to {}".format(min_salary, max_results, DEST_CURRENCY)
-                raise CurrencyConversionError(error_msg)
-        else:
-            error_msg = "SameCurrencyError: The min and max salaries [{}-{}] are already in the " \
-                      "desired currency {}".format(min_salary, max_salary, DEST_CURRENCY)
-            raise SameCurrencyError(error_msg)
 
     def get_currency_code(self, currency_symbol):
         # NOTE: there is no 1-to-1 mapping when going from currency symbol
@@ -685,9 +681,9 @@ class JobsScraper:
         # assumption that '$' alone will refer to US$ since if it is in AUD or CAD, the
         # currency symbols 'A$' and 'C$' are usually used in job posts, respectively.
         if currency_symbol != "C$" and len(results) == 1:
-            log_msg = "[{}] Found only one currency code {} associated with the " \
+            log_msg = "Found only one currency code {} associated with the " \
                       "given currency symbol {}".format(self.job_id, results[0]["cc"], currency_symbol)
-            self.print_log("[DEBUG]", log_msg)
+            self.print_log("DEBUG", log_msg)
             return results[0]["cc"]
         else:
             # Two possible cases
@@ -809,7 +805,14 @@ class JobsScraper:
 
         return html
 
-    def print_log(self, level, msg, length_msg=300):
+    def print_log(self, level, msg=None, exception=None, length_msg=300):
+        if exception:
+            assert exception.__class__.__base__ is Exception, \
+                "{} is not a subclass of Exception".format(exception)
+            # TODO: catch AttributeError if __str__() and __class__ not present
+            # The log message template is "exception_name: exception_msg"
+            msg = "{}: {}".format(exception.__class__.__name__,
+                                  exception.__str__())
         if len(msg) > length_msg:
             msg = msg[:length_msg] + " [...]"
         if level != "DEBUG":
@@ -877,16 +880,18 @@ class JobsScraper:
 def main():
     if g_util.create_directory_prompt(CACHED_WEBPAGES_DIRPATH):
         print("[WARNING] The program will exit")
-        sys.exit(1)
+        return 1
 
     # Start the scraping of job posts
-    JobsScraper().start_scraping()
+    try:
+        JobsScraper().start_scraping()
+    except AssertionError as e:
+        print(e)
+        return 1
 
 
 if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt as e:
-        # g_util.print_exception("KeyboardInterrupt")
-        # print("[ERROR] KeyboardInterrupt: {}".format(e))
         pass
