@@ -123,14 +123,6 @@ class JobsScraper:
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
         for job_id, author, url in rows:
 
-            #if job_id not in [199111, 199422, 198845, 199193]:
-            if job_id != 199193:
-                # 199422: Toronto, ON, Canada; C$
-                # 198845: Finland; Equity; €42k - 75k
-                # 199193: Irvine, CA;
-                # 199111: London, UK; £55k - 65k; High response rate
-                continue
-
             try:
                 print()
                 self.print_log("INFO", "#{} Processing {}".format(count, url))
