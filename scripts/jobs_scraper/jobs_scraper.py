@@ -124,7 +124,7 @@ class JobsScraper:
         for job_id, author, url in rows:
 
             #if job_id not in [199111, 199422, 198845, 199193]:
-            if job_id != 199422:
+            if job_id != 199193:
                 # 199422: Toronto, ON, Canada; C$
                 # 198845: Finland; Equity; €42k - 75k
                 # 199193: Irvine, CA;
@@ -225,7 +225,6 @@ class JobsScraper:
                           "new_value={} will be ignored.".format(key, current_value, new_value)
                 self.print_log("DEBUG", log_msg)
                 if current_value != new_value:
-                    ipdb.set_trace()
                     log_msg = "The new_value={} is not equal to current_value={}".format(new_value, current_value)
                     self.print_log("CRITICAL", log_msg)
 
@@ -716,7 +715,6 @@ class JobsScraper:
             # Before converting the min and max salaries, check if they were already
             # computed from the linked data. We want to avoid making wasteful
             # computations when performing the currency conversions.
-            #ipdb.set_trace()
             converted_min_salary = self.get_dict_value('min_salary_'+DEST_CURRENCY)
             converted_max_salary = self.get_dict_value('max_salary_'+DEST_CURRENCY)
             if converted_min_salary is not None and converted_max_salary is not None:
@@ -791,6 +789,10 @@ class JobsScraper:
         # NOTE: C$ is used as a currency symbol for Canadian Dollar instead of $
         # However, C$ is already the official currency symbol for Nicaragua Cordoba (NIO)
         # Thus we will assume that C$ is related to the Canadian Dollar.
+        # NOTE: in stackoverflow job posts, $ alone refers to US$ but $ can refer to multiple
+        # currency codes such as ARS (Argentine peso), AUD, CAD. Thus, we will make an
+        # assumption that '$' alone will refer to US$ since if it is in AUD or CAD, the
+        # currency symbols 'A$' and 'C$' are usually used in job posts, respectively.
         if currency_symbol != "C$" and len(results) == 1:
             log_msg = "[{}] Found only one currency code {} associated with the " \
                       "given currency symbol {}".format(self.job_id, results[0]["cc"], currency_symbol)
@@ -800,14 +802,17 @@ class JobsScraper:
             # Two possible cases
             # 1. Too many currency codes associated with the given currency symbol
             # 2. It is not a valid currency symbol
-            if currency_symbol == "A$":  # Australian dollar
+            if currency_symbol == "$":  # United States dollar
+                currency_code = "USD"
+            elif currency_symbol == "A$":  # Australian dollar
                 currency_code = "AUD"
             elif currency_symbol == "C$":  # Canadian dollar
                 currency_code = "CAD"
             elif currency_symbol == "£":  # We assume £ is always associated with the British pound
                 currency_code = "GBP"  # However, it could have been EGP, FKP, GIP, ...
             else:
-                print("[ERROR] [{}] Could not get a currency code from {}".format(self.job_id, currency_symbol))
+                log_msg = "Could not get a currency code from {}".format(currency_symbol)
+                self.print_log("ERROR", log_msg)
                 return None
             return currency_code
 
