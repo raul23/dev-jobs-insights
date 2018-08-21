@@ -104,6 +104,9 @@ class JobsScraper:
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
         for job_id, author, url in rows:
 
+            if job_id != 199111:
+                continue
+
             try:
                 print()
                 self.print_log("INFO", "#{} Processing {}".format(count, url))
