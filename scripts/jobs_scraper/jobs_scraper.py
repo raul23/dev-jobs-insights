@@ -221,83 +221,20 @@ class JobsScraper:
                     self.print_log("CRITICAL", log_msg)
 
     @staticmethod
-    # Get the location data in a linked data JSON object
-    def get_loc_in_ld(linked_data):
-        job_locations = linked_data.get('jobLocation')
-        if job_locations:
-            processed_locations = []
-            for location in job_locations:
-                processed_locations.append({'city': location['address']['addressLocality'],
-                                            'region': location['address']['addressRegion'],
-                                            'country': location['address']['addressCountry']})
-            return processed_locations
-        else:
-            return None
+    def process_company_size(company_size):
+        # Example: '1k-5k people' --> '1000-5000'
+        # Replace the letter 'k' with '000'
+        company_size = company_size.replace('k', '000')
+        # Remove 'people' and remove any whitespace around the string
+        company_size = company_size.split('people')[0].strip()
+        return company_size
 
     @staticmethod
-    def get_min_max_salary(salary_range):
-        min_salary, max_salary = salary_range.replace(" ", "").split("-")
-        min_salary = int(min_salary)
-        max_salary = int(max_salary)
-        return min_salary, max_salary
-
-    def get_webpage(self, url):
-        html = None
-        current_delay = time.time() - self.last_request_time
-        diff_between_delays = current_delay - DELAY_BETWEEN_REQUESTS
-        if diff_between_delays < 0:
-            self.print_log("INFO",
-                           "Waiting {} seconds before sending next HTTP request...".format(abs(diff_between_delays)))
-            time.sleep(abs(diff_between_delays))
-            self.print_log("INFO", "Time is up! HTTP request will be sent.")
-        try:
-            req = self.session.get(url, headers=self.headers, timeout=HTTP_GET_TIMEOUT)
-            html = req.text
-        except OSError as e:
-            # g_util.print_exception("OSError")
-            self.print_log("ERROR", "OSError: {}".format(e))
-            return None
-        else:
-            if req.status_code == 404:
-                self.print_log("ERROR", "PAGE NOT FOUND. The URL {} returned a 404 status code.".format(url))
-                return None
-        self.last_request_time = time.time()
-        self.print_log("INFO", "The webpage is retrieved from {}".format(url))
-        return html
-
-    # Load the cached webpage HTML if the webpage is found locally. If it isn't found
-    # locally, then we will try to retrieve it with a GET request
-    def load_cached_webpage(self):
-        html = None
-        url = self.get_dict_value('url')
-        # Path where the cached webpage's HTML will be saved
-        filepath = os.path.join(CACHED_WEBPAGES_DIRPATH, "{}.html".format(self.job_id))
-
-        if CACHED_WEBPAGES_DIRPATH:
-            html = g_util.read_file(filepath)
-        else:
-            self.print_log("WARNING", "The caching option is disabled")
-        if html:
-            self.print_log("INFO", "The cached webpage HTML is loaded from {}".format(filepath))
-            # Update cached webpage path and its datetime modified
-            self.update_dict({'cached_webpage_path': filepath,
-                              'webpage_accessed': os.path.getmtime(filepath)})
-        else:
-            self.print_log("INFO",
-                           "Instead the webpage HTML @ {} will be retrieved with a GET request".format(url))
-            # Get the webpage HTML
-            html = self.get_webpage(url)
-            if html:
-                # Update the datetime the webpage was retrieved (though not 100% accurate)
-                self.update_dict({'webpage_accessed': time.time()})
-                if self.save_webpage_locally(url, filepath, html) == 0:
-                    # Update the path the webpage is cached
-                    self.update_dict({'cached_webpage_path': filepath})
-            else:
-                # No html retrieved at all
-                return None
-
-        return html
+    def process_employment_type(employment_type):
+        # Standardize the employment type by modifying to all caps and
+        # replacing hyphens with underscores
+        # e.g. Full-time --> FULL_TIME
+        return employment_type.upper().replace('-', '_')
 
     def process_header(self, bsObj):
         # Get more job data (e.g. salary, remote, location) from the <header>
@@ -437,6 +374,45 @@ class JobsScraper:
                       "type='application/ld+json'".format(url)
             self.print_log("WARNING", log_msg)
 
+    def process_location_text(self, text):
+        # The text where you find the location looks like this:
+        # '\n|\r\nNo office location                    '
+        # strip() removes the first '\n' and the right spaces. Then split('\n')[-1]
+        # extracts the location string
+        updated_values = {}
+        text = text.strip().split('|')[-1].strip().replace(' ', '')
+        if text.count(',') > 2 or text.count(',') == 0:
+            self.print_log("ERROR", "Invalid location text {}".format(text))
+            return None
+        elif text.count(',') == 2:
+            # e.g. Toronto, ON, Canada
+            self.print_log("DEBUG", "Found 2 commas in the location text {}".format(text))
+            updated_values = dict(zip(['city', 'region', 'country'], text.split(',')))
+            # Standardize the country, e.g. Finland -> FI
+            std_country = self.standardize_country(updated_values['country'])
+            if std_country:
+                updated_values['country'] = std_country
+        else:
+            # e.g. Bellevue, WA; Helsinki, Finland
+            self.print_log("DEBUG", "Found 1 comma in the location text {}".format(text))
+            updated_values = dict(zip(['city', 'country'], text.split(',')))
+            # First check if the extracted country refers to a US state or a country
+            name = updated_values['country']
+            if self.is_a_us_state(name):
+                self.print_log("DEBUG", "The location text {} refers to a place in the US".format(text))
+                # Fix the location information: the country is wrong and the
+                # region is missing
+                updated_values['region'] = name
+                updated_values['country'] = 'US'
+                # NOTE: No need to standardize the country name (like we do in
+                # the else block) because it is already standard
+            else:
+                # Standardize the country, e.g. Finland -> FI
+                std_country = self.standardize_country(updated_values['country'])
+                if std_country:
+                    updated_values['country'] = std_country
+        return updated_values
+
     def process_notice(self, bsObj):
         pattern = "body > div.container > div#content > aside.s-notice"
         self.process_text_in_tag(pattern=pattern, key_name='job_post_notice', bsObj=bsObj)
@@ -530,144 +506,6 @@ class JobsScraper:
                       "section @ the URL {}. The technologies should be found in {}".format(url, pattern)
             self.print_log("ERROR", log_msg)
 
-    @staticmethod
-    def process_company_size(company_size):
-        # Example: '1k-5k people' --> '1000-5000'
-        # Replace the letter 'k' with '000'
-        company_size = company_size.replace('k', '000')
-        # Remove 'people' and remove any whitespace around the string
-        company_size = company_size.split('people')[0].strip()
-        return company_size
-
-    @staticmethod
-    def process_employment_type(employment_type):
-        # Standardize the employment type by modifying to all caps and
-        # replacing hyphens with underscores
-        # e.g. Full-time --> FULL_TIME
-        return employment_type.upper().replace('-', '_')
-
-    def process_text_in_tag(self, bsObj, pattern, key_name, process_text_method=None):
-        url = self.get_dict_value('url')
-        tag = bsObj.select_one(pattern)
-        if tag:
-            value = tag.text
-            if value:
-                self.print_log("INFO", "The {} is found. URL @ {}".format(key_name, url))
-                # Process the text with the specified method
-                # For example, in the case of a location text, we want to
-                # standardize the country (e.g. Finland --> FI)
-                if process_text_method:
-                    value = process_text_method(value)
-                self.update_dict({key_name: value})
-            else:
-                self.print_log("WARNING", "The {} is empty. URL @ {}".format(key_name, url))
-        else:
-            log_msg = "Couldn't extract the {} @ the URL {}. The {} should be " \
-                      "found in {}".format(key_name, url, key_name, pattern)
-            self.print_log("WARNING", log_msg)
-
-    def standardize_country(self, country):
-        # Converts a country name to the alpha2 code
-        # IMPORTANT: 'UK' is not recognized by `pycountry_convert` as an alpha2 code
-        # 'United Kingdom' is associated with the 'GB' alpha2 code instead
-        if country == 'UK':
-            log_msg = "The country {} is not a recognized alpha2 code. Instead, " \
-                      "GB will be used as the alpha2 code.".format(country)
-            self.print_log("DEBUG", log_msg)
-            return 'GB'
-        try:
-            alpha2 = country_name_to_country_alpha2(country)
-        except KeyError as e:
-            # g_util.print_exception("KeyError")
-            self.print_log("ERROR", "KeyError: {}".format(e))
-            log_msg = "The country {} seems to already be in the " \
-                      "standard format".format(country)
-            self.print_log("ERROR", log_msg)
-            return None
-        else:
-            log_msg = "The country {} will be updated to the " \
-                      "standard name {}.".format(country, alpha2)
-            self.print_log("WARNING", log_msg)
-            return alpha2
-
-    def is_a_us_state(self, name):
-        if self.us_states.get(name):
-            # `name` is a U.S. state
-            return True
-        else:
-            # `name` is not a U.S. state
-            return False
-
-    def process_location_text(self, text):
-        # The text where you find the location looks like this:
-        # '\n|\r\nNo office location                    '
-        # strip() removes the first '\n' and the right spaces. Then split('\n')[-1]
-        # extracts the location string
-        updated_values = {}
-        text = text.strip().split('|')[-1].strip().replace(' ', '')
-        if text.count(',') > 2 or text.count(',') == 0:
-            self.print_log("ERROR", "Invalid location text {}".format(text))
-            return None
-        elif text.count(',') == 2:
-            # e.g. Toronto, ON, Canada
-            self.print_log("DEBUG", "Found 2 commas in the location text {}".format(text))
-            updated_values = dict(zip(['city', 'region', 'country'], text.split(',')))
-            # Standardize the country, e.g. Finland -> FI
-            std_country = self.standardize_country(updated_values['country'])
-            if std_country:
-                updated_values['country'] = std_country
-        else:
-            # e.g. Bellevue, WA; Helsinki, Finland
-            self.print_log("DEBUG", "Found 1 comma in the location text {}".format(text))
-            updated_values = dict(zip(['city', 'country'], text.split(',')))
-            # First check if the extracted country refers to a US state or a country
-            name = updated_values['country']
-            if self.is_a_us_state(name):
-                self.print_log("DEBUG", "The location text {} refers to a place in the US".format(text))
-                # Fix the location information: the country is wrong and the
-                # region is missing
-                updated_values['region'] = name
-                updated_values['country'] = 'US'
-                # NOTE: No need to standardize the country name (like we do in
-                # the else block) because it is already standard
-            else:
-                # Standardize the country, e.g. Finland -> FI
-                std_country = self.standardize_country(updated_values['country'])
-                if std_country:
-                    updated_values['country'] = std_country
-        return updated_values
-
-    def process_salary_text(self, salary_text):
-        updated_values = {}
-        # Check if the salary text contains 'Equity', e.g. '€42k - 75k | Equity'
-        if 'Equity' in salary_text:
-            self.print_log("DEBUG", "Equity found in the salary text {}".format(salary_text))
-            # Split the salary text to get the `salary_range` and `equity`
-            # e.g. '€42k - 75k | Equity' will be splitted as '€42k - 75k' and 'Equity'
-            salary_range, equity = [v.strip() for v in salary_text.split('|')]
-            updated_values['equity'] = equity
-        else:
-            self.print_log("DEBUG", "Equity is not found in the salary text {}".format(salary_text))
-            salary_range = salary_text
-        try:
-            results = self.process_salary_range(salary_range)
-        except KeyError as e:
-            # g_util.print_exception("KeyError")
-            self.print_log("ERROR", "KeyError: {}".format(e))
-            return None
-        except SameComputationError as e:
-            # g_util.print_exception("SameComputationError")
-            self.print_log("ERROR", "SameComputationError: {}".format(e))
-            return None
-        except NoCurrencySymbolError as e:
-            # g_util.print_exception("NoCurrencySymbolError")
-            self.print_log("ERROR", "NoCurrencySymbolError: {}".format(e))
-            return None
-        else:
-            self.print_log("DEBUG", "The salary text {} was successfully processed!")
-            updated_values.update(results)
-            return updated_values
-
     def process_salary_range(self, salary_range):
         # Dict that will be returned if everything goes right. If not, then
         # `None` will be returned
@@ -728,85 +566,56 @@ class JobsScraper:
                         "salary text {}".format(salary_range)
             raise NoCurrencySymbolError(error_msg)
 
-    def convert_min_and_max_salaries(self, min_salary, max_salary, current_currency):
-        # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
+    def process_salary_text(self, salary_text):
         updated_values = {}
-        if current_currency != DEST_CURRENCY:
-            log_msg = "The min and max salaries [{}-{}] will be converted from " \
-                      "{} to {}".format(min_salary, max_salary, current_currency, DEST_CURRENCY)
-            self.print_log("DEBUG", log_msg)
-            min_results = self.convert_currency(min_salary, current_currency, DEST_CURRENCY)
-            max_results = self.convert_currency(max_salary, current_currency, DEST_CURRENCY)
-            if min_results and max_results:
-                min_salary_converted, timestamp = min_results
-                max_salary_converted, _ = max_results
-                updated_values.update({'min_salary_' + DEST_CURRENCY: min_salary_converted,
-                                       'max_salary_' + DEST_CURRENCY: max_salary_converted,
-                                       'currency_conversion_time': timestamp
-                                       })
-                return updated_values
-            else:
-                error_msg = "CurrencyConversionError: There were errors in converting the min and max " \
-                            "salaries {} to {}".format(min_salary, max_results, DEST_CURRENCY)
-                raise CurrencyConversionError(error_msg)
+        # Check if the salary text contains 'Equity', e.g. '€42k - 75k | Equity'
+        if 'Equity' in salary_text:
+            self.print_log("DEBUG", "Equity found in the salary text {}".format(salary_text))
+            # Split the salary text to get the `salary_range` and `equity`
+            # e.g. '€42k - 75k | Equity' will be splitted as '€42k - 75k' and 'Equity'
+            salary_range, equity = [v.strip() for v in salary_text.split('|')]
+            updated_values['equity'] = equity
         else:
-            error_msg = "SameCurrencyError: The min and max salaries [{}-{}] are already in the " \
-                      "desired currency {}".format(min_salary, max_salary, DEST_CURRENCY)
-            raise SameCurrencyError(error_msg)
-
-    # Get currency symbol located at the BEGINNING of the string, e.g. '€42k - 75k'
-    def get_currency_symbol(self, text):
-        # returned value is either:
-        #   - a tuple (currency_symbol, end) or
-        #   - None
-        # NOTE: `end` refers to the position of the first number in the salary `text`
-        regex = r"^(\D+)"
-        match = re.search(regex, text)
-        if match:
-            self.print_log("DEBUG", "Found currency {} in text {}".format(match.group(), text))
-            return match.group(), match.end()
-        else:
-            self.print_log("ERROR", "No currency found in text {}".format(text))
+            self.print_log("DEBUG", "Equity is not found in the salary text {}".format(salary_text))
+            salary_range = salary_text
+        try:
+            results = self.process_salary_range(salary_range)
+        except KeyError as e:
+            # g_util.print_exception("KeyError")
+            self.print_log("ERROR", "KeyError: {}".format(e))
             return None
-
-    def get_currency_code(self, currency_symbol):
-        # NOTE: there is no 1-to-1 mapping when going from currency symbol
-        # to currency code
-        # e.g. the currency symbol £ is used for the currency codes EGP, FKP, GDP,
-        # GIP, LBP, and SHP
-        # Search into the `currency_data` list for all the currencies that have
-        # the given `currency_symbol`. Each item in `currency_data` is a dict
-        # with the keys ['cc', 'symbol', 'name'].
-        results = [item for item in self.currency_data if item["symbol"] == currency_symbol]
-        # NOTE: C$ is used as a currency symbol for Canadian Dollar instead of $
-        # However, C$ is already the official currency symbol for Nicaragua Cordoba (NIO)
-        # Thus we will assume that C$ is related to the Canadian Dollar.
-        # NOTE: in stackoverflow job posts, $ alone refers to US$ but $ can refer to multiple
-        # currency codes such as ARS (Argentine peso), AUD, CAD. Thus, we will make an
-        # assumption that '$' alone will refer to US$ since if it is in AUD or CAD, the
-        # currency symbols 'A$' and 'C$' are usually used in job posts, respectively.
-        if currency_symbol != "C$" and len(results) == 1:
-            log_msg = "[{}] Found only one currency code {} associated with the " \
-                      "given currency symbol {}".format(self.job_id, results[0]["cc"], currency_symbol)
-            self.print_log("[DEBUG]", log_msg)
-            return results[0]["cc"]
+        except SameComputationError as e:
+            # g_util.print_exception("SameComputationError")
+            self.print_log("ERROR", "SameComputationError: {}".format(e))
+            return None
+        except NoCurrencySymbolError as e:
+            # g_util.print_exception("NoCurrencySymbolError")
+            self.print_log("ERROR", "NoCurrencySymbolError: {}".format(e))
+            return None
         else:
-            # Two possible cases
-            # 1. Too many currency codes associated with the given currency symbol
-            # 2. It is not a valid currency symbol
-            if currency_symbol == "$":  # United States dollar
-                currency_code = "USD"
-            elif currency_symbol == "A$":  # Australian dollar
-                currency_code = "AUD"
-            elif currency_symbol == "C$":  # Canadian dollar
-                currency_code = "CAD"
-            elif currency_symbol == "£":  # We assume £ is always associated with the British pound
-                currency_code = "GBP"  # However, it could have been EGP, FKP, GIP, ...
+            self.print_log("DEBUG", "The salary text {} was successfully processed!")
+            updated_values.update(results)
+            return updated_values
+
+    def process_text_in_tag(self, bsObj, pattern, key_name, process_text_method=None):
+        url = self.get_dict_value('url')
+        tag = bsObj.select_one(pattern)
+        if tag:
+            value = tag.text
+            if value:
+                self.print_log("INFO", "The {} is found. URL @ {}".format(key_name, url))
+                # Process the text with the specified method
+                # For example, in the case of a location text, we want to
+                # standardize the country (e.g. Finland --> FI)
+                if process_text_method:
+                    value = process_text_method(value)
+                self.update_dict({key_name: value})
             else:
-                log_msg = "Could not get a currency code from {}".format(currency_symbol)
-                self.print_log("ERROR", log_msg)
-                return None
-            return currency_code
+                self.print_log("WARNING", "The {} is empty. URL @ {}".format(key_name, url))
+        else:
+            log_msg = "Couldn't extract the {} @ the URL {}. The {} should be " \
+                      "found in {}".format(key_name, url, key_name, pattern)
+            self.print_log("WARNING", log_msg)
 
     def convert_currency(self, amount, base_cur_code, dest_cur_code='USD'):
         converted_amount = None
@@ -849,6 +658,173 @@ class JobsScraper:
             # >> float(format(a, '.2f'))
             return converted_amount, time.time()
 
+    def convert_min_and_max_salaries(self, min_salary, max_salary, current_currency):
+        # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
+        updated_values = {}
+        if current_currency != DEST_CURRENCY:
+            log_msg = "The min and max salaries [{}-{}] will be converted from " \
+                      "{} to {}".format(min_salary, max_salary, current_currency, DEST_CURRENCY)
+            self.print_log("DEBUG", log_msg)
+            min_results = self.convert_currency(min_salary, current_currency, DEST_CURRENCY)
+            max_results = self.convert_currency(max_salary, current_currency, DEST_CURRENCY)
+            if min_results and max_results:
+                min_salary_converted, timestamp = min_results
+                max_salary_converted, _ = max_results
+                updated_values.update({'min_salary_' + DEST_CURRENCY: min_salary_converted,
+                                       'max_salary_' + DEST_CURRENCY: max_salary_converted,
+                                       'currency_conversion_time': timestamp
+                                       })
+                return updated_values
+            else:
+                error_msg = "CurrencyConversionError: There were errors in converting the min and max " \
+                            "salaries {} to {}".format(min_salary, max_results, DEST_CURRENCY)
+                raise CurrencyConversionError(error_msg)
+        else:
+            error_msg = "SameCurrencyError: The min and max salaries [{}-{}] are already in the " \
+                      "desired currency {}".format(min_salary, max_salary, DEST_CURRENCY)
+            raise SameCurrencyError(error_msg)
+
+    def get_currency_code(self, currency_symbol):
+        # NOTE: there is no 1-to-1 mapping when going from currency symbol
+        # to currency code
+        # e.g. the currency symbol £ is used for the currency codes EGP, FKP, GDP,
+        # GIP, LBP, and SHP
+        # Search into the `currency_data` list for all the currencies that have
+        # the given `currency_symbol`. Each item in `currency_data` is a dict
+        # with the keys ['cc', 'symbol', 'name'].
+        results = [item for item in self.currency_data if item["symbol"] == currency_symbol]
+        # NOTE: C$ is used as a currency symbol for Canadian Dollar instead of $
+        # However, C$ is already the official currency symbol for Nicaragua Cordoba (NIO)
+        # Thus we will assume that C$ is related to the Canadian Dollar.
+        # NOTE: in stackoverflow job posts, $ alone refers to US$ but $ can refer to multiple
+        # currency codes such as ARS (Argentine peso), AUD, CAD. Thus, we will make an
+        # assumption that '$' alone will refer to US$ since if it is in AUD or CAD, the
+        # currency symbols 'A$' and 'C$' are usually used in job posts, respectively.
+        if currency_symbol != "C$" and len(results) == 1:
+            log_msg = "[{}] Found only one currency code {} associated with the " \
+                      "given currency symbol {}".format(self.job_id, results[0]["cc"], currency_symbol)
+            self.print_log("[DEBUG]", log_msg)
+            return results[0]["cc"]
+        else:
+            # Two possible cases
+            # 1. Too many currency codes associated with the given currency symbol
+            # 2. It is not a valid currency symbol
+            if currency_symbol == "$":  # United States dollar
+                currency_code = "USD"
+            elif currency_symbol == "A$":  # Australian dollar
+                currency_code = "AUD"
+            elif currency_symbol == "C$":  # Canadian dollar
+                currency_code = "CAD"
+            elif currency_symbol == "£":  # We assume £ is always associated with the British pound
+                currency_code = "GBP"  # However, it could have been EGP, FKP, GIP, ...
+            else:
+                log_msg = "Could not get a currency code from {}".format(currency_symbol)
+                self.print_log("ERROR", log_msg)
+                return None
+            return currency_code
+
+    # Get currency symbol located at the BEGINNING of the string, e.g. '€42k - 75k'
+    def get_currency_symbol(self, text):
+        # returned value is either:
+        #   - a tuple (currency_symbol, end) or
+        #   - None
+        # NOTE: `end` refers to the position of the first number in the salary `text`
+        regex = r"^(\D+)"
+        match = re.search(regex, text)
+        if match:
+            self.print_log("DEBUG", "Found currency {} in text {}".format(match.group(), text))
+            return match.group(), match.end()
+        else:
+            self.print_log("ERROR", "No currency found in text {}".format(text))
+            return None
+
+    @staticmethod
+    # Get the location data in a linked data JSON object
+    def get_loc_in_ld(linked_data):
+        job_locations = linked_data.get('jobLocation')
+        if job_locations:
+            processed_locations = []
+            for location in job_locations:
+                processed_locations.append({'city': location['address']['addressLocality'],
+                                            'region': location['address']['addressRegion'],
+                                            'country': location['address']['addressCountry']})
+            return processed_locations
+        else:
+            return None
+
+    @staticmethod
+    def get_min_max_salary(salary_range):
+        min_salary, max_salary = salary_range.replace(" ", "").split("-")
+        min_salary = int(min_salary)
+        max_salary = int(max_salary)
+        return min_salary, max_salary
+
+    def get_webpage(self, url):
+        html = None
+        current_delay = time.time() - self.last_request_time
+        diff_between_delays = current_delay - DELAY_BETWEEN_REQUESTS
+        if diff_between_delays < 0:
+            self.print_log("INFO",
+                           "Waiting {} seconds before sending next HTTP request...".format(abs(diff_between_delays)))
+            time.sleep(abs(diff_between_delays))
+            self.print_log("INFO", "Time is up! HTTP request will be sent.")
+        try:
+            req = self.session.get(url, headers=self.headers, timeout=HTTP_GET_TIMEOUT)
+            html = req.text
+        except OSError as e:
+            # g_util.print_exception("OSError")
+            self.print_log("ERROR", "OSError: {}".format(e))
+            return None
+        else:
+            if req.status_code == 404:
+                self.print_log("ERROR", "PAGE NOT FOUND. The URL {} returned a 404 status code.".format(url))
+                return None
+        self.last_request_time = time.time()
+        self.print_log("INFO", "The webpage is retrieved from {}".format(url))
+        return html
+
+    def is_a_us_state(self, name):
+        if self.us_states.get(name):
+            # `name` is a U.S. state
+            return True
+        else:
+            # `name` is not a U.S. state
+            return False
+
+    # Load the cached webpage HTML if the webpage is found locally. If it isn't found
+    # locally, then we will try to retrieve it with a GET request
+    def load_cached_webpage(self):
+        html = None
+        url = self.get_dict_value('url')
+        # Path where the cached webpage's HTML will be saved
+        filepath = os.path.join(CACHED_WEBPAGES_DIRPATH, "{}.html".format(self.job_id))
+
+        if CACHED_WEBPAGES_DIRPATH:
+            html = g_util.read_file(filepath)
+        else:
+            self.print_log("WARNING", "The caching option is disabled")
+        if html:
+            self.print_log("INFO", "The cached webpage HTML is loaded from {}".format(filepath))
+            # Update cached webpage path and its datetime modified
+            self.update_dict({'cached_webpage_path': filepath,
+                              'webpage_accessed': os.path.getmtime(filepath)})
+        else:
+            self.print_log("INFO",
+                           "Instead the webpage HTML @ {} will be retrieved with a GET request".format(url))
+            # Get the webpage HTML
+            html = self.get_webpage(url)
+            if html:
+                # Update the datetime the webpage was retrieved (though not 100% accurate)
+                self.update_dict({'webpage_accessed': time.time()})
+                if self.save_webpage_locally(url, filepath, html) == 0:
+                    # Update the path the webpage is cached
+                    self.update_dict({'cached_webpage_path': filepath})
+            else:
+                # No html retrieved at all
+                return None
+
+        return html
+
     def print_log(self, level, msg, length_msg=300):
         if len(msg) > length_msg:
             msg = msg[:length_msg] + " [...]"
@@ -872,12 +848,6 @@ class JobsScraper:
             self.print_log("WARNING", msg)
             return 1
 
-    @staticmethod
-    def str_to_list(str_v):
-        # If string of comma-separated values (e.g. 'Architecture, Developer APIs, Healthcare'),
-        # return a list of values instead, e.g. ['Architecture', 'Developer APIs', 'Healthcare']
-        return [v.strip() for v in str_v.split(',')]
-
     def select_entries(self):
         """
         Returns all job_id, author and url from the `entries` table
@@ -888,6 +858,36 @@ class JobsScraper:
         cur = self.conn.cursor()
         cur.execute(sql)
         return cur.fetchall()
+
+    def standardize_country(self, country):
+        # Converts a country name to the alpha2 code
+        # IMPORTANT: 'UK' is not recognized by `pycountry_convert` as an alpha2 code
+        # 'United Kingdom' is associated with the 'GB' alpha2 code instead
+        if country == 'UK':
+            log_msg = "The country {} is not a recognized alpha2 code. Instead, " \
+                      "GB will be used as the alpha2 code.".format(country)
+            self.print_log("DEBUG", log_msg)
+            return 'GB'
+        try:
+            alpha2 = country_name_to_country_alpha2(country)
+        except KeyError as e:
+            # g_util.print_exception("KeyError")
+            self.print_log("ERROR", "KeyError: {}".format(e))
+            log_msg = "The country {} seems to already be in the " \
+                      "standard format".format(country)
+            self.print_log("ERROR", log_msg)
+            return None
+        else:
+            log_msg = "The country {} will be updated to the " \
+                      "standard name {}.".format(country, alpha2)
+            self.print_log("WARNING", log_msg)
+            return alpha2
+
+    @staticmethod
+    def str_to_list(str_v):
+        # If string of comma-separated values (e.g. 'Architecture, Developer APIs, Healthcare'),
+        # return a list of values instead, e.g. ['Architecture', 'Developer APIs', 'Healthcare']
+        return [v.strip() for v in str_v.split(',')]
 
 
 def main():
