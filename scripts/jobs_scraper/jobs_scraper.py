@@ -123,7 +123,7 @@ class JobsScraper:
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
         for job_id, author, url in rows:
 
-            if job_id != 199111:
+            if job_id != [199111, 199422, 198845, 199193]:
                 # 199422: Toronto, ON, Canada; C$
                 # 198845: Finland; Equity; €42k - 75k
                 # 199193: Irvine, CA;
@@ -178,6 +178,8 @@ class JobsScraper:
             finally:
                 self.print_log("INFO", "Session ending")
                 self.reset_session()
+
+        ipdb.set_trace()
 
         print()
         # Save scraped data into json file
@@ -483,10 +485,15 @@ class JobsScraper:
                     value = self.str_to_list(value)
                 elif key_name == 'company_size':
                     # '1k-5k people' --> '1000-5000'
-                    old_value = value
-                    value = self.process_company_size(old_value)
-                    log_msg = "The company size '{}' was processed to '{}'".format(old_value, value)
+                    new_value = self.process_company_size(value)
+                    log_msg = "The company size '{}' was processed to '{}'".format(value, new_value)
                     self.print_log("DEBUG", log_msg)
+                    value = new_value
+                elif key_name == 'employment_type':
+                    new_value = self.process_employment_type(value)
+                    log_msg = "The employment type '{}' was processed to '{}'".format(value, new_value)
+                    self.print_log("DEBUG", log_msg)
+                    value = new_value
                 self.update_dict({key_name: value})
         else:
             log_msg = "Couldn't extract job data from the 'About this job' section @ the URL {}. " \
@@ -531,6 +538,13 @@ class JobsScraper:
         # Remove 'people' and remove any whitespace around the string
         company_size = company_size.split('people')[0].strip()
         return company_size
+
+    @staticmethod
+    def process_employment_type(employment_type):
+        # Standardize the employment type by modifying to all caps and
+        # replacing hyphens with underscores
+        # e.g. Full-time --> FULL_TIME
+        return employment_type.upper().replace('-', '_')
 
     def process_text_in_tag(self, bsObj, pattern, key_name, process_text_method=None):
         url = self.get_dict_value('url')
