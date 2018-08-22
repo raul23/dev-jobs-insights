@@ -100,19 +100,19 @@ class JobsScraper:
         at_least_one_succeeded = False
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
-        debug1 = True
-        debug2 = False
+        debug1, debug2 = True, False  # only one job_id
+        #debug1, debug2 = False, True
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if debug1 and job_id != 196147:
+            if debug1 and job_id != 198448:
                 continue
 
-            if debug2 and count < 101:
+            if debug2 and count < 201:
                 count += 1
                 continue
 
-            if debug2 and count > 201:
+            if debug2 and count > 301:
                 break
 
             try:
@@ -199,16 +199,16 @@ class JobsScraper:
                             self.print_log("DEBUG", log_msg)
                             new_value = new_value.strip()
                     self.scraped_job_posts[self.job_id].update({key: new_value})
-                    log_msg = "The key={} was updated with value={}".format(key, new_value)
+                    log_msg = "The key='{}' was updated with value='{}'".format(key, new_value)
                     self.print_log("DEBUG", log_msg)
                 else:
                     self.print_log("CRITICAL", "The key={} is not a valid job data key.".format(key))
             else:
-                log_msg = "The key={} already has a value={}. Thus the " \
-                          "new_value={} will be ignored.".format(key, current_value, new_value)
+                log_msg = "The key='{}' already has a value='{}'. Thus the " \
+                          "new_value='{}' will be ignored.".format(key, current_value, new_value)
                 self.print_log("DEBUG", log_msg)
                 if current_value != new_value:
-                    log_msg = "The new_value={} is not equal to current_value={}".format(new_value, current_value)
+                    log_msg = "The new_value='{}' is not equal to current_value='{}'".format(new_value, current_value)
                     self.print_log("CRITICAL", log_msg)
 
     @staticmethod
@@ -904,17 +904,23 @@ class JobsScraper:
             self.print_log("DEBUG", invalid_country_log_msg.format(country, 'GB'))
             return 'GB'
         elif country == 'Deutschland':
-            # Some job posts use Deutschland as a country which is not recognized
-            # by `pycountry_convert` as a valid country name. 'Germany' associated
-            # with the 'DE' alpha2 code are used instead.
+            # 'Deutschland' (German for Germany) is not recognized by `pycountry_convert`
+            # as a valid country. 'Germany' associated with the 'DE' alpha2 code are
+            # used instead
             self.print_log("DEBUG", invalid_country_log_msg.format(country, 'DE'))
             return 'DE'
-        elif country == 'Österreich':
-            # 'Österreich' is not recognized by `pycountry_convert` as a valid
-            # country. 'Austria' associated with the 'AT' alpha2 code are
+        elif country == 'Österreich Königreich':
+            # 'Österreich' (German for Austria) is not recognized by `pycountry_convert`
+            # as a valid country. 'Austria' associated with the 'AT' alpha2 code are
             # used instead
-            self.print_log("DEBUG", invalid_country_log_msg.format(country, 'GB'))
+            self.print_log("DEBUG", invalid_country_log_msg.format(country, 'AT'))
             return 'AT'
+        elif country == 'Vereinigtes Königreich':
+            # 'Vereinigtes Königreich' (German for United Kingdom) is not recognized
+            # by `pycountry_convert` as a valid country. 'United Kingdom' associated
+            # with the 'GB' alpha2 code are used instead
+            self.print_log("DEBUG", invalid_country_log_msg.format(country, 'GB'))
+            return 'GB'
         try:
             alpha2 = country_name_to_country_alpha2(country)
         except KeyError as e:
