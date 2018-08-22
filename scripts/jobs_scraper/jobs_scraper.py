@@ -103,7 +103,7 @@ class JobsScraper:
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if True and job_id != 136072:
+            if True and job_id != 138420:
                 continue
 
             if count == 31:
@@ -157,7 +157,7 @@ class JobsScraper:
                 self.print_log("INFO", "Session ending")
                 self.reset_session()
 
-        ipdb.set_trace()
+        #ipdb.set_trace()
 
         print()
         # Save scraped data into json file
@@ -318,12 +318,17 @@ class JobsScraper:
             min_salary = linked_data.get('baseSalary', {}).get('value', {}).get('minValue')
             max_salary = linked_data.get('baseSalary', {}).get('value', {}).get('maxValue')
             currency = linked_data.get('baseSalary', {}).get('currency')
+            experience_level = linked_data.get('experienceRequirements')
+            if experience_level is not None:
+                experience_level = self.str_to_list(experience_level)
+            else:
+                self.print_log("DEBUG", "Experience level is None in linked data")
             updated_values = {'title': linked_data.get('title'),
                               'job_post_description': linked_data.get('description'),
                               'employment_type': linked_data.get('employmentType'),
                               'date_posted': linked_data.get('datePosted'),
                               'valid_through': linked_data.get('validThrough'),
-                              'experience_level': self.str_to_list(linked_data.get('experienceRequirements')),
+                              'experience_level': experience_level,
                               'industry': linked_data.get('industry'),
                               'skills': linked_data.get('skills'),
                               'job_benefits': linked_data.get('jobBenefits'),
@@ -348,7 +353,7 @@ class JobsScraper:
                 converted_salaries.update(results)
                 updated_values.update(converted_salaries)
             self.update_dict(updated_values)
-            self.print_log("INFO", " The linked data from URL {} were successfully scraped".format(url))
+            self.print_log("INFO", "The linked data from URL {} were successfully scraped".format(url))
         else:
             # Reasons for not finding <script type='application/ld+json'>:
             # maybe the page is not found anymore (e.g. job post removed) or
@@ -815,6 +820,8 @@ class JobsScraper:
         return html
 
     def print_log(self, level, msg=None, exception=None, length_msg=300):
+        # See https://stackoverflow.com/a/900413
+        caller_function_name = sys._getframe(1).f_code.co_name
         if exception:
             assert exception.__class__.__base__ is Exception, \
                 "{} is not a subclass of Exception".format(exception)
@@ -826,9 +833,9 @@ class JobsScraper:
             msg = msg[:length_msg] + " [...]"
         if level != "DEBUG":
             if self.job_id is None:
-                print("[{}] {}".format(level, msg))
+                print("[{}] [{}] {}".format(level, caller_function_name, msg))
             else:
-                print("[{}] [{}] {}".format(level, self.job_id, msg))
+                print("[{}] [{}] [{}] {}".format(level, self.job_id, caller_function_name, msg))
 
     def save_webpage_locally(self, url, filepath, html):
         if CACHED_WEBPAGES_DIRPATH:
