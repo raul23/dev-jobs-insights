@@ -103,7 +103,7 @@ class JobsScraper:
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if True and job_id != 130949:
+            if True and job_id != 136072:
                 continue
 
             if count == 31:
@@ -342,7 +342,7 @@ class JobsScraper:
                                   }
             try:
                 results = self.convert_min_and_max_salaries(min_salary, max_salary, currency)
-            except (js_e.CurrencyRateError, js_e.NoneBaseCurrencyError) as e:
+            except (js_e.CurrencyRateError, js_e.NoneBaseCurrencyError, js_e.SameCurrencyError) as e:
                 self.print_log("ERROR", exception=e)
             else:
                 converted_salaries.update(results)
