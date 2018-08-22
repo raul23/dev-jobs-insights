@@ -100,13 +100,13 @@ class JobsScraper:
         at_least_one_succeeded = False
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
-        #debug1, debug2 = True, False  # only one job_id
+        debug1, debug2 = True, False  # only one job_id
         #debug1, debug2 = False, True
-        debug1, debug2 = False, False  # ALL switched off
+        #debug1, debug2 = False, False  # ALL switched off
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if debug1 and job_id != 198798:
+            if debug1 and job_id != 199423:
                 continue
 
             if debug2 and count < 901:
@@ -225,10 +225,13 @@ class JobsScraper:
         return company_size
 
     @staticmethod
+    # Employment type = job type
     def process_employment_type(employment_type):
         # Standardize the employment type by modifying to all caps and
         # replacing hyphens with underscores
         # e.g. Full-time --> FULL_TIME
+        if employment_type == 'Contract':
+            employment_type = 'contractor'
         return employment_type.upper().replace('-', '_')
 
     def process_header(self, bsObj):
@@ -436,8 +439,6 @@ class JobsScraper:
         # NOTE: these sub-sections are located within <div id=""overview-items>
         # [overview-items]
         url = self.get_dict_value('url')
-        convert_keys = {'job_type': 'employment_type',
-                        'technologies': 'skills'}
 
         # [high_response_rate]
         # 1. The high response rate might not be present (it isn't often we get
@@ -451,6 +452,12 @@ class JobsScraper:
         # NOTE: these job data are presented in two columns, with three items per column
         pattern = "#overview-items > .mb32 > .job-details--about > .grid--cell6 > .mb8"
         div_tags = bsObj.select(pattern)
+        # Standardize the key names used in the "About this" section
+        # e.g. 'Job type' should be replaced with 'Employment type'
+        convert_keys = {'Job type': 'Employment type',
+                        'technologies': 'skills'}
+        # Prefix to add at the beginning of the log messages
+        pre = "[About this]"
         if div_tags:
             # Each `div_tag` corresponds to a job data item
             # e.g. Job type: Full-time, Company type: Private
@@ -458,38 +465,41 @@ class JobsScraper:
                 # Sample raw text: '\nJob type: \nContract\n'
                 temp = div_tag.text.strip().split(":")
                 key_name, value = temp[0].strip(), temp[1].strip()
-                # The field names should all be lowercase and spaces be replaced
-                # with underscores e.g. Job type ---> job_type
-                key_name = key_name.replace(" ", "_").lower()
                 # Convert the key name to use the standard key name
                 key_name = convert_keys.get(key_name, key_name)
+                # The key names should all be lowercase and spaces be replaced
+                # with underscores e.g. Employment type ---> employment_type
+                key_name = key_name.replace(" ", "_").lower()
                 # Comma-separated values should be converted to a list
-                # These comma-separated values are: experience_level, role, industry
+                # The keys names with comma-separated values are: experience_level, role, industry
                 # e.g. Mid-Level, Senior, Lead  --> [Mid-Level, Senior, Lead]
                 if key_name in ['experience_level', 'role', 'industry']:
-                    self.print_log("DEBUG", "The value {} will be converted to a list".format(value))
+                    self.print_log("DEBUG", "{} The value {} will be converted to a list".format(pre, value))
                     value = self.str_to_list(value)
                 elif key_name == 'company_size':
                     # '1k-5k people' --> '1000-5000'
                     new_value = self.process_company_size(value)
-                    log_msg = "The company size '{}' was processed to '{}'".format(value, new_value)
+                    log_msg = "{} The company size '{}' was processed to '{}'".format(pre, value, new_value)
                     self.print_log("DEBUG", log_msg)
                     value = new_value
                 elif key_name == 'employment_type':
                     new_value = self.process_employment_type(value)
-                    log_msg = "The employment type '{}' was processed to '{}'".format(value, new_value)
+                    log_msg = "{} The employment type '{}' was processed to '{}'".format(pre, value, new_value)
                     self.print_log("DEBUG", log_msg)
                     value = new_value
+                else:
+                    self.print_log("DEBUG", "{} No extra processing done on '{}: {}'".format(pre, key_name, value))
+                self.print_log("INFO", "{} The item '{}: {}' will be added".format(pre, key_name, value))
                 self.update_dict({key_name: value})
         else:
-            log_msg = "Couldn't extract job data from the 'About this job' section @ the URL {}. " \
-                      "The job data should be found in {}".format(url, pattern)
-            self.print_log("ERROR", log_msg)
+            log_msg = "{} Couldn't extract job data from the 'About this job' section @ the URL {}. " \
+                      "The job data should be found in {}".format(pre, url, pattern)
+            self.print_log("WARNING", log_msg)
 
         # [technologies]
         # 3. Get the list of technologies, e.g. ruby, python, html5
         # NOTE: unlike the other job data in "overview_items", the technologies
-        # are given as a list
+        # are returned as a list
         pattern = "#overview-items > .mb32 > div > a.job-link"
         link_tags = bsObj.select(pattern)
         skills = []
@@ -500,21 +510,21 @@ class JobsScraper:
                     self.print_log("DEBUG", "Skill {} extracted".format(technology))
                     skills.append(technology)
                 else:
-                    log_msg = "[ERROR] No text found for the technology with " \
+                    log_msg = "No text found for the technology with " \
                               "href={}. URL @ {}".format(link_tag["href"], url)
-                    self.print_log("ERROR", log_msg)
+                    self.print_log("WARNING", log_msg)
             if skills:
                 log_msg = "These skills {} were successfully extracted from the " \
                           "Technologies section".format(skills)
-                self.print_log("DEBUG", log_msg)
+                self.print_log("INFO", log_msg)
                 self.update_dict({'skills': skills})
             else:
                 log_msg = "No skills extracted from the Technologies section"
-                self.print_log("DEBUG", log_msg)
+                self.print_log("WARNING", log_msg)
         else:
-            log_msg = "[ERROR] Couldn't extract technologies from the Technologies " \
+            log_msg = "Couldn't extract technologies from the Technologies " \
                       "section @ the URL {}. The technologies should be found in {}".format(url, pattern)
-            self.print_log("ERROR", log_msg)
+            self.print_log("INFO", log_msg)
 
     def process_salary_range(self, salary_range):
         # Dict that will be returned if everything goes right. If not, then
