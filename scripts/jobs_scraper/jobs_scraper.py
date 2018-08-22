@@ -100,19 +100,19 @@ class JobsScraper:
         at_least_one_succeeded = False
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
-        debug1 = True
-        debug2 = False
+        debug1 = False
+        debug2 = True
         for job_id, author, url in rows:
 
             # TODO: debug code
             if debug1 and job_id != 173414:
                 continue
 
-            if debug2 and count < 31:
+            if debug2 and count < 101:
                 count += 1
                 continue
 
-            if debug2 and count > 101:
+            if debug2 and count > 201:
                 break
 
             try:
@@ -196,7 +196,7 @@ class JobsScraper:
                         if new_value[0] == ' ' or new_value[-1] == ' ':
                             log_msg = "There is a space in the value " \
                                       "'{}'. key={}".format(new_value, key)
-                            self.print_log("WARNING", log_msg)
+                            self.print_log("DEBUG", log_msg)
                             new_value = new_value.strip()
                     self.scraped_job_posts[self.job_id].update({key: new_value})
                     log_msg = "The key={} was updated with value={}".format(key, new_value)
@@ -289,7 +289,7 @@ class JobsScraper:
                                 self.print_log("DEBUG", log_msg)
                                 self.update_dict(updated_values)
                             else:
-                                self.print_log("WARNING", "Salary will be ignored")
+                                self.print_log("DEBUG", "Salary will be ignored")
                         else:
                             self.print_log("DEBUG", "Updating dict with {{{}:{}}})".format(key_name, value))
                             self.update_dict({key_name: value})
@@ -302,7 +302,7 @@ class JobsScraper:
         else:
             log_msg = "Couldn't extract the other job data @ URL {}. The other " \
                       "job data should be found in {}".format(url, pattern)
-            self.print_log("WARNING", log_msg)
+            self.print_log("INFO", log_msg)
 
     def process_linked_data(self, bsObj):
         # Get linked data from <script type="application/ld+json">:
@@ -368,7 +368,7 @@ class JobsScraper:
             # the company is not longer accepting applications
             log_msg = "The page @ URL {} doesn't contain any SCRIPT tag with " \
                       "type='application/ld+json'".format(url)
-            self.print_log("WARNING", log_msg)
+            self.print_log("INFO", log_msg)
 
     def process_location_text(self, text):
         updated_values = {}
@@ -812,7 +812,7 @@ class JobsScraper:
         if CACHED_WEBPAGES_DIRPATH:
             html = g_util.read_file(filepath)
         else:
-            self.print_log("WARNING", "The caching option is disabled")
+            self.print_log("INFO", "The caching option is disabled")
         if html:
             self.print_log("INFO", "The cached webpage HTML is loaded from {}".format(filepath))
             # Update cached webpage path and its datetime modified
@@ -860,12 +860,12 @@ class JobsScraper:
                 self.print_log("INFO", "The webpage is saved in {}. URL is {}".format(filepath, url))
                 return 0
             else:
-                self.print_log("WARNING", "The webpage @ URL {} will not be saved locally".format(url))
+                self.print_log("INFO", "The webpage @ URL {} will not be saved locally".format(url))
                 return 1
         else:
             msg = "The caching option is disabled. Thus, the webpage @ URL {} " \
                   "will not be saved locally.".format(url)
-            self.print_log("WARNING", msg)
+            self.print_log("INFO", msg)
             return 1
 
     def select_entries(self):
@@ -905,7 +905,7 @@ class JobsScraper:
         else:
             log_msg = "The country '{}' will be updated to the " \
                       "standard name '{}'.".format(country, alpha2)
-            self.print_log("WARNING", log_msg)
+            self.print_log("DEBUG", log_msg)
             return alpha2
 
     @staticmethod
