@@ -84,6 +84,19 @@ def main():
         logger.error('Scraped data could not be loaded. Program will exit.')
         sys.exit(1)
 
+    # Init list of SQL queries
+    job_posts = []
+    job_perks = []
+    job_salary = []
+    job_overview = []
+
+    ipdb.set_trace()
+
+    count = 1
+    for job_id, job_data in scraped_data.items():
+        logger.info("#{} Processing {}".format(count, job_id))
+        count += 1
+
 
 if __name__ == '__main__':
     try:
