@@ -100,12 +100,12 @@ class JobsScraper:
         at_least_one_succeeded = False
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
-        debug1 = False
-        debug2 = True
+        debug1 = True
+        debug2 = False
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if debug1 and job_id != 173414:
+            if debug1 and job_id != 190228:
                 continue
 
             if debug2 and count < 101:
@@ -117,7 +117,7 @@ class JobsScraper:
 
             try:
                 print()
-                self.print_log("INFO", "#{} Processing {}".format(count, url))
+                self.print_log("WARNING", "#{} Processing {}".format(count, url))
                 count += 1
 
                 self.init_session(job_id)
@@ -353,8 +353,10 @@ class JobsScraper:
                                   }
             try:
                 results = self.convert_min_and_max_salaries(min_salary, max_salary, currency)
-            except (js_e.CurrencyRateError, js_e.SameCurrencyError) as e:
+            except js_e.CurrencyRateError as e:
                 self.print_log("ERROR", exception=e)
+            except js_e.SameCurrencyError as e:
+                self.print_log("DEBUG", exception=e)
             except js_e.NoneBaseCurrencyError as e:
                 self.print_log("DEBUG", exception=e)
             else:
@@ -594,7 +596,7 @@ class JobsScraper:
             try:
                 results = self.process_salary_range(salary_range)
             except js_e.SameComputationError as e:
-                self.print_log("ERROR", exception=e)
+                self.print_log("DEBUG", exception=e)
                 return None
             except js_e.NoCurrencySymbolError as e:
                 self.print_log("ERROR", "NoCurrencySymbolError: {}".format(e))
@@ -625,7 +627,7 @@ class JobsScraper:
         else:
             log_msg = "Couldn't extract the {} @ the URL {}. The {} should be " \
                       "found in {}".format(key_name, url, key_name, pattern)
-            self.print_log("WARNING", log_msg)
+            self.print_log("DEBUG", log_msg)
 
     def convert_min_and_max_salaries(self, min_salary, max_salary, current_currency):
         # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
@@ -727,6 +729,11 @@ class JobsScraper:
                 currency_code = "CAD"
             elif currency_symbol == "£":  # We assume £ is always associated with the British pound
                 currency_code = "GBP"  # However, it could have been EGP, FKP, GIP, ...
+            elif currency_symbol == "kr":  # Danish krone
+                # Technically, 'kr' is a valid currency symbol for the Danish krone
+                # 'kr' is not recognized because `forex_python` uses 'Kr' as the
+                # currency symbol for the Danish krone.
+                currency_code = "DKK"
             else:
                 log_msg = "Could not get a currency code from {}".format(currency_symbol)
                 self.print_log("ERROR", log_msg)
@@ -848,7 +855,7 @@ class JobsScraper:
                                   exception.__str__())
         if len(msg) > length_msg:
             msg = msg[:length_msg] + " [...]"
-        if level != "DEBUG":
+        if level not in ["DEBUG", "INFO"]:
             if self.job_id is None:
                 print("[{}] [{}] {}".format(level, caller_function_name, msg))
             else:
