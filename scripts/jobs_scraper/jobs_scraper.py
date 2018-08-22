@@ -100,19 +100,20 @@ class JobsScraper:
         at_least_one_succeeded = False
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
-        debug1, debug2 = True, False  # only one job_id
+        #debug1, debug2 = True, False  # only one job_id
         #debug1, debug2 = False, True
+        debug1, debug2 = False, False  # ALL switched off
         for job_id, author, url in rows:
 
             # TODO: debug code
             if debug1 and job_id != 198798:
                 continue
 
-            if debug2 and count < 401:
+            if debug2 and count < 901:
                 count += 1
                 continue
 
-            if debug2 and count > 601:
+            if debug2 and count > 1001:
                 break
 
             try:
