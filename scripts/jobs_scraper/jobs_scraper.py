@@ -100,9 +100,9 @@ class JobsScraper:
         at_least_one_succeeded = False
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
-        debug1, debug2 = True, False  # only one job_id
+        #debug1, debug2 = True, False  # only one job_id
         #debug1, debug2 = False, True
-        #debug1, debug2 = False, False  # ALL switched off
+        debug1, debug2 = False, False  # ALL switched off
         for job_id, author, url in rows:
 
             # TODO: debug code
@@ -118,7 +118,7 @@ class JobsScraper:
 
             try:
                 print()
-                self.print_log("WARNING", "#{} Processing {}".format(count, url))
+                self.print_log("", "#{} Processing {}".format(count, url))
                 count += 1
 
                 self.init_session(job_id)
@@ -213,7 +213,7 @@ class JobsScraper:
                 self.print_log("DEBUG", log_msg)
                 if current_value != new_value:
                     log_msg = "The new_value='{}' is not equal to current_value='{}'".format(new_value, current_value)
-                    self.print_log("CRITICAL", log_msg)
+                    self.print_log("INFO", log_msg)
 
     @staticmethod
     def process_company_size(company_size):
