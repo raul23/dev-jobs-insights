@@ -105,7 +105,7 @@ class JobsScraper:
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if debug1 and job_id != 195244:
+            if debug1 and job_id != 196147:
                 continue
 
             if debug2 and count < 101:
@@ -898,7 +898,7 @@ class JobsScraper:
         invalid_country_log_msg = "The country '{}' is not a valid country. Instead, " \
                                   "'{}' will be used as the alpha2 code."
         if country == 'UK':
-            # IMPORTANT: 'UK' is not recognized by `pycountry_convert` as a valid
+            # UK' is not recognized by `pycountry_convert` as a valid
             # country. 'United Kingdom' associated with the 'GB' alpha2 code are
             # used instead
             self.print_log("DEBUG", invalid_country_log_msg.format(country, 'GB'))
@@ -909,6 +909,12 @@ class JobsScraper:
             # with the 'DE' alpha2 code are used instead.
             self.print_log("DEBUG", invalid_country_log_msg.format(country, 'DE'))
             return 'DE'
+        elif country == 'Österreich':
+            # 'Österreich' is not recognized by `pycountry_convert` as a valid
+            # country. 'Austria' associated with the 'AT' alpha2 code are
+            # used instead
+            self.print_log("DEBUG", invalid_country_log_msg.format(country, 'GB'))
+            return 'AT'
         try:
             alpha2 = country_name_to_country_alpha2(country)
         except KeyError as e:
