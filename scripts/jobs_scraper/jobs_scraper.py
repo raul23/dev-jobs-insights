@@ -105,14 +105,14 @@ class JobsScraper:
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if debug1 and job_id != 198448:
+            if debug1 and job_id != 198681:
                 continue
 
-            if debug2 and count < 201:
+            if debug2 and count < 301:
                 count += 1
                 continue
 
-            if debug2 and count > 301:
+            if debug2 and count > 401:
                 break
 
             try:
@@ -921,6 +921,12 @@ class JobsScraper:
             # with the 'GB' alpha2 code are used instead
             self.print_log("DEBUG", invalid_country_log_msg.format(country, 'GB'))
             return 'GB'
+        elif country == 'Schweiz':
+            # 'Schweiz' (German for Switzerland) is not recognized
+            # by `pycountry_convert` as a valid country. 'Switzerland' associated
+            # with the 'CH' alpha2 code are used instead
+            self.print_log("DEBUG", invalid_country_log_msg.format(country, 'GB'))
+            return 'CH'
         try:
             alpha2 = country_name_to_country_alpha2(country)
         except KeyError as e:
