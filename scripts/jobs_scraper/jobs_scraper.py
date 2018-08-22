@@ -100,17 +100,19 @@ class JobsScraper:
         at_least_one_succeeded = False
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
+        debug1 = True
+        debug2 = False
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if True and job_id != 174297:
+            if debug1 and job_id != 173955:
                 continue
 
-            if False and count < 31:
+            if debug2 and count < 31:
                 count += 1
                 continue
 
-            if False and count > 101:
+            if debug2 and count > 101:
                 break
 
             try:
@@ -374,8 +376,10 @@ class JobsScraper:
         # The text where you find the location looks like this:
         # '\n|\r\nNo office location                    '
         # strip() removes the first '\n' and the right spaces. Then split('\n')[-1]
-        # extracts the location string
-        text = text.strip().split('|')[-1].strip().replace(' ', '')
+        # extracts the location string. And the replace() will remove any spaces after
+        # the commas.
+        # e.g. 'Toronto, ON, Canada' --> 'Toronto,ON,Canada'
+        text = text.strip().split('|')[-1].strip().replace(', ', ',')
         if text.count(',') == 0:
             log_msg = "No commas found in location text '{}'. We will assume " \
                       "that the location text '{}' refers to a country.".format(text, text)
@@ -879,8 +883,8 @@ class JobsScraper:
         # Converts a country name to the alpha2 code
         # Do some preliminary pre-processing on `country` before calling
         # country_name_to_country_alpha2()
-        invalid_country_log_msg = "The country {} is not a valid country. Instead, " \
-                                  "{} will be used as the alpha2 code."
+        invalid_country_log_msg = "The country '{}' is not a valid country. Instead, " \
+                                  "'{}' will be used as the alpha2 code."
         if country == 'UK':
             # IMPORTANT: 'UK' is not recognized by `pycountry_convert` as a valid
             # country. 'United Kingdom' associated with the 'GB' alpha2 code are
@@ -899,8 +903,8 @@ class JobsScraper:
             self.print_log("ERROR", "KeyError: {}".format(e))
             return None
         else:
-            log_msg = "The country {} will be updated to the " \
-                      "standard name {}.".format(country, alpha2)
+            log_msg = "The country '{}' will be updated to the " \
+                      "standard name '{}'.".format(country, alpha2)
             self.print_log("WARNING", log_msg)
             return alpha2
 
