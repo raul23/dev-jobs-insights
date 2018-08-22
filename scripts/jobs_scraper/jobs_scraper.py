@@ -6,7 +6,7 @@ import sys
 import time
 
 from bs4 import BeautifulSoup
-from forex_python.converter import get_rate, RatesNotAvailableError
+from forex_python.converter import get_currency_name, get_rate, RatesNotAvailableError
 import ipdb
 from pycountry_convert import country_name_to_country_alpha2
 import requests
@@ -105,7 +105,7 @@ class JobsScraper:
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if debug1 and job_id != 190228:
+            if debug1 and job_id != 195244:
                 continue
 
             if debug2 and count < 101:
@@ -697,6 +697,10 @@ class JobsScraper:
             return converted_amount, time.time()
 
     def get_currency_code(self, currency_symbol):
+        # First check if the currency symbol is not a currency code already
+        if get_currency_name(currency_symbol):
+            self.print_log("DEBUG", "The currency symbol '{}' is actually a currency code.")
+            return currency_symbol
         # NOTE: there is no 1-to-1 mapping when going from currency symbol
         # to currency code
         # e.g. the currency symbol £ is used for the currency codes EGP, FKP, GDP,
@@ -750,7 +754,8 @@ class JobsScraper:
         match = re.search(regex, text)
         if match:
             self.print_log("DEBUG", "Found currency {} in text {}".format(match.group(), text))
-            return match.group(), match.end()
+            # Some currencies have spaces at the end, e.g. 'SGD 60k - 79k'. Thus, the strip()
+            return match.group().strip(), match.end()
         else:
             self.print_log("ERROR", "No currency found in text {}".format(text))
             return None
