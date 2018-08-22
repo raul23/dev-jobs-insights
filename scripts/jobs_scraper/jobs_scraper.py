@@ -103,7 +103,7 @@ class JobsScraper:
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if True and job_id != 124682:
+            if True and job_id != 130949:
                 continue
 
             if count == 31:
@@ -525,20 +525,20 @@ class JobsScraper:
                                    'min_salary': min_salary,
                                    'max_salary': max_salary
                                    })
-            # Before converting the min and max salaries, check if they were already
-            # computed from the linked data. We want to avoid making wasteful
-            # computations when performing the currency conversions.
-            converted_min_salary = self.get_dict_value('min_salary_'+DEST_CURRENCY)
-            converted_max_salary = self.get_dict_value('max_salary_'+DEST_CURRENCY)
-            if converted_min_salary is not None and converted_max_salary is not None:
-                error_msg = "SameComputationError: The min and max salaries ({}-{}) were already " \
+            # Before converting the min and max salaries, check if they were
+            # PREVIOUSLY computed from the linked data. We want to avoid making
+            # wasteful computations when performing the currency conversions.
+            prev_min_salary = self.get_dict_value('min_salary_'+DEST_CURRENCY)
+            prev_max_salary = self.get_dict_value('max_salary_'+DEST_CURRENCY)
+            if prev_min_salary is not None and prev_max_salary is not None:
+                error_msg = "SameComputationError: The min and max salaries ({}-{}) were previously " \
                             "computed from the linked data".format(min_salary, max_salary)
                 raise js_e.SameComputationError(error_msg)
             # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
             try:
                 results = self.convert_min_and_max_salaries(min_salary, max_salary, currency_code)
-            except js_e.CurrencyConversionError as e:
-                raise js_e.CurrencyConversionError(e)
+            except js_e.CurrencyRateError as e:
+                raise js_e.CurrencyRateError(e)
             except js_e.SameCurrencyError:
                 return updated_values
             else:
@@ -556,26 +556,35 @@ class JobsScraper:
             self.print_log("DEBUG", "Equity found in the salary text {}".format(salary_text))
             # Split the salary text to get the `salary_range` and `equity`
             # e.g. '€42k - 75k | Equity' will be splitted as '€42k - 75k' and 'Equity'
-            salary_range, equity = [v.strip() for v in salary_text.split('|')]
+            # IMPORTANT: the salary text can consist of 'Equity' only. In that
+            # case `salary` must be set to None to avoid processing the salary
+            # text any further.
+            if '|' in salary_text:
+                salary_range, equity = [v.strip() for v in salary_text.split('|')]
+            else:
+                self.print_log("DEBUG", "No salary found, only equity in '{}'".format(salary_text))
+                salary_range = None
+                equity = salary_text.strip()
             updated_values['equity'] = equity
         else:
             self.print_log("DEBUG", "Equity is not found in the salary text {}".format(salary_text))
             salary_range = salary_text
-        try:
-            results = self.process_salary_range(salary_range)
-        except KeyError as e:
-            self.print_log("ERROR", "KeyError: {}".format(e))
-            return None
-        except js_e.SameComputationError as e:
-            self.print_log("ERROR", "SameComputationError: {}".format(e))
-            return None
-        except js_e.NoCurrencySymbolError as e:
-            self.print_log("ERROR", "NoCurrencySymbolError: {}".format(e))
-            return None
-        else:
-            self.print_log("DEBUG", "The salary text {} was successfully processed!")
-            updated_values.update(results)
-            return updated_values
+        if salary_range:
+            try:
+                results = self.process_salary_range(salary_range)
+            except js_e.SameComputationError as e:
+                self.print_log("ERROR", "SameComputationError: {}".format(e))
+                return None
+            except js_e.NoCurrencySymbolError as e:
+                self.print_log("ERROR", "NoCurrencySymbolError: {}".format(e))
+                return None
+            except js_e.CurrencyRateError as e:
+                self.print_log("ERROR", "CurrencyRateError: {}".format(e))
+                return None
+            else:
+                self.print_log("DEBUG", "The salary text {} was successfully processed!")
+                updated_values.update(results)
+        return updated_values
 
     def process_text_in_tag(self, bsObj, pattern, key_name, process_text_method=None):
         url = self.get_dict_value('url')
