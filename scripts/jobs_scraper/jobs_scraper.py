@@ -106,7 +106,7 @@ class JobsScraper:
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if debug1 and job_id != 199423:
+            if debug1 and job_id != 199113:
                 continue
 
             if debug2 and count < 901:
@@ -189,7 +189,7 @@ class JobsScraper:
 
     def update_dict(self, updated_values):
         for key, new_value in updated_values.items():
-            log_msg = "Trying to update the [key, value]=[{}, {}]".format(key, new_value)
+            log_msg = "Trying to update {{key, value}}={{{}, {}}}".format(key, new_value)
             self.print_log("DEBUG", log_msg)
             current_value = self.get_dict_value(key)
             if current_value is None:
@@ -206,7 +206,7 @@ class JobsScraper:
                     log_msg = "The key='{}' was updated with value='{}'".format(key, new_value)
                     self.print_log("DEBUG", log_msg)
                 else:
-                    self.print_log("CRITICAL", "The key={} is not a valid job data key.".format(key))
+                    self.print_log("CRITICAL", "The key='{}' is not a valid job data key.".format(key))
             else:
                 log_msg = "The key='{}' already has a value='{}'. Thus the " \
                           "new_value='{}' will be ignored.".format(key, current_value, new_value)
@@ -331,20 +331,16 @@ class JobsScraper:
             min_salary = linked_data.get('baseSalary', {}).get('value', {}).get('minValue')
             max_salary = linked_data.get('baseSalary', {}).get('value', {}).get('maxValue')
             currency = linked_data.get('baseSalary', {}).get('currency')
-            experience_level = linked_data.get('experienceRequirements')
-            if experience_level is not None:
-                experience_level = self.str_to_list(experience_level)
-            else:
-                self.print_log("DEBUG", "Experience level is None in linked data")
+
             updated_values = {'title': linked_data.get('title'),
                               'job_post_description': linked_data.get('description'),
                               'employment_type': linked_data.get('employmentType'),
                               'date_posted': linked_data.get('datePosted'),
                               'valid_through': linked_data.get('validThrough'),
-                              'experience_level': experience_level,
-                              'industry': linked_data.get('industry'),
-                              'skills': linked_data.get('skills'),
-                              'job_benefits': linked_data.get('jobBenefits'),
+                              'experience_level': self.str_to_list(linked_data.get('experienceRequirements')),
+                              'industry': self.strip_list(linked_data.get('industry')),
+                              'skills': self.strip_list(linked_data.get('skills')),
+                              'job_benefits': self.strip_list(linked_data.get('jobBenefits')),
                               'company_description': linked_data.get('hiringOrganization', {}).get('description'),
                               'company_name': linked_data.get('hiringOrganization', {}).get('name'),
                               'company_site_url': linked_data.get('hiringOrganization', {}).get('sameAs'),
@@ -474,7 +470,7 @@ class JobsScraper:
                 # The keys names with comma-separated values are: experience_level, role, industry
                 # e.g. Mid-Level, Senior, Lead  --> [Mid-Level, Senior, Lead]
                 if key_name in ['experience_level', 'role', 'industry']:
-                    self.print_log("DEBUG", "{} The value {} will be converted to a list".format(pre, value))
+                    self.print_log("DEBUG", "{} The value '{}' will be converted to a list".format(pre, value))
                     value = self.str_to_list(value)
                 elif key_name == 'company_size':
                     # '1k-5k people' --> '1000-5000'
@@ -985,7 +981,16 @@ class JobsScraper:
     def str_to_list(str_v):
         # If string of comma-separated values (e.g. 'Architecture, Developer APIs, Healthcare'),
         # return a list of values instead, e.g. ['Architecture', 'Developer APIs', 'Healthcare']
-        return [v.strip() for v in str_v.split(',')]
+        items_list = None
+        if str_v is not None:
+            items_list = [v.strip() for v in str_v.split(',')]
+        return items_list
+
+    @staticmethod
+    def strip_list(items_list):
+        if items_list is not None:
+            items_list = [i.strip() for i in items_list]
+        return items_list
 
 
 def main():
