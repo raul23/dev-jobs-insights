@@ -103,10 +103,14 @@ class JobsScraper:
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if True and job_id != 138420:
+            if True and job_id != 174297:
                 continue
 
-            if count == 31:
+            if False and count < 31:
+                count += 1
+                continue
+
+            if False and count > 101:
                 break
 
             try:
@@ -157,7 +161,7 @@ class JobsScraper:
                 self.print_log("INFO", "Session ending")
                 self.reset_session()
 
-        #ipdb.set_trace()
+        ipdb.set_trace()
 
         print()
         # Save scraped data into json file
@@ -347,8 +351,10 @@ class JobsScraper:
                                   }
             try:
                 results = self.convert_min_and_max_salaries(min_salary, max_salary, currency)
-            except (js_e.CurrencyRateError, js_e.NoneBaseCurrencyError, js_e.SameCurrencyError) as e:
+            except (js_e.CurrencyRateError, js_e.SameCurrencyError) as e:
                 self.print_log("ERROR", exception=e)
+            except js_e.NoneBaseCurrencyError as e:
+                self.print_log("DEBUG", exception=e)
             else:
                 converted_salaries.update(results)
                 updated_values.update(converted_salaries)
@@ -370,25 +376,21 @@ class JobsScraper:
         # strip() removes the first '\n' and the right spaces. Then split('\n')[-1]
         # extracts the location string
         text = text.strip().split('|')[-1].strip().replace(' ', '')
-        if text.count(',') > 2 or text.count(',') == 0:
-            # Incorrect number of commas in location text
-            self.print_log("ERROR", "Invalid location text {}".format(text))
-            return None
-        elif text.count(',') == 2:
-            # Two commas in location text
-            # e.g. Toronto, ON, Canada
-            self.print_log("DEBUG", "Found 2 commas in the location text {}".format(text))
-            updated_values = dict(zip(['city', 'region', 'country'], text.split(',')))
-        else:
+        if text.count(',') == 0:
+            log_msg = "No commas found in location text '{}'. We will assume " \
+                      "that the location text '{}' refers to a country.".format(text, text)
+            self.print_log("WARNING", log_msg)
+            updated_values['country'] = text
+        elif text.count(',') == 1:
             # One comma in location text
             # Example 1: 'Bellevue, WA'
             # Example 2: 'Helsinki, Finland'
-            self.print_log("DEBUG", "Found 1 comma in the location text {}".format(text))
+            self.print_log("DEBUG", "Found 1 comma in the location text '{}'".format(text))
             updated_values = dict(zip(['city', 'country'], text.split(',')))
             # First check if the extracted country refers to a US state or a country
             name = updated_values['country']
             if self.is_a_us_state(name):
-                self.print_log("DEBUG", "The location text {} refers to a place in the US".format(text))
+                self.print_log("DEBUG", "The location text '{}' refers to a place in the US".format(text))
                 # Fix the location information: the country is wrong and the
                 # region is missing
                 updated_values['region'] = name
@@ -396,6 +398,15 @@ class JobsScraper:
                 # NOTE: No need to standardize the country name (like we do in
                 # the else block) because it is already standard
                 return updated_values
+        elif text.count(',') == 2:
+            # Two commas in location text
+            # e.g. Toronto, ON, Canada
+            self.print_log("DEBUG", "Found 2 commas in the location text '{}'".format(text))
+            updated_values = dict(zip(['city', 'region', 'country'], text.split(',')))
+        else:
+            # Incorrect number of commas in location text
+            self.print_log("ERROR", "Invalid location text '{}'. Incorrect number of commas.".format(text))
+            return None
         # Standardize the country, e.g. Finland -> FI
         std_country = self.standardize_country(updated_values['country'])
         if std_country is not None:
@@ -537,7 +548,7 @@ class JobsScraper:
             prev_min_salary = self.get_dict_value('min_salary_'+DEST_CURRENCY)
             prev_max_salary = self.get_dict_value('max_salary_'+DEST_CURRENCY)
             if prev_min_salary is not None and prev_max_salary is not None:
-                error_msg = "SameComputationError: The min and max salaries ({}-{}) were previously " \
+                error_msg = "The min and max salaries ({}-{}) were previously " \
                             "computed from the linked data".format(min_salary, max_salary)
                 raise js_e.SameComputationError(error_msg)
             # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
@@ -579,7 +590,7 @@ class JobsScraper:
             try:
                 results = self.process_salary_range(salary_range)
             except js_e.SameComputationError as e:
-                self.print_log("ERROR", "SameComputationError: {}".format(e))
+                self.print_log("ERROR", exception=e)
                 return None
             except js_e.NoCurrencySymbolError as e:
                 self.print_log("ERROR", "NoCurrencySymbolError: {}".format(e))
@@ -633,7 +644,7 @@ class JobsScraper:
                                        })
                 return updated_values
         else:
-            error_msg = "SameCurrencyError: The min and max salaries [{}-{}] are already in the " \
+            error_msg = "The min and max salaries [{}-{}] are already in the " \
                       "desired currency {}".format(min_salary, max_salary, DEST_CURRENCY)
             raise js_e.SameCurrencyError(error_msg)
 
