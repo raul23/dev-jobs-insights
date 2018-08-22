@@ -105,7 +105,7 @@ class JobsScraper:
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if debug1 and job_id != 173955:
+            if debug1 and job_id != 173414:
                 continue
 
             if debug2 and count < 31:
@@ -755,9 +755,9 @@ class JobsScraper:
         if job_locations:
             processed_locations = []
             for location in job_locations:
-                processed_locations.append({'city': location['address']['addressLocality'],
-                                            'region': location['address']['addressRegion'],
-                                            'country': location['address']['addressCountry']})
+                processed_locations.append({'city': location.get('address', {}).get('addressLocality'),
+                                            'region': location.get('address', {}).get('addressRegion'),
+                                            'country': location.get('address', {}).get('addressCountry')})
             return processed_locations
         else:
             return None
