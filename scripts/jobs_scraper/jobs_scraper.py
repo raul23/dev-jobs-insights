@@ -100,19 +100,19 @@ class JobsScraper:
         at_least_one_succeeded = False
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
-        debug1, debug2 = True, False  # only one job_id
-        #debug1, debug2 = False, True
+        #debug1, debug2 = True, False  # only one job_id
+        debug1, debug2 = False, True
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if debug1 and job_id != 198681:
+            if debug1 and job_id != 198685:
                 continue
 
-            if debug2 and count < 301:
+            if debug2 and count < 401:
                 count += 1
                 continue
 
-            if debug2 and count > 401:
+            if debug2 and count > 601:
                 break
 
             try:
@@ -182,6 +182,9 @@ class JobsScraper:
 
     def get_dict_value(self, key):
         return self.scraped_job_posts[self.job_id].get(key)
+
+    def get_country_from_dict(self):
+        return self.scraped_job_posts.get(self.job_id).get('office_location', {}).get('country')
 
     def update_dict(self, updated_values):
         for key, new_value in updated_values.items():
@@ -725,21 +728,39 @@ class JobsScraper:
             # Two possible cases
             # 1. Too many currency codes associated with the given currency symbol
             # 2. It is not a valid currency symbol
-            if currency_symbol == "$":  # United States dollar
+            if currency_symbol == "$":
+                # United States dollar
                 currency_code = "USD"
-            elif currency_symbol == "A$":  # Australian dollar
+            elif currency_symbol == "A$":
+                # Australian dollar
                 currency_code = "AUD"
-            elif currency_symbol == "C$":  # Canadian dollar
+            elif currency_symbol == "C$":
+                # Canadian dollar
                 currency_code = "CAD"
-            elif currency_symbol == "£":  # We assume £ is always associated with the British pound
-                currency_code = "GBP"  # However, it could have been EGP, FKP, GIP, ...
+            elif currency_symbol == "£":
+                # We assume £ is always associated with the British pound
+                # However, it could have been EGP, FKP, GIP, ...
+                currency_code = "GBP"
             elif currency_symbol == "kr":  # Danish krone
                 # Technically, 'kr' is a valid currency symbol for the Danish krone
                 # 'kr' is not recognized because `forex_python` uses 'Kr' as the
                 # currency symbol for the Danish krone.
                 currency_code = "DKK"
+            elif currency_symbol == "R":
+                # There are two possibilities: Russian Ruble (RUB) or South African rand (ZAR)
+                # Check the job post's country to determine which of the two
+                # currency codes to choose from
+                country = self.get_country_from_dict()
+                if country is None:
+                    log_msg = "Could not get a currency code from '{}'".format(currency_symbol)
+                    self.print_log("ERROR", log_msg)
+                    return None
+                elif country == 'ZA':
+                    currency_code = 'ZAR'
+                else:
+                    currency_code = "RUB"
             else:
-                log_msg = "Could not get a currency code from {}".format(currency_symbol)
+                log_msg = "Could not get a currency code from '{}'".format(currency_symbol)
                 self.print_log("ERROR", log_msg)
                 return None
             return currency_code
