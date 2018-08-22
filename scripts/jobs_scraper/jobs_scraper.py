@@ -363,25 +363,26 @@ class JobsScraper:
             self.print_log("WARNING", log_msg)
 
     def process_location_text(self, text):
+        updated_values = {}
+        std_country = None
         # The text where you find the location looks like this:
         # '\n|\r\nNo office location                    '
         # strip() removes the first '\n' and the right spaces. Then split('\n')[-1]
         # extracts the location string
-        updated_values = {}
         text = text.strip().split('|')[-1].strip().replace(' ', '')
         if text.count(',') > 2 or text.count(',') == 0:
+            # Incorrect number of commas in location text
             self.print_log("ERROR", "Invalid location text {}".format(text))
             return None
         elif text.count(',') == 2:
+            # Two commas in location text
             # e.g. Toronto, ON, Canada
             self.print_log("DEBUG", "Found 2 commas in the location text {}".format(text))
             updated_values = dict(zip(['city', 'region', 'country'], text.split(',')))
-            # Standardize the country, e.g. Finland -> FI
-            std_country = self.standardize_country(updated_values['country'])
-            if std_country:
-                updated_values['country'] = std_country
         else:
-            # e.g. Bellevue, WA; Helsinki, Finland
+            # One comma in location text
+            # Example 1: 'Bellevue, WA'
+            # Example 2: 'Helsinki, Finland'
             self.print_log("DEBUG", "Found 1 comma in the location text {}".format(text))
             updated_values = dict(zip(['city', 'country'], text.split(',')))
             # First check if the extracted country refers to a US state or a country
@@ -394,11 +395,11 @@ class JobsScraper:
                 updated_values['country'] = 'US'
                 # NOTE: No need to standardize the country name (like we do in
                 # the else block) because it is already standard
-            else:
-                # Standardize the country, e.g. Finland -> FI
-                std_country = self.standardize_country(updated_values['country'])
-                if std_country:
-                    updated_values['country'] = std_country
+                return updated_values
+        # Standardize the country, e.g. Finland -> FI
+        std_country = self.standardize_country(updated_values['country'])
+        if std_country is not None:
+            updated_values['country'] = std_country
         return updated_values
 
     def process_notice(self, bsObj):
@@ -822,6 +823,7 @@ class JobsScraper:
     def print_log(self, level, msg=None, exception=None, length_msg=300):
         # See https://stackoverflow.com/a/900413
         caller_function_name = sys._getframe(1).f_code.co_name
+        # caller_function_name = "test"
         if exception:
             assert exception.__class__.__base__ is Exception, \
                 "{} is not a subclass of Exception".format(exception)
@@ -864,21 +866,26 @@ class JobsScraper:
 
     def standardize_country(self, country):
         # Converts a country name to the alpha2 code
-        # IMPORTANT: 'UK' is not recognized by `pycountry_convert` as an alpha2 code
-        # 'United Kingdom' is associated with the 'GB' alpha2 code instead
+        # Do some preliminary pre-processing on `country` before calling
+        # country_name_to_country_alpha2()
+        invalid_country_log_msg = "The country {} is not a valid country. Instead, " \
+                                  "{} will be used as the alpha2 code."
         if country == 'UK':
-            log_msg = "The country {} is not a recognized alpha2 code. Instead, " \
-                      "GB will be used as the alpha2 code.".format(country)
-            self.print_log("DEBUG", log_msg)
+            # IMPORTANT: 'UK' is not recognized by `pycountry_convert` as a valid
+            # country. 'United Kingdom' associated with the 'GB' alpha2 code are
+            # used instead
+            self.print_log("DEBUG", invalid_country_log_msg.format(country, 'GB'))
             return 'GB'
+        elif country == 'Deutschland':
+            # Some job posts use Deutschland as a country which is not recognized
+            # by `pycountry_convert` as a valid country name. 'Germany' associated
+            # with the 'DE' alpha2 code are used instead.
+            self.print_log("DEBUG", invalid_country_log_msg.format(country, 'DE'))
+            return 'DE'
         try:
             alpha2 = country_name_to_country_alpha2(country)
         except KeyError as e:
-            # g_util.print_exception("KeyError")
             self.print_log("ERROR", "KeyError: {}".format(e))
-            log_msg = "The country {} seems to already be in the " \
-                      "standard format".format(country)
-            self.print_log("ERROR", log_msg)
             return None
         else:
             log_msg = "The country {} will be updated to the " \
