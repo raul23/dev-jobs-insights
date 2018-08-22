@@ -100,12 +100,12 @@ class JobsScraper:
         at_least_one_succeeded = False
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
-        #debug1, debug2 = True, False  # only one job_id
-        debug1, debug2 = False, True
+        debug1, debug2 = True, False  # only one job_id
+        #debug1, debug2 = False, True
         for job_id, author, url in rows:
 
             # TODO: debug code
-            if debug1 and job_id != 198685:
+            if debug1 and job_id != 198798:
                 continue
 
             if debug2 and count < 401:
@@ -617,6 +617,8 @@ class JobsScraper:
         tag = bsObj.select_one(pattern)
         if tag:
             value = tag.text
+            # Remove anyt white spaces around the string
+            value = value.strip()
             if value:
                 self.print_log("INFO", "The {} is found. URL @ {}".format(key_name, url))
                 # Process the text with the specified method
@@ -788,9 +790,18 @@ class JobsScraper:
         if job_locations:
             processed_locations = []
             for location in job_locations:
-                processed_locations.append({'city': location.get('address', {}).get('addressLocality'),
-                                            'region': location.get('address', {}).get('addressRegion'),
-                                            'country': location.get('address', {}).get('addressCountry')})
+                city = location.get('address', {}).get('addressLocality')
+                region = location.get('address', {}).get('addressRegion')
+                country = location.get('address', {}).get('addressCountry')
+                if city == '-':
+                    city = None
+                if region == '-':
+                    region = None
+                if country == '-':
+                    country = None
+                processed_locations.append({'city': city,
+                                            'region': region,
+                                            'country': country})
             return processed_locations
         else:
             return None
@@ -930,7 +941,7 @@ class JobsScraper:
             # used instead
             self.print_log("DEBUG", invalid_country_log_msg.format(country, 'DE'))
             return 'DE'
-        elif country == 'Österreich Königreich':
+        elif country == 'Österreich':
             # 'Österreich' (German for Austria) is not recognized by `pycountry_convert`
             # as a valid country. 'Austria' associated with the 'AT' alpha2 code are
             # used instead
