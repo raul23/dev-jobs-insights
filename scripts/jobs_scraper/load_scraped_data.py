@@ -58,7 +58,6 @@ def setup_logging(config_path):
 
 
 def main():
-    ipdb.set_trace()
     # Read yaml configuration file
     try:
         config_dict = read_yaml_config(CONFIG_FILEPATH)
@@ -78,24 +77,118 @@ def main():
 
     # Load the scraped data
     try:
-        scraped_data = gu.load_json_with_codecs(os.path.expanduser(config_dict['scraped_job_data_filepath']))
+        data_filepath = os.path.expanduser(config_dict['scraped_job_data_filepath'])
+        scraped_data = gu.load_json_with_codecs(data_filepath)
     except FileNotFoundError as e:
         logger.error(e.__str__())
         logger.error('Scraped data could not be loaded. Program will exit.')
         sys.exit(1)
 
-    # Init list of SQL queries
+    # Open connection to db
+    conn = gu.connect_db(os.path.expanduser(config_dict['db_filepath']))
+
+    # Init list of SQL queries. One list per SQL tables
     job_posts = []
-    job_perks = []
-    job_salary = []
-    job_overview = []
+    hiring_company = []
+    experience_level = []
+    industry = []
 
     ipdb.set_trace()
+
+    # Get the column names for each tables
+    # From the `job_posts` table
+    # From the `hiring_company` table
+    # From the `experience_level` table
+    # From the `role` table
+    # From the `industry` table
+    # From the `skills` table
+    # From the `job_benefits` table
+    # From the `job_salary` table
+    # From the `location` table
+
+    job_data = {
+        '1': {
+            'job_posts': {
+                'title': None,
+                'url': None,
+                'company_name': None,
+                'job_post_description': None,
+                'job_post_terminated': None,
+                'employment_type': None,
+                'equity': None,
+                'high_response_rate': None,
+                'remote': None,
+                'relocation': None,
+                'visa': None,
+                'cached_webpage_path': None,
+                'date_posted': None,
+                'valid_through': None,
+                'webpage_accessed': None
+            },
+            'hiring_company': {
+                'name': None,
+                'url': None,
+                'description': None,
+                'type': None,
+                'size': None
+            },
+            'experience_level': [],
+            'role': [],
+            'industry': [],
+            'skills': [],
+            'job_benefits': [],
+            'job_salary': [
+                {
+                    'min_salary': None,
+                    'max_salary': None,
+                    'currency': None,
+                    'conversion_time': None
+                }],
+            'job_location': [
+                {
+                    'city': None,
+                    'region': None,
+                    'country': None
+                }]
+        }
+    }
+
+    job_posts_cols = ['title', 'url', 'company_name', 'job_post_description', 'job_post_notice', 'employment_type',
+                      'equity', 'high_response_rate', 'remote', 'relocation', 'visa', 'cached_webpage_path',
+                      'date_posted', 'valid_through', 'webpage_accessed']
+    hiring_company_cols = ['company_name', 'company_site_url', 'company_description', 'company_type', 'company_size']
+    experience_level_cols = ['level']
+    role_cols = ['role']
+    industry_cols = ['name']
+    skills_cols = ['skill']
+    job_benefits_cols = ['name']
+    job_salary_cols = ['min_salary', 'max_salary', 'currency', 'currency_conversion_time']
+    location_cols = ['city', 'region', 'country']
 
     count = 1
     for job_id, job_data in scraped_data.items():
         logger.info("#{} Processing {}".format(count, job_id))
         count += 1
+
+        ipdb.set_trace()
+
+        # Get all the required values for populating the `job_posts` table
+        job_post_values = [job_id]
+        for col in job_posts_cols:
+            value = job_data[col]
+            job_post_values.append(value)
+
+        ipdb.set_trace()
+
+        # Get all the required values for populating the `hiring_company` table
+        hiring_company_values = [job_id]
+        for col in hiring_company:
+            value = job_data[col]
+            hiring_company_values.append(value)
+
+    # Execute the bulk of SQL queries
+    with conn:
+        pass
 
 
 if __name__ == '__main__':

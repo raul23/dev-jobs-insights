@@ -4,7 +4,7 @@
 
 -- Feeds
 create table feeds (
-        feed_id             integer primary key,
+        feed_id             integer primary key not null,
 		name		        text not null,
 		title		        text,
 		updated		        datetime
@@ -16,7 +16,7 @@ create table entries (
 		job_id			    integer primary key not null,
 		feed_name		    text not null,
 		title 			    text,
-		author              text,
+		author              text,  -- company name
 		url				    text,
 		summary             text,
 		published		    datetime,
@@ -32,67 +32,80 @@ create table tags (
 
 -- Job posts
 create table job_posts (
-        job_id			    integer primary key not null references entries(job_id),
-		title               text, -- unlike entries(title), no company name and location
-		company_name		text, -- same entries(author)
-		url 				text,
-		job_post_notice     text,
-		description         text, -- job post description
-		employment_type     text,
-		remote              text,
-		relocation          text,
-		visa                text,
-		cached_webpage_path text, -- file path of job post's cached webpage
-        date_posted         date,
-		valid_through       date,
-		webpage_accessed    date
+        job_id			        integer primary key not null references entries(job_id),
+		title                   text,
+		url 				    text, -- job post's URL
+		company_name		    text,
+		employment_type         text, -- e.g. FULL_TIME
+		job_post_description    text,
+		job_post_terminated     boolean, -- True if job post not accepting job applications anymore
+		equity                  boolean, -- True if there is equity involved
+		remote                  text,
+		relocation              text,
+		visa                    text,
+		cached_webpage_path     text, -- file path of job post's cached webpage
+        date_posted             date,  -- YYYY-MM-DD
+		valid_through           date,  -- YYYY-MM-DD
+		webpage_accessed        datetime -- YYYY-MM-DD HH:MM:SS-HH:MM
 );
 
 create table hiring_company (
-        job_id				integer not null references entries(job_id),
-        description         text,
-        name                text,
+        job_id				integer primary key not null references entries(job_id),
+        name                text, -- company name
         url                 text, -- company site URL
-        size                integer -- company size (number of people)
+        description         text, -- company description
+        type                text, -- company type, e.g. VC or private
+        size                integer, -- company size (number of people)
+        high_response_rate  boolean -- True if company has high response rate
 );
 
 create table experience_level (
-		job_id				integer not null references job_posts(job_id),
-		level			    text not null,
-		primary key(job_id, exp_level)
+		job_id				integer not null references entries(job_id),
+		level			    text not null, -- experience level, e.g. senior, junior
+		primary key(job_id, level)
+);
+
+create table role (
+		job_id				integer not null references entries(job_id),
+		name			    text not null, -- name of the job role, e.g. Manager
+		primary key(job_id, name)
 );
 
 create table industry (
-		job_id				integer not null references job_posts(job_id),
-		name    			text not null,
+		job_id				integer not null references entries(job_id),
+		name    			text not null, -- e.g Entertainment
 		primary key(job_id, name)
 );
 
 
 -- TODO: check if skills = tags = technologies? If yes, then this table might be redundant
 create table skills (
-		job_id				integer not null references job_posts(job_id),
+		job_id				integer not null references entries(job_id),
 		skill				text not null,
 		primary key(job_id, skill)
 );
 
 create table job_benefits (
-		job_id				integer not null references job_posts(job_id),
+		job_id				integer not null references entries(job_id),
 		name				text not null,
 		primary key(job_id, name)
 );
 
 create table job_salary (
-		job_id				integer primary key not null references job_posts(job_id),
+        job_salary_id       integer primary key,
+		job_id				integer not null,
 		min_salary          integer not null,
 		max_salary          integer not null,
-		currency            text not null
+		currency            text not null,
+		conversion_time     datetime, -- currency conversion time YYYY-MM-DD HH:MM:SS-HH:MM
+		foreign key(job_id) references entries(job_id)
 );
 
--- TODO: check if only one location per job post
-create table location (
-        loc_id              integer primary key,
-		job_id				integer not null references job_posts(job_id),
-		city                text not null,
-		country				text not null
+create table job_location (
+        loc_id              integer primary key,  -- auto-increment by SQLite
+		job_id				integer not null,
+		city                text,
+		region              text, -- region = province, e.g. Ontario
+		country				text not null,
+		foreign key(job_id) references entries(job_id)
 );
