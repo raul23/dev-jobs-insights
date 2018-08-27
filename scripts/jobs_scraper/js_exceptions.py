@@ -53,3 +53,8 @@ class EmptyQueryResultSetError(Exception):
 
 class NoJobLocationError(Exception):
     """Raised when no job location is found in the JSON linkded data."""
+
+
+class InvalidLocationTextError(Exception):
+    """Raised when the location text is invalid because no country, region, and
+    city could be extracted from it."""
