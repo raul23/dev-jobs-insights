@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, CHAR, Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 
 
@@ -36,7 +36,7 @@ class AbstractTable:
 # added. `JobPost` needs the `company_id` when being added to the db.
 class Company(Base, AbstractTable):
     __tablename__ = 'companies'
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String(250), nullable=False)
     url = Column(String(250))
     description = Column(Text)  # company description
@@ -53,7 +53,7 @@ class JobPost(Base, AbstractTable):
     title = Column(String(250), nullable=False)
     url = Column(String(250), nullable=False)
     employment_type = Column(String(250))
-    job_post_description = Column(Text)
+    job_post_description = Column(Text, nullable=False)
     # `job_post_terminated` = True if the company is not accepting job
     # applications anymore
     job_post_terminated = Column(Boolean, default=False)
@@ -64,19 +64,19 @@ class JobPost(Base, AbstractTable):
     remote = Column(String(250))
     relocation = Column(String(250))
     visa = Column(String(250))
-    cached_webpage_filepath = Column(String(250))
-    # `webpage_accessed` makes use of the date format YYYY-MM-DD HH:MM:SS-HH:MM
-    webpage_accessed = Column(DateTime, nullable=False)
-    # `data_posted` makes use of the date format YYYY-MM-DD
+    cached_webpage_filepath = Column(Text)
+    # Date format YYYY-MM-DD
     date_posted = Column(Date)
-    # `valid_through` makes use of the date format YYYY-MM-DD
+    # Date format YYYY-MM-DD
     valid_through = Column(Date)
+    # Datetime format YYYY-MM-DD HH:MM:SS-HH:MM
+    webpage_accessed = Column(DateTime)
 
 
 class ExperienceLevel(Base, AbstractTable):
     __tablename__ = 'experience_levels'
     job_post_id = Column(Integer, ForeignKey('job_posts.id'), primary_key=True)
-    name = Column(String(250), primary_key=True)   # name of experience level
+    name = Column(String(250), primary_key=True)  # name of experience level
 
 
 class Industry(Base, AbstractTable):
@@ -106,7 +106,7 @@ class JobSalary(Base, AbstractTable):
     job_post_id = Column(Integer, ForeignKey('job_posts.id'))
     min_salary = Column(Integer, nullable=False)
     max_salary = Column(Integer, nullable=False)
-    currency = Column(Integer, nullable=False)
+    currency = Column(CHAR, nullable=False)
     conversion_time = Column(DateTime)
 
     def __str__(self):

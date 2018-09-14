@@ -27,8 +27,6 @@ else:
 
 
 # TODO: these functions will be in gentuil (might replace those already there)
-
-
 def load_yaml(f):
     try:
         return yaml.load(f)
@@ -58,12 +56,13 @@ def setup_logging(config_path):
 
 
 def main():
+    ipdb.set_trace()
     # Read yaml configuration file
     try:
         config_dict = read_yaml_config(CONFIG_FILEPATH)
     except OSError as e:
         logger.error(e.__str__())
-        logger.error("Configuration file '{}' could be read. "
+        logger.error("Configuration file '{}' couldn't be read. "
                      "Program will exit.".format(CONFIG_FILEPATH))
         sys.exit(1)
 
@@ -105,53 +104,6 @@ def main():
     # From the `job_benefits` table
     # From the `job_salary` table
     # From the `location` table
-
-    job_data = {
-        '1': {
-            'job_posts': {
-                'title': None,
-                'url': None,
-                'company_name': None,
-                'job_post_description': None,
-                'job_post_terminated': None,
-                'employment_type': None,
-                'equity': None,
-                'high_response_rate': None,
-                'remote': None,
-                'relocation': None,
-                'visa': None,
-                'cached_webpage_path': None,
-                'date_posted': None,
-                'valid_through': None,
-                'webpage_accessed': None
-            },
-            'hiring_company': {
-                'name': None,
-                'url': None,
-                'description': None,
-                'type': None,
-                'size': None
-            },
-            'experience_level': [],
-            'role': [],
-            'industry': [],
-            'skills': [],
-            'job_benefits': [],
-            'job_salary': [
-                {
-                    'min_salary': None,
-                    'max_salary': None,
-                    'currency': None,
-                    'conversion_time': None
-                }],
-            'job_location': [
-                {
-                    'city': None,
-                    'region': None,
-                    'country': None
-                }]
-        }
-    }
 
     job_posts_cols = ['title', 'url', 'company_name', 'job_post_description', 'job_post_notice', 'employment_type',
                       'equity', 'high_response_rate', 'remote', 'relocation', 'visa', 'cached_webpage_path',
