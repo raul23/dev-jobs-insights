@@ -14,6 +14,14 @@ class NoCurrencySymbolError(Exception):
      the beginning."""
 
 
+class InvalidCountryError(Exception):
+    """Raised when a country couldn't be recognized as valid."""
+
+
+class NoCurrencyCodeError(Exception):
+    """Raised when a currency code couldn't be retrieved from  currency symbol."""
+
+
 class SameCurrencyError(Exception):
     """Raised when the specified base and destination currencies are the same,
     i.e. an amount is being converted to the same currency it is already"""
@@ -58,3 +66,14 @@ class NoJobLocationError(Exception):
 class InvalidLocationTextError(Exception):
     """Raised when the location text is invalid because no country, region, and
     city could be extracted from it."""
+
+
+class NoCompanySizeError(Exception):
+    """Raised when neither a minimum nor a maximum size could be retrieved from
+    the company size."""
+
+
+class InvalidCompanySizeError(Exception):
+    """Raised when an invalid company size is found, i.e. more than two numbers
+    is being extracted from the company size. There should be at most two
+    numbers found in the company size (min and max company sizes)."""

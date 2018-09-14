@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 import json
 import os
 import re
@@ -15,7 +15,7 @@ import ipdb
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects/dev_jobs_insights/database"))
-from job_post_data import JobPostData
+from job_data import JobData
 import js_exceptions as js_e
 from scraping_session import ScrapingSession
 from tables import ValueOverrideError
@@ -26,9 +26,10 @@ DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
 # NOTE: if `CACHED_WEBPAGES_DIRPATH` is None, then the webpages will not be cached
 # The webpages will then be retrieved from the internet.
 CACHED_WEBPAGES_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/cache/webpages/stackoverflow_job_posts/")
-SCRAPED_JOB_DATA_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/scraped_job_data.json")
+SCRAPED_JOB_DATA_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/")
 CURRENCY_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/currencies.json")
 US_STATES_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/us_states.json")
+REVERSED_US_STATES_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/reversed_us_states.json")
 DELAY_BETWEEN_REQUESTS = 2
 HTTP_GET_TIMEOUT = 5
 # TODO: debug code
@@ -51,7 +52,8 @@ class JobsScraper:
             "Accept": "text/html,application/xhtml+xml,application/xml;"
                       "q=0.9,image/webp,*/*;q=0.8"
         }
-        self.scraped_job_posts = {}
+        self.all_sessions = {}
+        self.json_job_data = {}
         self.last_request_time = -sys.float_info.max
         # `currency_data` is a list of dicts. Each item in `currency_data` is a
         # dict with the keys ['cc', 'symbol', 'name'] where 'cc' is short for
@@ -61,12 +63,8 @@ class JobsScraper:
         # for the U.S. state and the values are the names
         # e.g. 'AZ': 'Arizona'
         self.us_states = g_util.load_json(US_STATES_FILEPATH)
-        # Reverse the dict of U.S. states to search based on the full name
-        # instead of the 2-letter codes
-        # TODO: save the reversed US states in a JSON file and load it here,
-        # like you did with `us_states`
-        self.reversed_us_states \
-            = self.us_states.__class__(map(reversed, self.us_states.items()))
+        # Same as `us_states` but the keys and values are swapped
+        self.reversed_us_states = g_util.load_json(REVERSED_US_STATES_FILEPATH)
         # Cache the rates that were already used for converting one currency to
         # another. Hence, we won't have to send HTTP requests to get these rates
         # if they are already cached
@@ -99,15 +97,19 @@ class JobsScraper:
         count = 1
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
-        for job_id, author, url in rows:
-
+        # TODO: change `job_id` to `job_post_id` everywhere
+        for job_post_id, author, url in rows:
+            #if job_post_id != 199442:
+            #    continue
             try:
+                # TODO: add timing for each important computatin parts
                 print()
                 self.print_log("", "#{} Processing {}".format(count, url))
                 count += 1
 
                 # Initialize the current scraping session
-                self.session = ScrapingSession(job_id, url=url, data=JobPostData())
+                self.session = ScrapingSession(job_post_id, url=url,
+                                               data=JobData(job_post_id))
                 self.print_log("INFO", "Scraping session initialized")
                 # Update the job post's URL
                 self.session.data.set_job_post(url=url)
@@ -117,18 +119,38 @@ class JobsScraper:
                     html = self.load_cached_webpage()
                 except js_e.WebPageNotFoundError as e:
                     self.print_log("ERROR", exception=e)
-                    self.print_log("CRITICAL", "The current URL {} will be skipped.".format(url))
+                    self.print_log("CRITICAL",
+                                   "The current URL {} will be "
+                                   "skipped.".format(url))
                     continue
 
                 self.session.bs_obj = BeautifulSoup(html, 'lxml')
 
-                # Before extracting any job data from the job post, check if the job is
-                # accepting applications by extracting the message
+                # Before extracting any job data, check if the job post had
+                # been removed. We check this situation if there is no title
+                # in the job post.
+                pattern = "header.job-details--header > div.grid--cell > " \
+                          "h1.fs-headline1 > a"
+                try:
+                    self.get_text_in_tag(pattern=pattern)
+                except js_e.EmptyTextError as e:
+                    # TODO: if the text within the "h1.fs-headline1 > a"tag is
+                    # empty, should we consider the job post as removed, or
+                    # should we continue
+                    self.print_log("ERROR", exception=e)
+                except js_e.TagNotFoundError as e:
+                    self.print_log("WARNING", "Job post removed!")
+                    self.session.data.set_job_post(job_post_removed=True)
+                    continue
+
+                # Check if the job is accepting applications by extracting the
+                # message:
                 # "This job is no longer accepting applications."
                 # This notice is located in
                 # body > div.container > div#content > aside.s-notice
-                # NOTE: Usually when this notice is present in a job post, the json job
-                # data is not found anymore within the html of the job post
+                # NOTE: Usually when this notice is present in a job post, the
+                # json job data is not found anymore within the html of the job
+                # post
                 self.process_notice()
 
                 # Get linked data from <script type="application/ld+json">
@@ -143,74 +165,84 @@ class JobsScraper:
                 self.print_log("INFO", "Finished Processing {}".format(url))
             except KeyError as e:
                 self.print_log("ERROR", "KeyError: {}".format(e.__str__()))
-                self.print_log("WARNING", "The current URL {} will be skipped".format(url))
+                self.print_log("WARNING",
+                               "The current URL {} will be skipped".format(url))
                 n_skipped += 1
-            else:
-                # TODO: save some things
-                pass
             finally:
+                # Save the current session
+                json_data = self.session.data.get_json_data()
+                self.json_job_data.setdefault(job_post_id, json_data)
+                self.all_sessions.setdefault(job_post_id, self.session)
+                """
+                No job posts: 167083
+                """
                 self.print_log("INFO", "Session ending")
-                self.session.reset()
 
         ipdb.set_trace()
 
         print()
         # Save scraped data into json file
-        # ref.: https://stackoverflow.com/a/31343739 (presence of unicode strings,
-        # e.g. EURO currency symbol)
+        # ref.: https://stackoverflow.com/a/31343739 (presence of unicode
+        # strings, e.g. EURO currency symbol)
         try:
-            g_util.dump_json_with_codecs(SCRAPED_JOB_DATA_FILEPATH, self.scraped_job_posts)
+            fmt = '%Y%m%d-%H%M%S-{fname}'
+            timestamped = datetime.now().strftime(fmt).format(
+                fname='scraped_job_data.json')
+            scraped_job_data_filepath = os.path.join(SCRAPED_JOB_DATA_DIRPATH,
+                                                     timestamped)
+            g_util.dump_json_with_codecs(scraped_job_data_filepath,
+                                         self.json_job_data)
         except OSError as e:
             self.print_log("ERROR", "Scraped data couldn't be saved")
         else:
-            self.print_log("INFO", "Scraped data saved in {}".format(SCRAPED_JOB_DATA_FILEPATH))
+            self.print_log("INFO",
+                           "Scraped data saved in "
+                           "{}".format(scraped_job_data_filepath))
         finally:
-            self.print_log("INFO", "Skipped URLs={}/{}".format(n_skipped, len(rows)))
+            self.print_log("INFO",
+                           "Skipped URLs={}/{}".format(n_skipped, len(rows)))
 
-    def get_dict_value(self, key):
-        return self.scraped_job_posts[self.job_id].get(key)
-
-    def get_country_from_dict(self):
-        return self.scraped_job_posts.get(self.job_id).get('office_location', {}).get('country')
-
-    def update_dict(self, updated_values):
-        for key, new_value in updated_values.items():
-            log_msg = "Trying to update {{key, value}}={{{}, {}}}".format(key, new_value)
-            self.print_log("DEBUG", log_msg)
-            current_value = self.get_dict_value(key)
-            if current_value is None:
-                # Check that the key is a valid job data key
-                if key in self.scraped_job_posts[self.job_id]:
-                    # Do a last-resort processing of `value` if it is a string
-                    if type(new_value) is str:
-                        if new_value[0] == ' ' or new_value[-1] == ' ':
-                            log_msg = "There is a space in the value " \
-                                      "'{}'. key={}".format(new_value, key)
-                            self.print_log("DEBUG", log_msg)
-                            new_value = new_value.strip()
-                    self.scraped_job_posts[self.job_id].update({key: new_value})
-                    log_msg = "The key='{}' was updated with value='{}'".format(key, new_value)
-                    self.print_log("DEBUG", log_msg)
-                else:
-                    self.print_log("CRITICAL", "The key='{}' is not a valid job data key.".format(key))
-            else:
-                log_msg = "The key='{}' already has a value='{}'. Thus the " \
-                          "new_value='{}' will be ignored.".format(key, current_value, new_value)
-                self.print_log("DEBUG", log_msg)
-                if current_value != new_value:
-                    log_msg = "The new_value='{}' is not equal to current_value='{}'".format(new_value, current_value)
-                    self.print_log("INFO", log_msg)
-
-    @staticmethod
-    def process_company_size(company_size):
+    # Returns: retval, dict
+    #   {'company_min_size': int,
+    #    'company_max_size': int}
+    # Raises:
+    #   - InvalidCompanySizeError
+    #   - NoCompanySizeError
+    def process_company_size(self, company_size):
+        retval = {'company_min_size': None, 'company_max_size': None}
         # Example: '1k-5k people' --> '1000-5000'
         # Replace the letter 'k' with '000'
         company_size = company_size.replace('k', '000')
-        # Remove 'people' and remove any whitespace around the string
-        company_size = company_size.split('people')[0].strip()
-        return company_size
+        # Extract only the numbers, i.e. 'people','+' should be ignored
+        # e.g. 10k+ people --> 10000
+        regex = r"\d+"
+        matches = re.findall(regex, company_size)
+        if matches:
+            matches = [int(match) for match in matches]
+            self.print_log("DEBUG",
+                           "Found the min size '{}' in the company size "
+                           "'{}'".format(min(matches), company_size))
+            retval['company_min_size'] = min(matches)
+            if len(matches) > 2:
+                raise js_e.InvalidCompanySizeError("Found more than two numbers "
+                                                   "'{}' in company size "
+                                                   "'{}'".format(matches,
+                                                                 company_size))
+            elif len(matches) == 2:
+                retval['company_max_size'] = max(matches)
+                self.print_log("DEBUG",
+                               "Found the max size '{}' in the company size "
+                               "'{}'".format(max(matches), company_size))
+            else:
+                pass
+            return retval
+        else:
+            raise js_e.NoCompanySizeError("No size (min or max) could be "
+                                          "retrieved from the company size "
+                                          "{}".format(company_size))
 
     @staticmethod
+    # Returns: str of the modified employment type
     # Employment type = job type
     def process_employment_type(employment_type):
         # Standardize the employment type by modifying to all caps and
@@ -291,38 +323,46 @@ class JobsScraper:
 
         # 3. Get the office location which is located on the same line as the
         # company name
-        try:
-            pattern = "header.job-details--header > div.grid--cell > " \
-                      "div.fc-black-700 > span.fc-black-500"
-            text = self.get_text_in_tag(pattern)
-            # Process the location text
-            # We want to standardize the country (e.g. Finland --> FI)
-            location = self.process_location_text(text)
-            self.session.data.set_job_location(**location)
-        except js_e.TagNotFoundError as e:
-            self.print_log("DEBUG", exception=e)
-        except js_e.EmptyTextError as e:
-            self.print_log("ERROR", exception=e)
-        except ValueOverrideError as e:
-            self.print_log("WARNING", exception=e)
-        except (KeyError, js_e.InvalidLocationTextError) as e:
-            self.print_log("ERROR", exception=e)
+        # TODO: do we avoid extracting the job location if it was already
+        # extracted from the JSON linked data?
+        if self.session.data.job_locations:
+            # Case: the job location was already extracted. No need to get it
+            # if it was extracted from the JSON linked data. Hence, we can save
+            # some computations
+            self.print_log("WARNING",
+                           "The 'job location' was already extracted previously")
         else:
-            self.print_log("DEBUG",
-                           "The location {} was saved.".format(location))
+            try:
+                pattern = "header.job-details--header > div.grid--cell > " \
+                          "div.fc-black-700 > span.fc-black-500"
+                text = self.get_text_in_tag(pattern)
+                # Process the location text
+                # We want to standardize the country (e.g. Finland --> FI)
+                location = self.process_location_text(text)
+                self.session.data.set_job_location(**location)
+            except js_e.TagNotFoundError as e:
+                self.print_log("DEBUG", exception=e)
+            except js_e.EmptyTextError as e:
+                self.print_log("ERROR", exception=e)
+            except ValueOverrideError as e:
+                self.print_log("WARNING", exception=e)
+            except (KeyError, js_e.InvalidLocationTextError) as e:
+                self.print_log("ERROR", exception=e)
+            else:
+                self.print_log("DEBUG",
+                               "The location {} was saved.".format(location))
 
         # 4. Get the other job data on the next line after the company name
         # and location
+        # Examples of other job data: Salary, Remote, Visa sponsor,
+        # Paid relocation
         pattern = "header.job-details--header > div.grid--cell > div.mt12"
         div_tag = bs_obj.select_one(pattern)
-        ipdb.set_trace()
-        if div_tag:
-            # Each `div_tag`'s child is associated to a job item
-            # (e.g. salary, remote) and is a <span> tag with a class that
-            # starts with '-'
+        if div_tag:  # div.mt12
+            # Each <div> child is associated to a job item (e.g. salary,
+            # remote) and is a <span> tag with a class that starts with '-'
             # Example:
-            # header.job-details--header > div.grid--cell > .mt12 >
-            # span.-salary.pr16
+            # header.job-details--header > div.grid--cell > div.mt12 > span.-salary.pr16
             children = div_tag.findChildren()
             for child in children:
                 # Each job data text is found within <span> with a class that
@@ -332,47 +372,65 @@ class JobsScraper:
                 # data item
                 child_class = [tag_class for tag_class in child.attrs['class']
                                if tag_class.startswith('-')]
-                if child_class: # class that starts with '-'
-                    # Get the <div>'s class name without the '-' at the beginning,
-                    # this will correspond to the type of job data (e.g. salary,
-                    # remote, relocation, visa)
+                if child_class:  # <span> class that starts with '-'
+                    # Get the <span> class name without the '-' at the
+                    # beginning, this will correspond to the type of job data
+                    # (e.g. salary, remote, relocation, visa)
                     key_name = child_class[0][1:]
-                    value = child.text
-                    if value:  # value = text
+                    text = child.text
+                    if text:  # value = text
                         self.print_log("INFO",
                                        "The {} is found".format(key_name))
-                        # Get the text (e.g. $71k - 85k) by removing any \r and
-                        # \n around the string
-                        value = value.strip()
+                        # Removing any whitespace from the `text`
+                        text = text.strip()
+                        # Apply specific processing if the extracted text refers
+                        # to a salary
                         if key_name == 'salary':
-                            salaries = self.session.data.job_salaries
-                            if False and self.session.data.job_salaries:
-                                # Job salaries already extracted
+                            # Case: `text` is salary related
+                            if self.session.data.job_salaries:
+                                # Case: job salaries already extracted
+                                # No need to get salaries if they were extracted
+                                # in the JSON linked data. Hence, we can save
+                                # some computations
                                 self.print_log("DEBUG",
-                                               "The job salaries were already "
-                                               "extracted previously {}".format(
-                                                   salaries[0]))
-                                self.print_log("DEBUG",
-                                               "The job salaries {} are "
-                                               "ignored".format(company_name))
+                                               "The job salaries for '{}' were "
+                                               "already extracted previously"
+                                               .format(company_name))
+                                continue
                             else:
+                                # Case: No job salaries extracted yet
                                 try:
-                                    updated_values \
-                                        = self.process_salary_text(value)
+                                    # Extract min-max salaries from `text`
+                                    # NOTE: equity can be also extracted
+                                    job_salaries \
+                                        = self.process_salary_text(text)
+                                # TODO: missing exceptions from process_salary_text()
+                                # Can we group exceptions raised from the same function?
                                 except (js_e.CurrencyRateError,
-                                        js_e.NoCurrencySymbolError) as e:
+                                        js_e.NoCurrencySymbolError,
+                                        js_e.InvalidCountryError) as e:
                                     self.print_log("ERROR", exception=e)
                                 else:
-                                    self.print_log("DEBUG",
-                                                   "Updating dict with salary "
-                                                   "values (min_salary, "
-                                                   "max_salary, ...)")
-                                    self.session.data.set_job_salary(**updated_values)
+                                    # Save all the salary-related info in the
+                                    # `job_salaries` table
+                                    for job_salary in job_salaries:
+                                        self.print_log("DEBUG",
+                                                       "Updating dict with"
+                                                       " {}".format(job_salary))
+                                        if job_salary.get('equity'):
+                                            self.session.data.set_job_post(
+                                                **job_salary)
+                                        else:
+                                            self.session.data.set_job_salary(
+                                                **job_salary)
                         else:
+                            # Case: other job data that is not salary. They are
+                            # remote, relocation,and visa
                             self.print_log("DEBUG",
                                            "Updating dict with {{{}:{}}})".format(
-                                               key_name, value))
-                            # self.session.data.set_job_salary(**{key_name: value})
+                                               key_name, text))
+                            # Save the other job data in the `job_posts` table
+                            self.session.data.set_job_post(**{key_name: text})
                     else:
                         self.print_log("ERROR",
                                        "No text found for the job data "
@@ -419,8 +477,8 @@ class JobsScraper:
                 title=linked_data.get('title'),
                 employment_type=linked_data.get('employmentType'),
                 job_post_description=linked_data.get('description'),
-                date_posted=date_posted,
-                valid_through=valid_through)
+                date_posted=str(date_posted),
+                valid_through=str(valid_through))
 
             # Extract data for populating the `job_salaries` table
             min_salary \
@@ -440,25 +498,38 @@ class JobsScraper:
                 description=linked_data.get('hiringOrganization', {}).get('description'))
 
             def process_values(values, set_method_name):
-                try:
-                    if isinstance(values, str):
-                        values = self.str_to_list(values)
-                    elif isinstance(values, list) and \
-                            isinstance(values[0], str):
-                        # A list of strings
-                        values = self.strip_list(values)
-                    else:
-                        # e.g. list of dicts
-                        pass
-                    set_method \
-                        = self.session.data.__getattribute__(set_method_name)
-                    for value in values:
-                        if isinstance(value, dict):
-                            set_method(**value)
+                # Sanity check on `values`
+                if values is None:
+                    self.print_log("ERROR",
+                                   msg="'values' is  None; "
+                                       "set_method_name='{}'".format(
+                                        set_method_name))
+                elif not values:
+                    # `values` is an empty list
+                    self.print_log("ERROR",
+                                   msg="'values' is an empty list; "
+                                       "set_method_name='{}'".format(
+                                        set_method_name))
+                else:
+                    try:
+                        if isinstance(values, str):
+                            values = self.str_to_list(values)
+                        elif isinstance(values, list) and \
+                                isinstance(values[0], str):
+                            # A list of strings
+                            values = self.strip_list(values)
                         else:
-                            set_method(name=value)
-                except AttributeError as e:
-                    self.print_log("ERROR", exception=e)
+                            # e.g. list of dicts
+                            pass
+                        set_method \
+                            = self.session.data.__getattribute__(set_method_name)
+                        for value in values:
+                            if isinstance(value, dict):
+                                set_method(**value)
+                            else:
+                                set_method(name=value)
+                    except AttributeError as e:
+                        self.print_log("ERROR", exception=e)
 
             # Extract data for populating the `job_locations` table
             process_values(self.get_loc_in_ld(linked_data), 'set_job_location')
@@ -478,6 +549,7 @@ class JobsScraper:
                 results = self.convert_min_and_max_salaries(min_salary,
                                                             max_salary,
                                                             currency)
+                self.session.data.set_job_salary(**results)
             except js_e.CurrencyRateError as e:
                 self.print_log("ERROR", exception=e)
             except js_e.SameCurrencyError as e:
@@ -485,10 +557,7 @@ class JobsScraper:
             except js_e.NoneBaseCurrencyError as e:
                 self.print_log("DEBUG", exception=e)
             else:
-                self.session.data.set_job_salary(min_salary=results[0],
-                                                 max_salary=results[1],
-                                                 currency=results[2],
-                                                 conversion_time=results[3])
+                self.print_log("INFO", "Salaries saved: {}".format(results))
             finally:
                 self.print_log("INFO",
                                "Finished processing the linked "
@@ -505,7 +574,7 @@ class JobsScraper:
         updated_values = {}
         # The text where you find the location looks like this:
         # '\n|\r\nNo office location                    '
-        # strip() removes the first newline and the right white spaces.
+        # strip() removes the first newline and the right whitespaces.
         # Then split('\n')[-1] extracts the location string. And the replace()
         # will remove any spaces after the commas.
         # e.g. 'Toronto, ON, Canada' --> 'Toronto,ON,Canada'
@@ -582,166 +651,308 @@ class JobsScraper:
         except AttributeError as e:
             # TODO: catch AttributeError every time we set a column to a record?
             # check other places where we set a record's column and don't catch
-            # the error
+            # the error. No it should be caught in `job_data.py` as a decorator.
+            # Maybe, it should be merge with the other exception getting caught.
             self.print_log("CRITICAL", exception=e)
         else:
             self.print_log("DEBUG",
                            "Job notice found @ URL {}: {}".format(
                                self.session.url, text))
 
-    def process_overview_items(self, bsObj):
+    def process_overview_items(self):
         # Get job data from the Overview section. There are three places within
         # the Overview section that will be extracted for more job data:
         # 1. in the "High response rate" sub-section of Overview
         # 2. in the "About this job" sub-section of Overview
         # 3. in the "Technologies" sub-section of Overview
         # NOTE: these sub-sections are located within <div id=""overview-items>
-        # [overview-items]
-        url = self.get_dict_value('url')
+        bs_obj = self.session.bs_obj
+        url = self.session.url
 
-        # [high_response_rate]
+        # High response rate section
         # 1. The high response rate might not be present (it isn't often we get
-        # to see this notice)
-        self.process_text_in_tag(bsObj, pattern=".-high-response > .-text > .-title",
-                                 key_name='high_response_rate')
+        # to see this notice on job posts)
+        # Prefix to add at the beginning of the log messages
+        # TODO: add the prefix to the log messages when parsing the high
+        # response rate section
+        pre = "[High response rate]"
+        try:
+            self.get_text_in_tag(".-high-response > .-text > .-title")
+            self.session.data.set_company(high_response_rate=True)
+        except js_e.TagNotFoundError as e:
+            # Raised by get_text_in_tag()
+            self.print_log("DEBUG", exception=e)
+        except js_e.EmptyTextError as e:
+            # Raised by get_text_in_tag()
+            self.print_log("ERROR", exception=e)
+        except ValueOverrideError as e:
+            # Raised by set_company()
+            self.print_log("WARNING", exception=e)
+        except KeyError as e:
+            # Raised by set_company()
+            self.print_log("ERROR", exception=e)
+        else:
+            self.print_log("DEBUG",
+                           "The high_response_rate was set to True")
 
-        # [about_this_job]
+        # About this job section
         # 2. Get more job data (e.g. role, industry, company size) in the
         # "About this job" section. Each item is located in
         # "#overview-items > .mb32 > .job-details--about > .grid--cell6 > .mb8"
-        # NOTE: these job data are presented in two columns, with three items per column
-        pattern = "#overview-items > .mb32 > .job-details--about > .grid--cell6 > .mb8"
-        div_tags = bsObj.select(pattern)
+        # NOTE: these job data are presented in two columns, with three items
+        # per column
+        pattern = "#overview-items > .mb32 > .job-details--about > " \
+                  ".grid--cell6 > .mb8"
+        div_tags = bs_obj.select(pattern)
         # Standardize the key names used in the "About this" section
         # e.g. 'Job type' should be replaced with 'Employment type'
-        convert_keys = {'Job type': 'Employment type',
-                        'technologies': 'skills'}
+        convert_keys = {'Job type': 'Employment type'}
         # Prefix to add at the beginning of the log messages
         pre = "[About this]"
         if div_tags:
             # Each `div_tag` corresponds to a job data item
-            # e.g. Job type: Full-time, Company type: Private
+            # Example:
+            # 'Job type: Full-time'
+            # 'Company type: Private'
+            # Extract the text from each `div_tag`
             for div_tag in div_tags:
-                # Sample raw text: '\nJob type: \nContract\n'
+                # Sample raw text: '\nJob type: \Full-time\n'
+                # Remove the whitespace chars, and split by ':' to get the
+                # key name (e.g. Job type) and its value (e.g. Full-time)
+                # `temp` is a list where temp[0] is the key name (e.g. Job Type)
+                # and temp[1] is its associated value (e.g. Full-time)
                 temp = div_tag.text.strip().split(":")
+                # Remove any whitespace chars from the key name and its value
                 key_name, value = temp[0].strip(), temp[1].strip()
                 # Convert the key name to use the standard key name
                 key_name = convert_keys.get(key_name, key_name)
                 # The key names should all be lowercase and spaces be replaced
                 # with underscores e.g. Employment type ---> employment_type
                 key_name = key_name.replace(" ", "_").lower()
-                # Comma-separated values should be converted to a list
-                # The keys names with comma-separated values are:
-                # experience_level, role, industry
-                # e.g. Mid-Level, Senior, Lead  --> [Mid-Level, Senior, Lead]
+                # TODO: do we avoid extracting experience levels and
+                # industries if they were already extracted from the JSON
+                # linked data?
+                if (key_name == 'experience_level' and
+                    self.session.data.experience_levels) or \
+                        (key_name == 'industry' and self.session.data.industries):
+                    # Case: experience levels and industries already
+                    # extracted. No need to get them if they were
+                    # extracted from the JSON linked data. Hence, we
+                    # can save some computations
+                    self.print_log("WARNING",
+                                   "{} The '{}' was already extracted "
+                                   "previously".format(pre, key_name))
+                    continue
+                # Perform SPECIFIC processing on the values depending on the
+                # type of job data
                 if key_name in ['experience_level', 'role', 'industry']:
+                    # Comma-separated values should be converted to a list
+                    # The key names with comma-separated values are:
+                    # experience_level, role, industry
+                    # e.g. Mid-Level, Senior, Lead  --> [Mid-Level, Senior, Lead]
                     self.print_log("DEBUG",
                                    "{} The value '{}' will be converted to "
                                    "a list".format(pre, value))
-                    value = self.str_to_list(value)
+                    list_values = self.str_to_list(value)
+                    for value in list_values:
+                        # Save the key ('name') and its associated value
+                        kwarg = {'name': value}
+                        self.print_log("INFO",
+                                       "{} The item {{'name' : {}}} will be "
+                                       "saved".format(pre, value))
+                        if key_name == 'experience_level':
+                            self.session.data.set_experience_level(**kwarg)
+                        elif key_name == 'role':
+                            self.session.data.set_role(**kwarg)
+                        else:
+                            # Industry
+                            self.session.data.set_industry(**kwarg)
                 elif key_name == 'company_size':
+                    # Replace 'k' with '000' in the company size text
                     # '1k-5k people' --> '1000-5000'
-                    new_value = self.process_company_size(value)
-                    log_msg = "{} The company size '{}' was processed to " \
-                              "'{}'".format(pre, value, new_value)
-                    self.print_log("DEBUG", log_msg)
-                    value = new_value
+                    # NOTE: it can happen that there is only a number in the
+                    # company size, e.g. 10k+ people
+                    try:
+                        sizes = self.process_company_size(value)
+                    except js_e.InvalidCompanySizeError as e:
+                        self.print_log("ERROR", exception=e)
+                    except js_e.NoCompanySizeError as e:
+                        self.print_log("ERROR", exception=e)
+                    else:
+                        self.print_log("DEBUG",
+                                       "{} The company size '{}' was processed "
+                                       "to '{}'".format(
+                                           pre, value, sizes))
+                        # Save the key and its associated value
+                        self.session.data.set_company(**sizes)
                 elif key_name == 'employment_type':
                     new_value = self.process_employment_type(value)
-                    log_msg = "{} The employment type '{}' was processed to " \
-                              "'{}'".format(pre, value, new_value)
-                    self.print_log("DEBUG", log_msg)
-                    value = new_value
-                else:
                     self.print_log("DEBUG",
-                                   "{} No extra processing done on "
-                                   "'{}: {}'".format(pre, key_name, value))
-                self.print_log("INFO",
-                               "{} The item '{}: {}' will be "
-                               "added".format(pre, key_name, value))
-                self.update_dict({key_name: value})
+                                   "{} The employment type '{}' was processed "
+                                   "to '{}'".format(pre, value, new_value))
+                    value = new_value
+                    # Save the key and its associated value
+                    kwarg = {key_name: value}
+                    self.print_log("INFO",
+                                   "{} The item {{{} : {}}} will be "
+                                   "saved".format(pre, key_name, value))
+                    self.session.data.set_job_post(**kwarg)
+                elif key_name == 'company_type':
+                    # No further processing done on the company type
+                    # Save the key and its associated value
+                    kwarg = {key_name: value}
+                    self.print_log("INFO",
+                                   "{} The item {{{} : {}}} will be "
+                                   "saved".format(pre, key_name, value))
+                    self.session.data.set_company(**kwarg)
+                else:
+                    self.print_log("ERROR",
+                                   "{} Invalid job data: {{{} : {}}}".format(
+                                       pre, key_name, value
+                                   ))
         else:
-            log_msg = "{} Couldn't extract job data from the 'About this job' " \
-                      "section @ the URL {}. The job data should be found " \
-                      "in {}".format(pre, url, pattern)
-            self.print_log("WARNING", log_msg)
+            self.print_log("WARNING",
+                           "{} Couldn't extract job data from the 'About this "
+                           "job' section @ URL {}. The job data should be "
+                           "found in {}".format(pre, url, pattern))
 
-        # [technologies]
+        # Technologies section
         # 3. Get the list of technologies, e.g. ruby, python, html5
         # NOTE: unlike the other job data in "overview_items", the technologies
         # are returned as a list
-        pattern = "#overview-items > .mb32 > div > a.job-link"
-        link_tags = bsObj.select(pattern)
-        skills = []
-        if link_tags:
-            for link_tag in link_tags:
-                technology = link_tag.text
-                if technology:
-                    self.print_log("DEBUG",
-                                   "Skill {} extracted".format(technology))
-                    skills.append(technology)
-                else:
-                    log_msg = "No text found for the technology with " \
-                              "href={}. URL @ {}".format(link_tag["href"], url)
-                    self.print_log("WARNING", log_msg)
-            if skills:
-                log_msg = "These skills {} were successfully extracted from the " \
-                          "Technologies section".format(skills)
-                self.print_log("INFO", log_msg)
-                self.update_dict({'skills': skills})
-            else:
-                log_msg = "No skills extracted from the Technologies section"
-                self.print_log("WARNING", log_msg)
+        # Prefix to add at the beginning of the log messages
+        pre = "[Technologies]"
+        # TODO: do we avoid extracting the skills if they were already extracted
+        # from the JSON linked data?
+        if self.session.data.skills:
+            # Case: the skills were already extracted. No need to get them if
+            # they were extracted from the JSON linked data. Hence, we can save
+            # some computations
+            self.print_log("WARNING",
+                           "{} The skills were already extracted "
+                           "previously".format(pre))
         else:
-            log_msg = "Couldn't extract technologies from the Technologies " \
-                      "section @ the URL {}. The technologies should be found " \
-                      "in {}".format(url, pattern)
-            self.print_log("INFO", log_msg)
+            pattern = "#overview-items > .mb32 > div > a.job-link"
+            link_tags = bs_obj.select(pattern)
+            skills = []
+            if link_tags:
+                for link_tag in link_tags:
+                    skill = link_tag.text
+                    if skill:
+                        self.print_log("DEBUG",
+                                       "Skill {} extracted".format(skill))
+                        skills.append(skill)
+                    else:
+                        log_msg = "No text found for the technology with " \
+                                  "href={}. URL @ {}".format(link_tag["href"], url)
+                        self.print_log("WARNING", log_msg)
+                if skills:
+                    log_msg = "These skills {} were successfully extracted from the " \
+                              "Technologies section".format(skills)
+                    self.print_log("INFO", log_msg)
+                    for skill in skills:
+                        # Save the skill
+                        kwarg = {'name': skill}
+                        self.print_log("INFO",
+                                       "{} The skill {} will be saved".format(
+                                           pre, skill))
+                        self.session.data.set_skill(**kwarg)
+                else:
+                    log_msg = "No skills extracted from the Technologies section"
+                    self.print_log("WARNING", log_msg)
+            else:
+                log_msg = "Couldn't extract technologies from the Technologies " \
+                          "section @ the URL {}. The technologies should be found " \
+                          "in {}".format(url, pattern)
+                self.print_log("INFO", log_msg)
 
+    # Returns:
+    #   `updated_values`: list of min-max salaries where each item is a `dict`
+    #       with keys 'currency', 'min_salary', 'max_salary', 'conversion_time'
+    #       where 'conversion_time' is only associated with converted currencies
+    # Raises:
+    #   - NoCurrencySymbolError from get_currency_symbol()
+    #   - NoCurrencyCodeError from get_currency_code()
+    #   - InvalidCountryError from get_currency_code()
+    #   - CurrencyRateError from convert_min_and_max_salaries()
+    # e.g. `salary_range` = '€50k - 65k'
     def process_salary_range(self, salary_range):
         updated_values = []
         # Extract the currency symbol at the beginning of the salary range text
         # e.g. '€' will be extracted from €42k - 75k'
         # `results` is either:
-        #       - a tuple (currency_symbol, end) or
-        #       - None (if no currency symbol could be extracted)
+        #       - a tuple (`currency_symbol`, `end`) or
+        #       - an exception (if no currency symbol could be extracted)
         #
-        # NOTE: `end` refers to the position of the first number in the
+        # NOTE: `end` refers to the index of the first digit in the
         # `salary_range` text, e.g. end=1 if salary_range='€42k - 75k'
         try:
             results = self.get_currency_symbol(salary_range)
-        except js_e.NoCurrencySymbolError as e:
-            raise js_e.NoCurrencySymbolError(e)
-        # `results` is a tuple
-        currency_symbol, end = results
-        # Get the currency code based on the currency symbol
-        currency_code = self.get_currency_code(currency_symbol)
-        # Get the salary range only without the currency symbol at the
-        # beginning, e.g. '€42k - 75k' --> '42k - 75k'
-        salary_range = salary_range[end:]
-        # Replace the letter 'k' with '000', e.g. 42k --> 42000
-        salary_range = salary_range.replace('k', '000')
-        # Get the minimum and maximum salary separately
-        # e.g. '42000 - 75000' --> min_salary=42000, max_salary=75000
-        min_salary, max_salary = self.get_min_max_salary(salary_range)
-        updated_values.append({'currency': currency_code,
-                               'min_salary': min_salary,
-                               'max_salary': max_salary
-                               })
-        # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
-        try:
+            # `results` is a tuple
+            currency_symbol, end = results
+            # Get the currency code (e.g. EUR) based on the currency symbol
+            # (e.g. €)
+            currency_code = self.get_currency_code(currency_symbol)
+            # Remove the currency from the salary range,
+            # e.g. '€42k - 75k' --> '42k - 75k'
+            salary_range = salary_range[end:]
+            # Replace the letter 'k' with '000', e.g. 42k --> 42000
+            salary_range = salary_range.replace('k', '000')
+            # Get the minimum and maximum salaries separately
+            # e.g. '42000 - 75000' --> min_salary=42000, max_salary=75000
+            min_salary, max_salary = self.get_min_max_salary(salary_range)
+            # Save the salary-related info
+            updated_values.append({'currency': currency_code,
+                                   'min_salary': min_salary,
+                                   'max_salary': max_salary
+                                   })
+            # Convert the min and max salaries to DEST_CURRENCY (e.g. USD)
+            # `results` is a `dict` of keys 'currency', 'min_salary',
+            # 'max_salary', 'conversion_time'
             results = self.convert_min_and_max_salaries(min_salary,
                                                         max_salary,
                                                         currency_code)
+        except js_e.NoCurrencySymbolError as e:
+            # raised by get_currency_symbol()
+            raise js_e.NoCurrencySymbolError(e)
+        except js_e.NoCurrencyCodeError as e:
+            # raised by get_currency_code()
+            raise js_e.NoCurrencyCodeError(e)
+        except js_e.InvalidCountryError as e:
+            # raised by get_currency_code()
+            raise js_e.InvalidCountryError(e)
         except js_e.CurrencyRateError as e:
+            # raised by convert_min_and_max_salaries()
             raise js_e.CurrencyRateError(e)
         except js_e.SameCurrencyError as e:
+            # raised by convert_min_and_max_salaries()
             self.print_log("DEBUG", exception=e)
         else:
+            # Case: min and max salaries were successfully converted
+            # Save the converted salaries
             updated_values.append(results)
         finally:
+            # Cases: min and max salaries successfully converted and
+            # SameCurrencyError
+            # Return the saved salaries
             return updated_values
 
+    # Returns: list of `dict`s
+    #   where each `dict` can be:
+    #       - {'equity': bool}
+    #       - {'min_salary': int,
+    #          'max_salary': int,
+    #          'currency': str
+    #         }
+    #       - {'min_salary': int,
+    #          'max_salary': int, '
+    #          'currency': str,
+    #          'conversion_time': float
+    #         }
+    # Raises:
+    #   - NoCurrencySymbolError by process_salary_range()
+    #   - InvalidCountryError by process_salary_range()
+    #   - CurrencyRateError by process_salary_range()
     def process_salary_text(self, salary_text):
         updated_values = []
         # Check if the salary text contains 'Equity', e.g. '€42k - 75k | Equity'
@@ -770,7 +981,7 @@ class JobsScraper:
             # the useful information we want to save
             updated_values.append({'equity': True})
         else:
-            # Case: salary and no equity
+            # Case: only salary range and no equity in the salary text
             self.print_log("DEBUG",
                            "Equity is not found in the "
                            "salary text '{}'".format(salary_text))
@@ -779,10 +990,18 @@ class JobsScraper:
         # Process the salary range to extract the min and max salaries
         if salary_range:
             try:
+                # `results` is a list of min-max salaries where each item
+                # is a `dict` with the keys 'currency', 'min_salary', and
+                # 'max_salary'
                 results = self.process_salary_range(salary_range)
             except js_e.NoCurrencySymbolError as e:
+                # Raised by process_salary_range()
                 raise js_e.NoCurrencySymbolError(e)
+            except js_e.InvalidCountryError as e:
+                # Raised by process_salary_range()
+                raise js_e.InvalidCountryError(e)
             except js_e.CurrencyRateError as e:
+                # Raised by process_salary_range()
                 raise js_e.CurrencyRateError(e)
             else:
                 self.print_log("DEBUG",
@@ -790,25 +1009,44 @@ class JobsScraper:
                 updated_values.extend(results)
         return updated_values
 
+    # Returns: str of text in given HTML tag
+    # Raises:
+    #   - EmptyTextError by itself
+    #   - TagNotFoundError by itself
     def get_text_in_tag(self, pattern):
         url = self.session.url
         tag = self.session.bs_obj.select_one(pattern)
         if tag:
+            # Tag found
+            # Extract text within tag
             text = tag.text
-            # Remove any white spaces around the string
-            text = text.strip()
             if text:
+                # Text found
+                # Remove any whitespaces in the text
+                text = text.strip()
                 self.print_log("INFO",
                                "The text {} is found.".format(text))
                 return text
             else:
+                # Empty text
                 raise js_e.EmptyTextError("The text is empty")
         else:
-            raise js_e.TagNotFoundError("Couldn't extract the text. The text "
-                                        "should be found in {}. URL @ {}".format(
-                                            pattern, url))
+            # Tag not found
+            raise js_e.TagNotFoundError("Couldn't find the tag {}. URL @"
+                                        " {}".format(pattern, url))
 
-    # Convert the min and max salaries to `base_currency` (e.g. USD)
+    # Returns a `dict`:
+    #   {'min_salary': int,
+    #    'max_salary': int,
+    #    'currency': str,
+    #    'conversion_time': float
+    #   }
+    #
+    # Raises:
+    #   - CurrencyRateError raised by convert_currency()
+    #   - NoneBaseCurrencyError raised by convert_currency()
+    #   - SameCurrencyError by itself
+    # Convert the min and max salaries to a base currency (e.g. USD)
     def convert_min_and_max_salaries(self, min_salary, max_salary, base_currency):
         # Check first that the base currency is different from the destination
         # currency, e.g. USD-->USD
@@ -828,14 +1066,22 @@ class JobsScraper:
             except js_e.NoneBaseCurrencyError as e:
                 raise js_e.NoneBaseCurrencyError(e)
             else:
-                return min_salary_converted, max_salary_converted, DEST_CURRENCY, timestamp
+                return {'min_salary': min_salary_converted,
+                        'max_salary': max_salary_converted,
+                        'currency': DEST_CURRENCY,
+                        'conversion_time': timestamp}
         else:
             raise js_e.SameCurrencyError("The min and max salaries [{}-{}] are "
                                          "already in the desired currency {}".format(
                                             min_salary, max_salary, DEST_CURRENCY))
 
+    # Returns: integer of converted amount
+    # Raises:
+    #   - NoneBaseCurrencyError by itself
+    #   - RatesNotAvailableError by get_rate()
+    #   - requests.exceptions.ConnectionError by get_rate()
     # Convert an amount from a base currency (e.g. EUR) to a destination currency (e.g. USD)
-    # NOTE: `base_currence` and `dest_currency` are currency codes, e.g. USD, EUR, CAD
+    # NOTE: `base_currency` and `dest_currency` are currency codes, e.g. USD, EUR, CAD
     def convert_currency(self, amount, base_currency, dest_currency):
         # Sanity check on the base currency
         if base_currency is None:
@@ -877,16 +1123,21 @@ class JobsScraper:
         # >> float(format(a, '.2f'))
         return converted_amount, time.time()
 
+    # Returns: currency code, string
+    # Raises:
+    #   - NoCurrencyCodeError by itself
+    #   - InvalidCountryError by itself
     def get_currency_code(self, currency_symbol):
         # First check if the currency symbol is not a currency code already
         if get_currency_name(currency_symbol):
             self.print_log("DEBUG",
-                           "The currency symbol '{}' is actually a currency code.")
+                           "The currency symbol '{}' is actually a "
+                           "currency code.")
             return currency_symbol
         # NOTE: there is no 1-to-1 mapping when going from currency symbol
         # to currency code
-        # e.g. the currency symbol £ is used for the currency codes EGP, FKP, GDP,
-        # GIP, LBP, and SHP
+        # e.g. the currency symbol £ is used for the currency codes EGP, FKP,
+        # GDP, GIP, LBP, and SHP
         # Search into the `currency_data` list for all the currencies that have
         # the given `currency_symbol`. Each item in `currency_data` is a dict
         # with the keys ['cc', 'symbol', 'name'].
@@ -925,37 +1176,43 @@ class JobsScraper:
                 # However, it could have been EGP, FKP, GIP, ...
                 currency_code = "GBP"
             elif currency_symbol == "kr":  # Danish krone
-                # Technically, 'kr' is a valid currency symbol for the Danish krone
-                # 'kr' is not recognized because `forex_python` uses 'Kr' as the
-                # currency symbol for the Danish krone.
+                # Technically, 'kr' is a valid currency symbol for the Danish
+                # krone 'kr' is not recognized because `forex_python` uses 'Kr'
+                # as the currency symbol for the Danish krone.
                 currency_code = "DKK"
             elif currency_symbol == "R":
-                # There are two possibilities: Russian Ruble (RUB) or
-                # South African rand (ZAR)
-                # Check the job post's country to determine which of the two
-                # currency codes to choose from
-                country = self.get_country_from_dict()
+                # There are two possibilities of currency codes with the
+                # currency symbol 'R':
+                # Russian Ruble (RUB) or South African rand (ZAR)
+                # Check the current job post's country to determine which of
+                # the two currency codes to choose from
+                ipdb.set_trace()
+                country = None
+                if self.session.data.job_locations:
+                    country = self.session.data.job_locations[0].country
                 if country is None:
-                    self.print_log("ERROR",
-                                   "Could not get a currency code "
-                                   "from '{}'".format(currency_symbol))
-                    return None
+                    raise js_e.NoCurrencyCodeError("Could not get a "
+                                                   "currency code from "
+                                                   "'{}'".format(currency_symbol))
                 elif country == 'ZA':
                     currency_code = 'ZAR'
-                else:
+                elif country == 'RU':
                     currency_code = "RUB"
+                else:
+                    raise js_e.InvalidCountryError("The country '{}' is invalid "
+                                                   "and a currency code could not "
+                                                   "be decided for the currency "
+                                                   "symbol 'R'".format(country))
             else:
-                self.print_log("ERROR",
-                               "Could not get a currency code "
-                               "from '{}'".format(currency_symbol))
-                return None
+                raise js_e.NoCurrencyCodeError("Could not get a currency code "
+                                               "from '{}'".format(currency_symbol))
             return currency_code
 
-    # Get currency symbol located at the BEGINNING of the string
+    # Get currency symbol located at the BEGINNING of the string `text`
     # e.g. '€42k - 75k'
     def get_currency_symbol(self, text):
-        # returned value is a tuple (currency_symbol, end)
-        # NOTE: `end` refers to the position of the first number in the
+        # Returned value is a tuple (currency_symbol, end)
+        # NOTE: `end` refers to the index of the first digit in the
         # salary `text`, e.g. '€42k - 75k' --> end=1
         # Search for the symbol at the beginning of the text
         regex = r"^(\D+)"
@@ -964,7 +1221,7 @@ class JobsScraper:
             self.print_log("DEBUG",
                            "Found currency {} in text {}".format(
                                match.group(), text))
-            # Some currencies have white spaces at the end,
+            # Some currencies have whitespaces at the end,
             # e.g. 'SGD 60k - 79k'. Thus, the strip()
             return match.group().strip(), match.end()
         else:
@@ -998,6 +1255,8 @@ class JobsScraper:
             return None
 
     @staticmethod
+    # Extract the min and max salaries from a salary range
+    # e.g. '42000 - 75000' --> min_salary=42000, max_salary=75000
     def get_min_max_salary(salary_range):
         min_salary, max_salary = salary_range.replace(" ", "").split("-")
         min_salary = int(min_salary)
@@ -1044,7 +1303,7 @@ class JobsScraper:
         # File path where the webpage (only HTML) will be saved
         cached_webpage_filepath = os.path.join(CACHED_WEBPAGES_DIRPATH,
                                                "{}.html".format(
-                                                   self.session.job_id))
+                                                   self.session.job_post_id))
         webpage_accessed = None
         url = self.session.url
 
@@ -1098,9 +1357,9 @@ class JobsScraper:
                 return html
 
     def print_log(self, level, msg=None, exception=None, length_msg=300):
-        # See https://stackoverflow.com/a/900413
+        # To get the function name dynamically
+        # see https://stackoverflow.com/a/900413
         caller_function_name = sys._getframe(1).f_code.co_name
-        # caller_function_name = "test"
         if exception:
             assert exception.__class__.__base__ is Exception, \
                 "{} is not a subclass of Exception".format(exception)
@@ -1114,7 +1373,7 @@ class JobsScraper:
             if self.session is None:
                 print("[{}] [{}] {}".format(level, caller_function_name, msg))
             else:
-                print("[{}] [{}] [{}] {}".format(level, self.session.job_id,
+                print("[{}] [{}] [{}] {}".format(level, self.session.job_post_id,
                                                  caller_function_name, msg))
 
     def save_webpage_locally(self, url, filepath, html):

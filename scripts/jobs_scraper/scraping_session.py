@@ -1,12 +1,10 @@
 class ScrapingSession:
-    def __init__(self, job_id, url, data):
-        self.job_id = job_id
+    def __init__(self, job_post_id, url, data):
+        self.job_post_id = job_post_id
         self.url = url
         self.data = data
         self.bs_obj = None
 
     def reset(self):
-        self.job_id = None
-        self.url = None
-        self.data = None
-        self.bs_obj = None
+        for k, v in self.__dict__.items():
+            self.__setattr__(k, None)
