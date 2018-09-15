@@ -4,8 +4,8 @@ import sqlite3
 import time
 
 
-DB_FILENAME = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
-SCHEMA_FILENAME = "dev_jobs_insights_schema.sql"
+DB_FILENAME = os.path.expanduser("~/databases/job_data.sqlite")
+SCHEMA_FILENAME = "job_data_schema.sql"
 
 
 if __name__ == '__main__':

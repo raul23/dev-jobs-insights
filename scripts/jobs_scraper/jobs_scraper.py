@@ -1,6 +1,8 @@
 from datetime import date, datetime
 import json
+import math
 import os
+import pathlib
 import re
 import sqlite3
 import sys
@@ -26,7 +28,7 @@ DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
 # NOTE: if `CACHED_WEBPAGES_DIRPATH` is None, then the webpages will not be cached
 # The webpages will then be retrieved from the internet.
 CACHED_WEBPAGES_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/cache/webpages/stackoverflow_job_posts/")
-SCRAPED_JOB_DATA_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/")
+MAIN_JOB_DATA_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/scraped_job_data")
 CURRENCY_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/currencies.json")
 US_STATES_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/us_states.json")
 REVERSED_US_STATES_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/reversed_us_states.json")
@@ -36,6 +38,20 @@ HTTP_GET_TIMEOUT = 5
 DEBUG = False
 DEST_CURRENCY = "USD"
 DEST_SYMBOL = "$"
+GROUP_SIZE = 50
+
+
+# ref.: https://stackoverflow.com/a/50120316
+class recursionlimit:
+    def __init__(self, limit):
+        self.limit = limit
+        self.old_limit = sys.getrecursionlimit()
+
+    def __enter__(self):
+        sys.setrecursionlimit(self.limit)
+
+    def __exit__(self, type, value, tb):
+        sys.setrecursionlimit(self.old_limit)
 
 
 class JobsScraper:
@@ -52,7 +68,7 @@ class JobsScraper:
             "Accept": "text/html,application/xhtml+xml,application/xml;"
                       "q=0.9,image/webp,*/*;q=0.8"
         }
-        self.all_sessions = {}
+        self.all_sessions = []
         self.json_job_data = {}
         self.last_request_time = -sys.float_info.max
         # `currency_data` is a list of dicts. Each item in `currency_data` is a
@@ -97,19 +113,17 @@ class JobsScraper:
         count = 1
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
-        # TODO: change `job_id` to `job_post_id` everywhere
         for job_post_id, author, url in rows:
-            #if job_post_id != 199442:
-            #    continue
+            # if job_post_id != 190025:
+            #     continue
             try:
-                # TODO: add timing for each important computatin parts
+                # TODO: add timing for each important processing parts
                 print()
-                self.print_log("", "#{} Processing {}".format(count, url))
-                count += 1
-
                 # Initialize the current scraping session
                 self.session = ScrapingSession(job_post_id, url=url,
                                                data=JobData(job_post_id))
+                self.print_log("", "#{} Processing {}".format(count, url))
+                count += 1
                 self.print_log("INFO", "Scraping session initialized")
                 # Update the job post's URL
                 self.session.data.set_job_post(url=url)
@@ -163,6 +177,9 @@ class JobsScraper:
                 self.process_overview_items()
 
                 self.print_log("INFO", "Finished Processing {}".format(url))
+
+                if count == 100:
+                   break
             except KeyError as e:
                 self.print_log("ERROR", "KeyError: {}".format(e.__str__()))
                 self.print_log("WARNING",
@@ -172,42 +189,93 @@ class JobsScraper:
                 # Save the current session
                 json_data = self.session.data.get_json_data()
                 self.json_job_data.setdefault(job_post_id, json_data)
-                self.all_sessions.setdefault(job_post_id, self.session)
+                self.all_sessions.append((job_post_id, self.session))
+                self.print_log("INFO", "Session ending")
                 """
                 No job posts: 167083
                 """
-                self.print_log("INFO", "Session ending")
-
+        self.session = None
         ipdb.set_trace()
-
         print()
+        # Filename and folder name will begin with the date+time
+        timestamped = datetime.now().strftime('%Y%m%d-%H%M%S-{fname}')
+        # Create directory where the scraped job data will be saved
+        scraped_job_data_dirpath = os.path.join(
+            MAIN_JOB_DATA_DIRPATH, timestamped.format(fname='scraped_job_data'))
+        pathlib.Path(scraped_job_data_dirpath).mkdir(parents=True, exist_ok=True)
+        self.print_log("WARNING",
+                       "Directory for job data created: {}".format(
+                           scraped_job_data_dirpath))
+
         # Save scraped data into json file
         # ref.: https://stackoverflow.com/a/31343739 (presence of unicode
         # strings, e.g. EURO currency symbol)
+        # TODO: code factorization, saving data (scraped and sessions data) in
+        # similar ways
+        # TODO: change WARNING to INFO
+        self.print_log("WARNING",
+                       "Saving JSON scraped job data ({} job posts)".format(
+                           len(self.json_job_data)))
         try:
-            fmt = '%Y%m%d-%H%M%S-{fname}'
-            timestamped = datetime.now().strftime(fmt).format(
-                fname='scraped_job_data.json')
-            scraped_job_data_filepath = os.path.join(SCRAPED_JOB_DATA_DIRPATH,
-                                                     timestamped)
+            filename = 'scraped_job_data.json'
+            scraped_job_data_filepath = os.path.join(scraped_job_data_dirpath,
+                                                     filename)
             g_util.dump_json_with_codecs(scraped_job_data_filepath,
                                          self.json_job_data)
-        except OSError as e:
-            self.print_log("ERROR", "Scraped data couldn't be saved")
+        except (OSError, TypeError) as e:
+            self.print_log("ERROR", "JSON scraped job data couldn't be saved")
         else:
-            self.print_log("INFO",
-                           "Scraped data saved in "
+            # TODO: change WARNING to INFO
+            self.print_log("WARNING",
+                           "JSON scraped job data saved in "
                            "{}".format(scraped_job_data_filepath))
-        finally:
-            self.print_log("INFO",
-                           "Skipped URLs={}/{}".format(n_skipped, len(rows)))
 
-    # Returns: retval, dict
+        ipdb.set_trace()
+
+        # Save all sessions into as a pickle file
+        # see https://stackoverflow.com/a/2135179 for `sys.setrecursionlimit`
+        with recursionlimit(15000):
+            n_sessions = len(self.all_sessions)
+            n_groups = math.ceil(n_sessions / GROUP_SIZE)
+            start_index = 0
+            end_index = min(len(self.all_sessions), start_index + GROUP_SIZE)
+            for i in range(n_groups):
+                sessions = dict(self.all_sessions[start_index:end_index])
+                # TODO: change WARNING to INFO
+                self.print_log("WARNING",
+                               "Saving pickled sessions data, parts "
+                               "{}-{}, {} job posts".format(
+                                   start_index, end_index, len(sessions)))
+                try:
+                    filename = 'all_sessions-{}-{}.pkl'.format(start_index,
+                                                               end_index)
+                    all_sessions_filepath = os.path.join(
+                        scraped_job_data_dirpath, filename)
+                    g_util.dump_pickle(all_sessions_filepath, sessions)
+                except (OSError, TypeError) as e:
+                    self.print_log("ERROR",
+                                   "Pickled sessions data {}-{} couldn't be "
+                                   "saved".format(start_index, end_index))
+                    break
+                else:
+                    # TODO: change WARNING to INFO
+                    self.print_log("WARNING",
+                                   "Pickled sessions data, parts {}-{}, saved "
+                                   "in {}".format(start_index, end_index,
+                                                  all_sessions_filepath))
+                    start_index = end_index
+                    end_index = min(len(self.all_sessions),
+                                    start_index + GROUP_SIZE)
+
+        self.print_log("INFO",
+                       "Skipped URLs={}/{}".format(n_skipped, len(rows)))
+
+    # Returns: `retval`, dict
     #   {'company_min_size': int,
     #    'company_max_size': int}
     # Raises:
-    #   - InvalidCompanySizeError
-    #   - NoCompanySizeError
+    #   - InvalidCompanySizeError by itself
+    #   - NoCompanySizeError by itself
     def process_company_size(self, company_size):
         retval = {'company_min_size': None, 'company_max_size': None}
         # Example: '1k-5k people' --> '1000-5000'
@@ -243,7 +311,7 @@ class JobsScraper:
 
     @staticmethod
     # Returns: str of the modified employment type
-    # Employment type = job type
+    # NOTE: 'Employment type' is also equivalent to 'job type'
     def process_employment_type(employment_type):
         # Standardize the employment type by modifying to all caps and
         # replacing hyphens with underscores
@@ -1357,19 +1425,20 @@ class JobsScraper:
                 return html
 
     def print_log(self, level, msg=None, exception=None, length_msg=300):
-        # To get the function name dynamically
-        # see https://stackoverflow.com/a/900413
-        caller_function_name = sys._getframe(1).f_code.co_name
-        if exception:
-            assert exception.__class__.__base__ is Exception, \
-                "{} is not a subclass of Exception".format(exception)
-            # TODO: catch AttributeError if __str__() and __class__ not present
-            # The log message template is "exception_name: exception_msg"
-            msg = "{}: {}".format(exception.__class__.__name__,
-                                  exception.__str__())
-        if len(msg) > length_msg:
-            msg = msg[:length_msg] + " [...]"
         if level not in ["DEBUG", "INFO"]:
+            # To get the function name dynamically
+            # see https://stackoverflow.com/a/900413
+            caller_function_name = sys._getframe(1).f_code.co_name
+            if exception:
+                assert exception.__class__.__base__ is Exception, \
+                    "{} is not a subclass of Exception".format(exception)
+                # TODO: catch AttributeError if __str__() and __class__ not present
+                # The log message template is "exception_name: exception_msg"
+                msg = "{}: {}".format(exception.__class__.__name__,
+                                      exception.__str__())
+            if len(msg) > length_msg:
+                msg = msg[:length_msg] + " [...]"
+
             if self.session is None:
                 print("[{}] [{}] {}".format(level, caller_function_name, msg))
             else:

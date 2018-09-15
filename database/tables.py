@@ -1,5 +1,7 @@
+# TODO: change filename to 'job_data_tables.py'
 from sqlalchemy import Boolean, CHAR, Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 
 Base = declarative_base()
@@ -34,6 +36,7 @@ class AbstractTable:
 
 # IMPORTANT: `Company` must first be added to the db, then the `JobPost` can be
 # added. `JobPost` needs the `company_id` when being added to the db.
+# The relationship from `Company` to `JobPost` is one to many
 class Company(Base, AbstractTable):
     __tablename__ = 'companies'
     id = Column(Integer, primary_key=True)
@@ -44,8 +47,12 @@ class Company(Base, AbstractTable):
     company_min_size = Column(Integer)
     company_max_size = Column(Integer)
     high_response_rate = Column(Boolean, default=False)
+    job_posts = relationship('JobPost')
 
 
+# The relationship from `JobPost` to {table_name} is one to many
+# where table_name = {`ExperienceLevel`, `Industry`, `JobBenefit`,
+#                     `JobLocation`, `JobSalary`, `Role`, `Skill`}
 class JobPost(Base, AbstractTable):
     __tablename__ = 'job_posts'
     id = Column(Integer, primary_key=True)
@@ -71,6 +78,13 @@ class JobPost(Base, AbstractTable):
     valid_through = Column(Date)
     # Datetime format YYYY-MM-DD HH:MM:SS-HH:MM
     webpage_accessed = Column(DateTime)
+    experience_levels = relationship('ExperienceLevel')
+    industries = relationship('Industry')
+    job_benefits = relationship('ExperienceLevel')
+    job_locations = relationship('JobBenefit')
+    job_salaries = relationship('JobLocation')
+    roles = relationship('Role')
+    skills = relationship('Skill')
 
 
 class ExperienceLevel(Base, AbstractTable):

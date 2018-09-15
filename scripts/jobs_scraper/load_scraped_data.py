@@ -9,6 +9,7 @@ import yaml
 
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
+sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects/dev_jobs_insights/database"))
 from utility import genutil as gu
 
 
@@ -57,6 +58,43 @@ def setup_logging(config_path):
 
 def main():
     ipdb.set_trace()
+    import pickle
+
+    with open(os.path.expanduser('~/data/dev_jobs_insights/scraped_job_data/20180915-044000-scraped_job_data/all_sessions-0-50.pkl'), 'rb') as f:
+        data = pickle.load(f)
+
+    with open(os.path.expanduser('~/data/dev_jobs_insights/scraped_job_data/20180915-044000-scraped_job_data/all_sessions-50-99.pkl'), 'rb') as f:
+        data2 = pickle.load(f)
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    import tables
+
+    # Create tables
+    engine = create_engine('sqlite:///test.db')
+    # Base.metadata.create_all(engine)
+
+    # Setup db session
+    tables.Base.metadata.bind = engine
+    DBSession = sessionmaker(bind=engine)
+    session = DBSession()
+
+    job_data_tablenames = [tables.Company.__tablename__, tables.JobPost.__tablename__]
+    job_data_tablenames.extend([v.__tablename__ for v in tables.__dict__.values()
+                                if hasattr(v, '__tablename__')
+                                and v.__tablename__ !=job_data_tablenames])
+    ipdb.set_trace()
+    for k, v in data.items():
+        job_data = v.data
+        for attr_key, attr_value in job_data.__dict__.items():
+            if hasattr(attr_value, '__tablename__'):
+                cur_tablename = attr_value.__tablename__
+                for tablename in job_data_tablenames:
+                    # Add instance to table
+                    session.add(job_data.company)
+
+        session.commit()
+
     # Read yaml configuration file
     try:
         config_dict = read_yaml_config(CONFIG_FILEPATH)
@@ -82,65 +120,6 @@ def main():
         logger.error(e.__str__())
         logger.error('Scraped data could not be loaded. Program will exit.')
         sys.exit(1)
-
-    # Open connection to db
-    conn = gu.connect_db(os.path.expanduser(config_dict['db_filepath']))
-
-    # Init list of SQL queries. One list per SQL tables
-    job_posts = []
-    hiring_company = []
-    experience_level = []
-    industry = []
-
-    ipdb.set_trace()
-
-    # Get the column names for each tables
-    # From the `job_posts` table
-    # From the `hiring_company` table
-    # From the `experience_level` table
-    # From the `role` table
-    # From the `industry` table
-    # From the `skills` table
-    # From the `job_benefits` table
-    # From the `job_salary` table
-    # From the `location` table
-
-    job_posts_cols = ['title', 'url', 'company_name', 'job_post_description', 'job_post_notice', 'employment_type',
-                      'equity', 'high_response_rate', 'remote', 'relocation', 'visa', 'cached_webpage_path',
-                      'date_posted', 'valid_through', 'webpage_accessed']
-    hiring_company_cols = ['company_name', 'company_site_url', 'company_description', 'company_type', 'company_size']
-    experience_level_cols = ['level']
-    role_cols = ['role']
-    industry_cols = ['name']
-    skills_cols = ['skill']
-    job_benefits_cols = ['name']
-    job_salary_cols = ['min_salary', 'max_salary', 'currency', 'currency_conversion_time']
-    location_cols = ['city', 'region', 'country']
-
-    count = 1
-    for job_id, job_data in scraped_data.items():
-        logger.info("#{} Processing {}".format(count, job_id))
-        count += 1
-
-        ipdb.set_trace()
-
-        # Get all the required values for populating the `job_posts` table
-        job_post_values = [job_id]
-        for col in job_posts_cols:
-            value = job_data[col]
-            job_post_values.append(value)
-
-        ipdb.set_trace()
-
-        # Get all the required values for populating the `hiring_company` table
-        hiring_company_values = [job_id]
-        for col in hiring_company:
-            value = job_data[col]
-            hiring_company_values.append(value)
-
-    # Execute the bulk of SQL queries
-    with conn:
-        pass
 
 
 if __name__ == '__main__':

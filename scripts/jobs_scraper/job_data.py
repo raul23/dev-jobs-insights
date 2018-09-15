@@ -9,7 +9,7 @@ from tables import ValueOverrideError
 class JobData:
 
     def __init__(self, job_post_id):
-        self._job_post_id = job_post_id
+        self.job_post_id = job_post_id
         self.company = Company()
         self.job_post = JobPost()
         self.job_post.id = job_post_id
@@ -21,35 +21,53 @@ class JobData:
         self.roles = []
         self.skills = []
 
-    def _get_table_dict(self, table):
-        # Sanity check on `table` type
-        assert table.__class__.__class__.__name__ == Base.__class__.__name__
-        table_dict = dict([(k, table.__getattribute__(k))
-                           for k in table.__class__.__dict__.keys()
-                           if not k.startswith('_')])
-        return table_dict
+    # Returns: `tables_metadata`, dict
+    #           {table_name (str): attribute_name (str)}
+    # e.g. {'companies': 'company', 'job_posts': 'job_post'}
+    def _get_tables_metadata(self):
+        tables_metadata = {}
+        for attr_k, attr_v in self.__dict__.items():
+            if isinstance(attr_v, list):
+                if attr_v:
+                    item = attr_v[0]
+                    if hasattr(item, '__tablename__'):
+                        tables_metadata.setdefault(item.__tablename__, attr_k)
+                else:
+                    # TODO: use print_log/logging, check other places within file
+                    print("[DEBUG] [{}] Table '{}' is empty".format(
+                        self.job_post_id, attr_k))
+            else:
+                if hasattr(attr_v, '__tablename__'):
+                    tables_metadata.setdefault(attr_v.__tablename__, attr_k)
+        return tables_metadata
 
     def get_json_data(self):
         json_job_data = {}
-        for k, v in self.__dict__.items():
-            if k.startswith('_'):
-                continue
-            # Get the table
-            if not isinstance(v, list):
-                table = v
-                # Save the table
-                table_dict = self._get_table_dict(table)
-                json_job_data.setdefault(table.__tablename__, table_dict)
-            else:
-                tables = v
-                if tables:
-                    for table in tables:
+        tables_metadata = self._get_tables_metadata()
+        for table_name, attr_name in tables_metadata.items():
+            attr = self.__getattribute__(attr_name)
+            if isinstance(attr, list):
+                table_instances = attr
+                if table_instances:
+                    for table_instance in table_instances:
                         # Save the table
-                        table_dict = self._get_table_dict(table)
-                        json_job_data.setdefault(table.__tablename__, [])
-                        json_job_data[table.__tablename__].append(table_dict)
+                        column_names = table_instance.__table__.columns.keys()
+                        table_dict \
+                            = dict([(col, table_instance.__getattribute__(col))
+                                    for col in column_names])
+                        json_job_data.setdefault(table_name, [])
+                        json_job_data[table_name].append(table_dict)
                 else:
-                    print("[DEBUG] [{}] Table '{}' is empty".format(self._job_post_id, k))
+                    # TODO: use print_log/logging, check other places within file
+                    print("[DEBUG] [{}] Table '{}' is empty".format(
+                        self.job_post_id, table_name))
+            else:
+                table_instance = attr
+                # Save the table
+                column_names = table_instance.__table__.columns.keys()
+                table_dict = dict([(col, table_instance.__getattribute__(col))
+                                   for col in column_names])
+                json_job_data.setdefault(table_name, table_dict)
         return json_job_data
 
     def _catch_value_override_error(func):
@@ -71,37 +89,37 @@ class JobData:
 
     def set_experience_level(self, **kwargs):
         exp_level = ExperienceLevel()
-        exp_level.job_post_id = self._job_post_id
+        exp_level.job_post_id = self.job_post_id
         self._setup_record(exp_level, self.experience_levels, **kwargs)
 
     def set_industry(self, **kwargs):
         industry = Industry()
-        industry.job_post_id = self._job_post_id
+        industry.job_post_id = self.job_post_id
         self._setup_record(industry, self.industries, **kwargs)
 
     def set_job_benefit(self, **kwargs):
         job_benefit = JobBenefit()
-        job_benefit.job_post_id = self._job_post_id
+        job_benefit.job_post_id = self.job_post_id
         self._setup_record(job_benefit, self.job_benefits, **kwargs)
 
     def set_job_location(self, **kwargs):
         job_location = JobLocation()
-        job_location.job_post_id = self._job_post_id
+        job_location.job_post_id = self.job_post_id
         self._setup_record(job_location, self.job_locations, **kwargs)
 
     def set_job_salary(self, **kwargs):
         salary = JobSalary()
-        salary.job_post_id = self._job_post_id
+        salary.job_post_id = self.job_post_id
         self._setup_record(salary, self.job_salaries, **kwargs)
 
     def set_role(self, **kwargs):
         role = Role()
-        role.job_post_id = self._job_post_id
+        role.job_post_id = self.job_post_id
         self._setup_record(role, self.roles, **kwargs)
 
     def set_skill(self, **kwargs):
         skill = Skill()
-        skill.job_post_id = self._job_post_id
+        skill.job_post_id = self.job_post_id
         self._setup_record(skill, self.skills, **kwargs)
 
     @staticmethod
