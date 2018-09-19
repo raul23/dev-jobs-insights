@@ -21,7 +21,7 @@ from tables import Base
 from utility import genutil as gu
 
 
-# Get the logger
+# Get the loggers
 # TODO: can this be done in a genutil.function (i.e. outside of this file)?
 if __name__ == '__main__':
     # When run as a script
