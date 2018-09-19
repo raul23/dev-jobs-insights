@@ -187,6 +187,7 @@ def main():
     else:
         log("Successfully loaded the YAML configuration file", 'debug')
 
+    # SQLAlchemy database setup
     log("Database setup", 'info')
     # Create tables
     db_url = config_dict['db_url']
@@ -194,7 +195,7 @@ def main():
     engine = create_engine(URL(**db_url))
     Base.metadata.create_all(engine)
 
-    # Setup db session
+    # Setup database session
     Base.metadata.bind = engine
     DBSession = sessionmaker(bind=engine)
     db_session = DBSession()
@@ -229,6 +230,7 @@ def main():
                     job_data_filepath),
                 level='debug')
 
+        # Load the scraped job data into the database
         log(
             "Loading the scraped job data '{}' into the database".format(
                 os.path.basename(job_data_filepath)),
