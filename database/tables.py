@@ -24,11 +24,9 @@ class AbstractTable:
             current_value = self.__getattribute__(key)
             if current_value:
                 # Attribute already has a value set
-                raise ValueOverrideError("The attribute '{}' in {} already has "
-                                         "a value='{}'.".format(
-                                            key,
-                                            self.__tablename__,
-                                            current_value))
+                raise ValueOverrideError(
+                    "The attribute '{}' in {} already has a value='{}'.".format(
+                        key, self.__tablename__, current_value))
             else:
                 # Set the attribute with the provided value
                 self.__setattr__(key, value)
@@ -40,13 +38,16 @@ class AbstractTable:
 class Company(Base, AbstractTable):
     __tablename__ = 'companies'
     id = Column(Integer, primary_key=True)
-    name = Column(String(250), nullable=False)
+    name = Column(String(250))
     url = Column(String(250))
     description = Column(Text)  # company description
     company_type = Column(String(250))
     company_min_size = Column(Integer)
     company_max_size = Column(Integer)
     high_response_rate = Column(Boolean, default=False)
+    #################################
+    # Relationships to other tables #
+    #################################
     job_posts = relationship('JobPost')
 
 
@@ -57,10 +58,10 @@ class JobPost(Base, AbstractTable):
     __tablename__ = 'job_posts'
     id = Column(Integer, primary_key=True)
     company_id = Column(Integer, ForeignKey('companies.id'))
-    title = Column(String(250), nullable=False)
+    title = Column(String(250))
     url = Column(String(250), nullable=False)
     employment_type = Column(String(250))
-    job_post_description = Column(Text, nullable=False)
+    job_post_description = Column(Text)
     # `job_post_terminated` = True if the company is not accepting job
     # applications anymore
     job_post_terminated = Column(Boolean, default=False)
@@ -78,15 +79,22 @@ class JobPost(Base, AbstractTable):
     valid_through = Column(Date)
     # Datetime format YYYY-MM-DD HH:MM:SS-HH:MM
     webpage_accessed = Column(DateTime)
+    #################################
+    # Relationships to other tables #
+    #################################
     experience_levels = relationship('ExperienceLevel')
     industries = relationship('Industry')
-    job_benefits = relationship('ExperienceLevel')
-    job_locations = relationship('JobBenefit')
-    job_salaries = relationship('JobLocation')
+    job_benefits = relationship('JobBenefit')
+    job_locations = relationship('JobLocation')
+    job_salaries = relationship('JobSalary')
     roles = relationship('Role')
     skills = relationship('Skill')
 
 
+# TODO: ExperienceLevel, Industry, JobBenefit, Role, and Skill have the same
+# two columns: `job_post_id` and `name`. Create a separate table with these
+# two columns, and use it as a base table for the other tables.
+# ref.: https://bit.ly/2xd3bM3
 class ExperienceLevel(Base, AbstractTable):
     __tablename__ = 'experience_levels'
     job_post_id = Column(Integer, ForeignKey('job_posts.id'), primary_key=True)
@@ -105,6 +113,8 @@ class JobBenefit(Base, AbstractTable):
     name = Column(String(250), primary_key=True)  # name of job benefit
 
 
+# TODO: JobLocation and JobSalary have the same two columns: `id` and
+# `job_post_id`. See remark above for ExperienceLevel.
 class JobLocation(Base, AbstractTable):
     __tablename__ = 'job_locations'
     id = Column(Integer, primary_key=True)
@@ -118,9 +128,9 @@ class JobSalary(Base, AbstractTable):
     __tablename__ = 'job_salaries'
     id = Column(Integer, primary_key=True)
     job_post_id = Column(Integer, ForeignKey('job_posts.id'))
-    min_salary = Column(Integer, nullable=False)
-    max_salary = Column(Integer, nullable=False)
-    currency = Column(CHAR, nullable=False)
+    min_salary = Column(Integer)
+    max_salary = Column(Integer)
+    currency = Column(CHAR)
     conversion_time = Column(DateTime)
 
     def __str__(self):

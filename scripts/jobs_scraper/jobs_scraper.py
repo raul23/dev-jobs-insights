@@ -9,14 +9,17 @@ import sys
 import time
 
 from bs4 import BeautifulSoup
-from forex_python.converter import get_currency_name, get_rate, RatesNotAvailableError
+from forex_python.converter import get_currency_name, get_rate, \
+    RatesNotAvailableError
 from pycountry_convert import country_name_to_country_alpha2
 import requests
 import ipdb
 
 # TODO: module path insertion is hardcoded
-sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects/dev_jobs_insights/database"))
+sys.path.insert(0, os.path.expanduser(
+    "~/PycharmProjects/github_projects"))
+sys.path.insert(0, os.path.expanduser(
+    "~/PycharmProjects/github_projects/dev_jobs_insights/database"))
 from job_data import JobData
 import js_exceptions as js_e
 from scraping_session import ScrapingSession
@@ -25,13 +28,18 @@ from utility import genutil as g_util
 
 
 DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
-# NOTE: if `CACHED_WEBPAGES_DIRPATH` is None, then the webpages will not be cached
-# The webpages will then be retrieved from the internet.
-CACHED_WEBPAGES_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/cache/webpages/stackoverflow_job_posts/")
-MAIN_JOB_DATA_DIRPATH = os.path.expanduser("~/data/dev_jobs_insights/scraped_job_data")
-CURRENCY_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/currencies.json")
-US_STATES_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/us_states.json")
-REVERSED_US_STATES_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/reversed_us_states.json")
+# NOTE: if `CACHED_WEBPAGES_DIRPATH` is None, then the webpages will not be
+# cached. The webpages will then be retrieved from the internet.
+CACHED_WEBPAGES_DIRPATH = os.path.expanduser\
+    ("~/data/dev_jobs_insights/cache/webpages/stackoverflow_job_posts/")
+MAIN_JOB_DATA_DIRPATH = os.path.expanduser(
+    "~/data/dev_jobs_insights/scraped_job_data")
+CURRENCY_FILEPATH = os.path.expanduser(
+    "~/data/dev_jobs_insights/currencies.json")
+US_STATES_FILEPATH = os.path.expanduser(
+    "~/data/dev_jobs_insights/us_states.json")
+REVERSED_US_STATES_FILEPATH = os.path.expanduser(
+    "~/data/dev_jobs_insights/reversed_us_states.json")
 DELAY_BETWEEN_REQUESTS = 2
 HTTP_GET_TIMEOUT = 5
 # TODO: debug code
@@ -114,14 +122,14 @@ class JobsScraper:
         n_skipped = 0
         self.print_log("INFO", "Total URLs to process = {}".format(len(rows)))
         for job_post_id, author, url in rows:
-            # if job_post_id != 190025:
-            #     continue
+            if False and job_post_id != 189921:
+                continue
             try:
                 # TODO: add timing for each important processing parts
                 print()
                 # Initialize the current scraping session
-                self.session = ScrapingSession(job_post_id, url=url,
-                                               data=JobData(job_post_id))
+                self.session = ScrapingSession(
+                    job_post_id, url=url, data=JobData(job_post_id))
                 self.print_log("", "#{} Processing {}".format(count, url))
                 count += 1
                 self.print_log("INFO", "Scraping session initialized")
@@ -133,9 +141,9 @@ class JobsScraper:
                     html = self.load_cached_webpage()
                 except js_e.WebPageNotFoundError as e:
                     self.print_log("ERROR", exception=e)
-                    self.print_log("CRITICAL",
-                                   "The current URL {} will be "
-                                   "skipped.".format(url))
+                    self.print_log(
+                        "CRITICAL",
+                        "The current URL {} will be skipped.".format(url))
                     continue
 
                 self.session.bs_obj = BeautifulSoup(html, 'lxml')
@@ -173,17 +181,36 @@ class JobsScraper:
                 # Get job data (e.g. salary, remote, location) from the <header>
                 self.process_header()
 
+                # TODO: process sections within .company-items.
+                # These sections are "Life at [company_name]" and
+                # "About [company_name]"
+                # e.g. https://bit.ly/2xiFthz (example01.html)
+
+                # TODO: add data from .developer-culture-items
+
+                # TODO: follow the link pointed by the button
+                # "Learn more about [company_name]" to extract more data about
+                # the company. The link points to the company profile hosted
+                # under stackoverflow.com
+                # e.g. https://bit.ly/2xiFthz (example01.html)
+                # The company profile is located @
+                # https://stackoverflow.com/jobs/companies/[company_name]
+                # e.g. https://stackoverflow.com/jobs/companies/discover
+
+                # TODO: add similar jobs found within .more-jobs-items
+
                 # Get job data from the Overview section
                 self.process_overview_items()
 
                 self.print_log("INFO", "Finished Processing {}".format(url))
 
                 if count == 100:
-                   break
+                    break
             except KeyError as e:
                 self.print_log("ERROR", "KeyError: {}".format(e.__str__()))
-                self.print_log("WARNING",
-                               "The current URL {} will be skipped".format(url))
+                self.print_log(
+                    "WARNING",
+                    "The current URL {} will be skipped".format(url))
                 n_skipped += 1
             finally:
                 # Save the current session
@@ -203,9 +230,10 @@ class JobsScraper:
         scraped_job_data_dirpath = os.path.join(
             MAIN_JOB_DATA_DIRPATH, timestamped.format(fname='scraped_job_data'))
         pathlib.Path(scraped_job_data_dirpath).mkdir(parents=True, exist_ok=True)
-        self.print_log("WARNING",
-                       "Directory for job data created: {}".format(
-                           scraped_job_data_dirpath))
+        self.print_log(
+            "WARNING",
+            "Directory for job data created: {}".format(
+                scraped_job_data_dirpath))
 
         # Save scraped data into json file
         # ref.: https://stackoverflow.com/a/31343739 (presence of unicode
@@ -213,22 +241,29 @@ class JobsScraper:
         # TODO: code factorization, saving data (scraped and sessions data) in
         # similar ways
         # TODO: change WARNING to INFO
-        self.print_log("WARNING",
-                       "Saving JSON scraped job data ({} job posts)".format(
-                           len(self.json_job_data)))
+        self.print_log(
+            "WARNING",
+            "Saving JSON scraped job data ({} job posts)".format(
+                len(self.json_job_data)))
         try:
             filename = 'scraped_job_data.json'
-            scraped_job_data_filepath = os.path.join(scraped_job_data_dirpath,
-                                                     filename)
-            g_util.dump_json_with_codecs(scraped_job_data_filepath,
-                                         self.json_job_data)
+            scraped_job_data_filepath = os.path.join(
+                scraped_job_data_dirpath, filename)
+            # IMPORTANT: JSON data saving disabled because datetime and date are
+            # present in the table instances
+            # TODO: re-enable saving of JSON data
+            # replace the date and datetime objects from the table instances'
+            # columns with their corresponding string representations
+            # g_util.dump_json_with_codecs(scraped_job_data_filepath,
+            #                              self.json_job_data)
         except (OSError, TypeError) as e:
             self.print_log("ERROR", "JSON scraped job data couldn't be saved")
         else:
             # TODO: change WARNING to INFO
-            self.print_log("WARNING",
-                           "JSON scraped job data saved in "
-                           "{}".format(scraped_job_data_filepath))
+            self.print_log(
+                "WARNING",
+                "JSON scraped job data saved in {}".format(
+                    scraped_job_data_filepath))
 
         ipdb.set_trace()
 
@@ -242,33 +277,35 @@ class JobsScraper:
             for i in range(n_groups):
                 sessions = dict(self.all_sessions[start_index:end_index])
                 # TODO: change WARNING to INFO
-                self.print_log("WARNING",
-                               "Saving pickled sessions data, parts "
-                               "{}-{}, {} job posts".format(
-                                   start_index, end_index, len(sessions)))
+                self.print_log(
+                    "WARNING",
+                    "Saving pickled sessions data, parts {}-{}, {} job "
+                    "posts".format(start_index, end_index-1, len(sessions)))
                 try:
-                    filename = 'all_sessions-{}-{}.pkl'.format(start_index,
-                                                               end_index)
+                    filename = 'all_sessions-{}-{}.pkl'.format(
+                        start_index, end_index-1)
                     all_sessions_filepath = os.path.join(
                         scraped_job_data_dirpath, filename)
                     g_util.dump_pickle(all_sessions_filepath, sessions)
                 except (OSError, TypeError) as e:
-                    self.print_log("ERROR",
-                                   "Pickled sessions data {}-{} couldn't be "
-                                   "saved".format(start_index, end_index))
+                    self.print_log(
+                        "ERROR",
+                        "Pickled sessions data {}-{} couldn't be saved".format(
+                            start_index, end_index-1))
                     break
                 else:
                     # TODO: change WARNING to INFO
-                    self.print_log("WARNING",
-                                   "Pickled sessions data, parts {}-{}, saved "
-                                   "in {}".format(start_index, end_index,
-                                                  all_sessions_filepath))
+                    self.print_log(
+                        "WARNING",
+                        "Pickled sessions data, parts {}-{}, saved in {}".format(
+                            start_index, end_index, all_sessions_filepath))
                     start_index = end_index
                     end_index = min(len(self.all_sessions),
                                     start_index + GROUP_SIZE)
 
-        self.print_log("INFO",
-                       "Skipped URLs={}/{}".format(n_skipped, len(rows)))
+        self.print_log(
+            "INFO",
+            "Skipped URLs={}/{}".format(n_skipped, len(rows)))
 
     # Returns: `retval`, dict
     #   {'company_min_size': int,
@@ -287,27 +324,28 @@ class JobsScraper:
         matches = re.findall(regex, company_size)
         if matches:
             matches = [int(match) for match in matches]
-            self.print_log("DEBUG",
-                           "Found the min size '{}' in the company size "
-                           "'{}'".format(min(matches), company_size))
+            self.print_log(
+                "DEBUG",
+                "Found the min size '{}' in the company size '{}'".format(
+                    min(matches), company_size))
             retval['company_min_size'] = min(matches)
             if len(matches) > 2:
-                raise js_e.InvalidCompanySizeError("Found more than two numbers "
-                                                   "'{}' in company size "
-                                                   "'{}'".format(matches,
-                                                                 company_size))
+                raise js_e.InvalidCompanySizeError(
+                    "Found more than two numbers '{}' in company size "
+                    "'{}'".format(matches, company_size))
             elif len(matches) == 2:
                 retval['company_max_size'] = max(matches)
-                self.print_log("DEBUG",
-                               "Found the max size '{}' in the company size "
-                               "'{}'".format(max(matches), company_size))
+                self.print_log(
+                    "DEBUG",
+                    "Found the max size '{}' in the company size '{}'".format(
+                        max(matches), company_size))
             else:
                 pass
             return retval
         else:
-            raise js_e.NoCompanySizeError("No size (min or max) could be "
-                                          "retrieved from the company size "
-                                          "{}".format(company_size))
+            raise js_e.NoCompanySizeError(
+                "No size (min or max) could be retrieved from the company size "
+                "{}".format(company_size))
 
     @staticmethod
     # Returns: str of the modified employment type
@@ -340,11 +378,12 @@ class JobsScraper:
         title = self.session.data.job_post.title
         if title:
             # Title already extracted
-            self.print_log("DEBUG",
-                           "The job post's title already has "
-                           "a value='{}'".format(title))
-            self.print_log("DEBUG",
-                           "The job post's title {} is ignored".format(title))
+            self.print_log(
+                "DEBUG",
+                "The job post's title already has a value='{}'".format(title))
+            self.print_log(
+                "DEBUG",
+                "The job post's title {} is ignored".format(title))
         else:
             # Extract title from text in tag
             try:
@@ -367,11 +406,12 @@ class JobsScraper:
         company_name = self.session.data.company.name
         if company_name:
             # Company name already extracted
-            self.print_log("DEBUG",
-                           "The company name already has "
-                           "a value='{}'".format(company_name))
-            self.print_log("DEBUG",
-                           "The company name {} is ignored".format(company_name))
+            self.print_log(
+                "DEBUG", "The company name already has a value='{}'".format(
+                    company_name))
+            self.print_log(
+                "DEBUG",
+                "The company name {} is ignored".format(company_name))
         else:
             try:
                 pattern = "header.job-details--header > div.grid--cell > " \
@@ -385,9 +425,9 @@ class JobsScraper:
             except ValueOverrideError as e:
                 self.print_log("WARNING", exception=e)
             else:
-                self.print_log("DEBUG",
-                               "The company name {} "
-                               "was saved.".format(company_name))
+                self.print_log(
+                    "DEBUG",
+                    "The company name {} was saved.".format(company_name))
 
         # 3. Get the office location which is located on the same line as the
         # company name
@@ -397,8 +437,9 @@ class JobsScraper:
             # Case: the job location was already extracted. No need to get it
             # if it was extracted from the JSON linked data. Hence, we can save
             # some computations
-            self.print_log("WARNING",
-                           "The 'job location' was already extracted previously")
+            self.print_log(
+                "WARNING",
+                "The 'job location' was already extracted previously")
         else:
             try:
                 pattern = "header.job-details--header > div.grid--cell > " \
@@ -417,8 +458,9 @@ class JobsScraper:
             except (KeyError, js_e.InvalidLocationTextError) as e:
                 self.print_log("ERROR", exception=e)
             else:
-                self.print_log("DEBUG",
-                               "The location {} was saved.".format(location))
+                self.print_log(
+                    "DEBUG",
+                    "The location {} was saved.".format(location))
 
         # 4. Get the other job data on the next line after the company name
         # and location
@@ -460,10 +502,10 @@ class JobsScraper:
                                 # No need to get salaries if they were extracted
                                 # in the JSON linked data. Hence, we can save
                                 # some computations
-                                self.print_log("DEBUG",
-                                               "The job salaries for '{}' were "
-                                               "already extracted previously"
-                                               .format(company_name))
+                                self.print_log(
+                                    "DEBUG",
+                                    "The job salaries for '{}' were already "
+                                    "extracted previously".format(company_name))
                                 continue
                             else:
                                 # Case: No job salaries extracted yet
@@ -482,9 +524,10 @@ class JobsScraper:
                                     # Save all the salary-related info in the
                                     # `job_salaries` table
                                     for job_salary in job_salaries:
-                                        self.print_log("DEBUG",
-                                                       "Updating dict with"
-                                                       " {}".format(job_salary))
+                                        self.print_log(
+                                            "DEBUG",
+                                            "Updating dict with {}".format(
+                                                job_salary))
                                         if job_salary.get('equity'):
                                             self.session.data.set_job_post(
                                                 **job_salary)
@@ -494,23 +537,26 @@ class JobsScraper:
                         else:
                             # Case: other job data that is not salary. They are
                             # remote, relocation,and visa
-                            self.print_log("DEBUG",
-                                           "Updating dict with {{{}:{}}})".format(
-                                               key_name, text))
+                            self.print_log(
+                                "DEBUG",
+                                "Updating dict with {{{}:{}}})".format(
+                                    key_name, text))
                             # Save the other job data in the `job_posts` table
                             self.session.data.set_job_post(**{key_name: text})
                     else:
-                        self.print_log("ERROR",
-                                       "No text found for the job data "
-                                       "with key '{}'.".format(key_name))
+                        self.print_log(
+                            "ERROR",
+                            "No text found for the job data with key "
+                            "'{}'.".format(key_name))
                 else:
                     self.print_log("ERROR",
                                    "The <span>'s class doesn't start with '-'.")
         else:
-            self.print_log("INFO",
-                           "Couldn't extract the other job data @ URL {}. "
-                           "The other job data should be found in {}".format(
-                               url, pattern))
+            self.print_log(
+                "INFO",
+                "Couldn't extract the other job data @ URL {}. The other job "
+                "data should be found in {}".format(
+                    url, pattern))
 
     def process_linked_data(self):
         # Get linked data from <script type="application/ld+json">:
@@ -545,8 +591,8 @@ class JobsScraper:
                 title=linked_data.get('title'),
                 employment_type=linked_data.get('employmentType'),
                 job_post_description=linked_data.get('description'),
-                date_posted=str(date_posted),
-                valid_through=str(valid_through))
+                date_posted=date_posted,
+                valid_through=valid_through)
 
             # Extract data for populating the `job_salaries` table
             min_salary \
@@ -561,23 +607,26 @@ class JobsScraper:
 
             # Extract data for populating the `companies` table
             self.session.data.set_company(
-                name=linked_data.get('hiringOrganization', {}).get('name'),
-                url=linked_data.get('hiringOrganization', {}).get('sameAs'),
-                description=linked_data.get('hiringOrganization', {}).get('description'))
+                name=linked_data.get(
+                    'hiringOrganization', {}).get('name'),
+                url=linked_data.get(
+                    'hiringOrganization', {}).get('sameAs'),
+                description=linked_data.get(
+                    'hiringOrganization', {}).get('description'))
 
             def process_values(values, set_method_name):
                 # Sanity check on `values`
                 if values is None:
-                    self.print_log("ERROR",
-                                   msg="'values' is  None; "
-                                       "set_method_name='{}'".format(
-                                        set_method_name))
+                    self.print_log(
+                        "ERROR",
+                        msg="'values' is  None; set_method_name='{}'".format(
+                            set_method_name))
                 elif not values:
                     # `values` is an empty list
-                    self.print_log("ERROR",
-                                   msg="'values' is an empty list; "
-                                       "set_method_name='{}'".format(
-                                        set_method_name))
+                    self.print_log(
+                        "ERROR",
+                        msg="'values' is an empty list; "
+                            "set_method_name='{}'".format(set_method_name))
                 else:
                     try:
                         if isinstance(values, str):
@@ -600,23 +649,33 @@ class JobsScraper:
                         self.print_log("ERROR", exception=e)
 
             # Extract data for populating the `job_locations` table
-            process_values(self.get_loc_in_ld(linked_data), 'set_job_location')
+            process_values(
+                self.get_loc_in_ld(linked_data),
+                'set_job_location')
             # Extract data for populating the `experience_levels` table
-            process_values(linked_data.get('experienceRequirements'),
-                           'set_experience_level')
+            process_values(
+                linked_data.get('experienceRequirements'),
+                'set_experience_level')
             # Extract data for populating the `industries` table
-            process_values(linked_data.get('industry'), 'set_industry')
+            process_values(
+                linked_data.get('industry'),
+                'set_industry')
             # Extract data for populating the `skills` table
-            process_values(linked_data.get('skills'), 'set_skill')
+            process_values(
+                linked_data.get('skills'),
+                'set_skill')
             # Extract data for populating the `job_benefits` table
-            process_values(linked_data.get('jobBenefits'), 'set_job_benefit')
+            process_values(
+                linked_data.get('jobBenefits'),
+                'set_job_benefit')
 
             # Convert the minimum and maximum salaries to
             # `DEST_CURRENCY` (e.g. USD)
             try:
-                results = self.convert_min_and_max_salaries(min_salary,
-                                                            max_salary,
-                                                            currency)
+                results = self.convert_min_and_max_salaries(
+                    min_salary,
+                    max_salary,
+                    currency)
                 self.session.data.set_job_salary(**results)
             except js_e.CurrencyRateError as e:
                 self.print_log("ERROR", exception=e)
@@ -625,11 +684,13 @@ class JobsScraper:
             except js_e.NoneBaseCurrencyError as e:
                 self.print_log("DEBUG", exception=e)
             else:
-                self.print_log("INFO", "Salaries saved: {}".format(results))
+                self.print_log(
+                    "INFO", "Salaries saved: {}".format(results))
             finally:
-                self.print_log("INFO",
-                               "Finished processing the linked "
-                               "data from URL {}".format(url))
+                self.print_log(
+                    "INFO",
+                    "Finished processing the linked data from URL "
+                    "{}".format(url))
         else:
             # Reasons for not finding <script type='application/ld+json'>:
             # maybe the page is not found anymore (e.g. job post removed) or
@@ -674,9 +735,10 @@ class JobsScraper:
             # posts don't specify the country as it is the case for job posts
             # for other countries.
             if self.is_a_us_state(updated_values['country']):
-                self.print_log("DEBUG",
-                               "The location text '{}' refers to a place "
-                               "in the US".format(text))
+                self.print_log(
+                    "DEBUG",
+                    "The location text '{}' refers to a place in the "
+                    "US".format(text))
                 # Fix the location information: the country refers actually to
                 # a U.S. state, and save 'US' as the country
                 updated_values['region'] = updated_values['country']
@@ -687,17 +749,18 @@ class JobsScraper:
         elif text.count(',') == 2:
             # Two commas in location text
             # e.g. Toronto, ON, Canada
-            self.print_log("DEBUG",
-                           "Found 2 commas in the location "
-                           "text '{}'".format(text))
+            self.print_log(
+                "DEBUG",
+                "Found 2 commas in the location text '{}'".format(text))
             updated_values = dict(zip(['city', 'region', 'country'],
                                       text.split(',')))
         else:
             # Incorrect number of commas in location text. Thus we can't extract
-            #
-            raise js_e.InvalidLocationTextError("Invalid location text '{}'. "
-                                                "Incorrect number "
-                                                "of commas.".format(text))
+            # the location from the text. I haven't encounter this case yet, but
+            # we never know.
+            raise js_e.InvalidLocationTextError(
+                "Invalid location text '{}'. Incorrect number of "
+                "commas.".format(text))
         # Standardize the country, e.g. Finland -> FI
         try:
             std_country = self.standardize_country(updated_values['country'])
@@ -723,9 +786,9 @@ class JobsScraper:
             # Maybe, it should be merge with the other exception getting caught.
             self.print_log("CRITICAL", exception=e)
         else:
-            self.print_log("DEBUG",
-                           "Job notice found @ URL {}: {}".format(
-                               self.session.url, text))
+            self.print_log(
+                "DEBUG",
+                "Job notice found @ URL {}: {}".format(self.session.url, text))
 
     def process_overview_items(self):
         # Get job data from the Overview section. There are three places within
@@ -734,6 +797,8 @@ class JobsScraper:
         # 2. in the "About this job" sub-section of Overview
         # 3. in the "Technologies" sub-section of Overview
         # NOTE: these sub-sections are located within <div id=""overview-items>
+        # TODO: add also the job description (it is also available from the linked
+        # data), e.g. https://bit.ly/2xiFthz (example01.html)
         bs_obj = self.session.bs_obj
         url = self.session.url
 
@@ -743,6 +808,8 @@ class JobsScraper:
         # Prefix to add at the beginning of the log messages
         # TODO: add the prefix to the log messages when parsing the high
         # response rate section
+        # TODO: is the high response rate section part of the overview items?
+        # If it isn't, then it should not be processed here with the overview items
         pre = "[High response rate]"
         try:
             self.get_text_in_tag(".-high-response > .-text > .-title")
@@ -807,9 +874,10 @@ class JobsScraper:
                     # extracted. No need to get them if they were
                     # extracted from the JSON linked data. Hence, we
                     # can save some computations
-                    self.print_log("WARNING",
-                                   "{} The '{}' was already extracted "
-                                   "previously".format(pre, key_name))
+                    self.print_log(
+                        "WARNING",
+                        "{} The '{}' was already extracted previously".format(
+                            pre, key_name))
                     continue
                 # Perform SPECIFIC processing on the values depending on the
                 # type of job data
@@ -818,16 +886,18 @@ class JobsScraper:
                     # The key names with comma-separated values are:
                     # experience_level, role, industry
                     # e.g. Mid-Level, Senior, Lead  --> [Mid-Level, Senior, Lead]
-                    self.print_log("DEBUG",
-                                   "{} The value '{}' will be converted to "
-                                   "a list".format(pre, value))
+                    self.print_log(
+                        "DEBUG",
+                        "{} The value '{}' will be converted to a list".format(
+                            pre, value))
                     list_values = self.str_to_list(value)
                     for value in list_values:
                         # Save the key ('name') and its associated value
                         kwarg = {'name': value}
-                        self.print_log("INFO",
-                                       "{} The item {{'name' : {}}} will be "
-                                       "saved".format(pre, value))
+                        self.print_log(
+                            "INFO",
+                            "{} The item {{'name' : {}}} will be saved".format(
+                                pre, value))
                         if key_name == 'experience_level':
                             self.session.data.set_experience_level(**kwarg)
                         elif key_name == 'role':
@@ -847,42 +917,46 @@ class JobsScraper:
                     except js_e.NoCompanySizeError as e:
                         self.print_log("ERROR", exception=e)
                     else:
-                        self.print_log("DEBUG",
-                                       "{} The company size '{}' was processed "
-                                       "to '{}'".format(
-                                           pre, value, sizes))
+                        self.print_log(
+                            "DEBUG",
+                            "{} The company size '{}' was processed to "
+                            "'{}'".format(pre, value, sizes))
                         # Save the key and its associated value
                         self.session.data.set_company(**sizes)
                 elif key_name == 'employment_type':
                     new_value = self.process_employment_type(value)
-                    self.print_log("DEBUG",
-                                   "{} The employment type '{}' was processed "
-                                   "to '{}'".format(pre, value, new_value))
+                    self.print_log(
+                        "DEBUG",
+                        "{} The employment type '{}' was processed to "
+                        "'{}'".format(pre, value, new_value))
                     value = new_value
                     # Save the key and its associated value
                     kwarg = {key_name: value}
-                    self.print_log("INFO",
-                                   "{} The item {{{} : {}}} will be "
-                                   "saved".format(pre, key_name, value))
+                    self.print_log(
+                        "INFO",
+                        "{} The item {{{} : {}}} will be saved".format(
+                            pre, key_name, value))
                     self.session.data.set_job_post(**kwarg)
                 elif key_name == 'company_type':
                     # No further processing done on the company type
                     # Save the key and its associated value
                     kwarg = {key_name: value}
-                    self.print_log("INFO",
-                                   "{} The item {{{} : {}}} will be "
-                                   "saved".format(pre, key_name, value))
+                    self.print_log(
+                        "INFO",
+                        "{} The item {{{} : {}}} will be saved".format(
+                            pre, key_name, value))
                     self.session.data.set_company(**kwarg)
                 else:
-                    self.print_log("ERROR",
-                                   "{} Invalid job data: {{{} : {}}}".format(
-                                       pre, key_name, value
-                                   ))
+                    self.print_log(
+                        "ERROR",
+                        "{} Invalid job data: {{{} : {}}}".format(
+                            pre, key_name, value))
         else:
-            self.print_log("WARNING",
-                           "{} Couldn't extract job data from the 'About this "
-                           "job' section @ URL {}. The job data should be "
-                           "found in {}".format(pre, url, pattern))
+            self.print_log(
+                "WARNING",
+                "{} Couldn't extract job data from the 'About this job' "
+                "section @ URL {}. The job data should be found in {}".format(
+                    pre, url, pattern))
 
         # Technologies section
         # 3. Get the list of technologies, e.g. ruby, python, html5
@@ -896,9 +970,9 @@ class JobsScraper:
             # Case: the skills were already extracted. No need to get them if
             # they were extracted from the JSON linked data. Hence, we can save
             # some computations
-            self.print_log("WARNING",
-                           "{} The skills were already extracted "
-                           "previously".format(pre))
+            self.print_log(
+                "WARNING",
+                "{} The skills were already extracted previously".format(pre))
         else:
             pattern = "#overview-items > .mb32 > div > a.job-link"
             link_tags = bs_obj.select(pattern)
@@ -907,8 +981,9 @@ class JobsScraper:
                 for link_tag in link_tags:
                     skill = link_tag.text
                     if skill:
-                        self.print_log("DEBUG",
-                                       "Skill {} extracted".format(skill))
+                        self.print_log(
+                            "DEBUG",
+                            "Skill {} extracted".format(skill))
                         skills.append(skill)
                     else:
                         log_msg = "No text found for the technology with " \
@@ -1025,9 +1100,9 @@ class JobsScraper:
         updated_values = []
         # Check if the salary text contains 'Equity', e.g. '€42k - 75k | Equity'
         if 'Equity' in salary_text:
-            self.print_log("DEBUG",
-                           "Equity found in the salary "
-                           "text {}".format(salary_text))
+            self.print_log(
+                "DEBUG",
+                "Equity found in the salary text {}".format(salary_text))
             # Split the salary text to get the salary range and equity
             # e.g. '€42k - 75k | Equity' will be splitted as '€42k - 75k' and
             # 'Equity'
@@ -1040,9 +1115,9 @@ class JobsScraper:
                 salary_range, _ = [v.strip() for v in salary_text.split('|')]
             else:
                 # Case: only equity
-                self.print_log("DEBUG",
-                               "No salary found, only equity "
-                               "in '{}'".format(salary_text))
+                self.print_log(
+                    "DEBUG",
+                    "No salary found, only equity in '{}'".format(salary_text))
                 salary_range = None
             # Save equity but not salary range since salary range must be
             # further processed to extract the min and max salaries which are
@@ -1050,9 +1125,10 @@ class JobsScraper:
             updated_values.append({'equity': True})
         else:
             # Case: only salary range and no equity in the salary text
-            self.print_log("DEBUG",
-                           "Equity is not found in the "
-                           "salary text '{}'".format(salary_text))
+            self.print_log(
+                "DEBUG",
+                "Equity is not found in the salary text '{}'".format(
+                    salary_text))
             # Save the salary range
             salary_range = salary_text
         # Process the salary range to extract the min and max salaries
@@ -1072,8 +1148,9 @@ class JobsScraper:
                 # Raised by process_salary_range()
                 raise js_e.CurrencyRateError(e)
             else:
-                self.print_log("DEBUG",
-                               "The salary text {} was successfully processed!")
+                self.print_log(
+                    "DEBUG",
+                    "The salary text {} was successfully processed!")
                 updated_values.extend(results)
         return updated_values
 
@@ -1092,22 +1169,23 @@ class JobsScraper:
                 # Text found
                 # Remove any whitespaces in the text
                 text = text.strip()
-                self.print_log("INFO",
-                               "The text {} is found.".format(text))
+                self.print_log(
+                    "INFO",
+                    "The text {} is found.".format(text))
                 return text
             else:
                 # Empty text
                 raise js_e.EmptyTextError("The text is empty")
         else:
             # Tag not found
-            raise js_e.TagNotFoundError("Couldn't find the tag {}. URL @"
-                                        " {}".format(pattern, url))
+            raise js_e.TagNotFoundError(
+                "Couldn't find the tag {}. URL @ {}".format(pattern, url))
 
     # Returns a `dict`:
     #   {'min_salary': int,
     #    'max_salary': int,
     #    'currency': str,
-    #    'conversion_time': float
+    #    'conversion_time': datetime
     #   }
     #
     # Raises:
@@ -1143,7 +1221,7 @@ class JobsScraper:
                                          "already in the desired currency {}".format(
                                             min_salary, max_salary, DEST_CURRENCY))
 
-    # Returns: integer of converted amount
+    # Returns: tuple, integer of converted amount and datetime of conversion time
     # Raises:
     #   - NoneBaseCurrencyError by itself
     #   - RatesNotAvailableError by get_rate()
@@ -1189,7 +1267,15 @@ class JobsScraper:
         # >> round(a, 2),
         # Use the following in python2.7:
         # >> float(format(a, '.2f'))
-        return converted_amount, time.time()
+        # TODO: `utcnow` or `now`?
+        # TODO: the timestamp seems to be off. In the db, we have conversion time
+        # like 2018-09-17 16:17:01.414463, 2018-09-17 21:01:12.663109
+        # There is a time difference of almost 5 hours between the two
+        # conversions. Also, the script was lauched at almost 17:00, not
+        # at 16:17 nor at 21:01.
+        # TODO: check also the other timestamps: date_posted, valid_through,
+        # and webpage_accessed
+        return converted_amount, datetime.utcnow()
 
     # Returns: currency code, string
     # Raises:
@@ -1221,10 +1307,10 @@ class JobsScraper:
         # if it is in AUD or CAD, the currency symbols 'A$' and 'C$' are usually
         # used in job posts, respectively.
         if currency_symbol != "C$" and len(results) == 1:
-            self.print_log("DEBUG",
-                           "Found only one currency code {} associated with the "
-                           "given currency symbol {}".format(
-                               results[0]["cc"], currency_symbol))
+            self.print_log(
+                "DEBUG",
+                "Found only one currency code {} associated with the given "
+                "currency symbol {}".format(results[0]["cc"], currency_symbol))
             return results[0]["cc"]
         else:
             # Two possible cases
@@ -1254,26 +1340,28 @@ class JobsScraper:
                 # Russian Ruble (RUB) or South African rand (ZAR)
                 # Check the current job post's country to determine which of
                 # the two currency codes to choose from
+                # TODO: test this part where the currency is Ruble (Russia)
                 ipdb.set_trace()
                 country = None
                 if self.session.data.job_locations:
                     country = self.session.data.job_locations[0].country
                 if country is None:
-                    raise js_e.NoCurrencyCodeError("Could not get a "
-                                                   "currency code from "
-                                                   "'{}'".format(currency_symbol))
+                    raise js_e.NoCurrencyCodeError(
+                        "Could not get a currency code from '{}'".format(
+                            currency_symbol))
                 elif country == 'ZA':
                     currency_code = 'ZAR'
                 elif country == 'RU':
                     currency_code = "RUB"
                 else:
-                    raise js_e.InvalidCountryError("The country '{}' is invalid "
-                                                   "and a currency code could not "
-                                                   "be decided for the currency "
-                                                   "symbol 'R'".format(country))
+                    raise js_e.InvalidCountryError(
+                        "The country '{}' is invalid and a currency code could "
+                        "not be decided for the currency symbol 'R'".format(
+                            country))
             else:
-                raise js_e.NoCurrencyCodeError("Could not get a currency code "
-                                               "from '{}'".format(currency_symbol))
+                raise js_e.NoCurrencyCodeError(
+                    "Could not get a currency code from '{}'".format(
+                        currency_symbol))
             return currency_code
 
     # Get currency symbol located at the BEGINNING of the string `text`
@@ -1286,16 +1374,16 @@ class JobsScraper:
         regex = r"^(\D+)"
         match = re.search(regex, text)
         if match:
-            self.print_log("DEBUG",
-                           "Found currency {} in text {}".format(
-                               match.group(), text))
+            self.print_log(
+                "DEBUG",
+                "Found currency {} in text {}".format(match.group(), text))
             # Some currencies have whitespaces at the end,
             # e.g. 'SGD 60k - 79k'. Thus, the strip()
             return match.group().strip(), match.end()
         else:
-            raise js_e.NoCurrencySymbolError("No currency symbol could be "
-                                             "retrieved from the salary text "
-                                             "{}".format(text))
+            raise js_e.NoCurrencySymbolError(
+                "No currency symbol could be retrieved from the salary text "
+                "{}".format(text))
 
     # Get the location data in a linked data JSON object
     def get_loc_in_ld(self, linked_data):
@@ -1319,7 +1407,9 @@ class JobsScraper:
         else:
             # TODO: no need to raise error, just return None
             # raise js_e.NoJobLocationError("No job locations found in the linked data.")
-            self.print_log("ERROR", "No job locations found in the linked data.")
+            self.print_log(
+                "ERROR",
+                "No job locations found in the linked data.")
             return None
 
     @staticmethod
@@ -1336,11 +1426,14 @@ class JobsScraper:
         current_delay = time.time() - self.last_request_time
         diff_between_delays = current_delay - DELAY_BETWEEN_REQUESTS
         if diff_between_delays < 0:
-            self.print_log("INFO",
-                           "Waiting {} seconds before sending "
-                           "next HTTP request...".format(abs(diff_between_delays)))
+            self.print_log(
+                "INFO",
+                "Waiting {} seconds before sending next HTTP request...".format(
+                    abs(diff_between_delays)))
             time.sleep(abs(diff_between_delays))
-            self.print_log("INFO", "Time is up! HTTP request will be sent.")
+            self.print_log(
+                "INFO",
+                "Time is up! HTTP request will be sent.")
         try:
             req = self.req_session.get(url, headers=self.headers,
                                        timeout=HTTP_GET_TIMEOUT)
@@ -1349,11 +1442,13 @@ class JobsScraper:
             raise OSError(e)
         else:
             if req.status_code == 404:
-                raise js_e.PageNotFoundError("404 - PAGE NOT FOUND. "
-                                             "The URL {} returned a 404 "
-                                             "status code.".format(url))
+                raise js_e.PageNotFoundError(
+                    "404 - PAGE NOT FOUND. The URL {} returned a 404 status "
+                    "code.".format(url))
         self.last_request_time = time.time()
-        self.print_log("INFO", "The webpage is retrieved from {}".format(url))
+        self.print_log(
+            "INFO",
+            "The webpage is retrieved from {}".format(url))
         return html
 
     def is_a_us_state(self, name):
@@ -1369,9 +1464,9 @@ class JobsScraper:
     def load_cached_webpage(self):
         html = None
         # File path where the webpage (only HTML) will be saved
-        cached_webpage_filepath = os.path.join(CACHED_WEBPAGES_DIRPATH,
-                                               "{}.html".format(
-                                                   self.session.job_post_id))
+        cached_webpage_filepath = os.path.join(
+            CACHED_WEBPAGES_DIRPATH,
+            "{}.html".format(self.session.job_post_id))
         webpage_accessed = None
         url = self.session.url
 
@@ -1382,37 +1477,45 @@ class JobsScraper:
             except OSError as e:
                 self.print_log("ERROR", exception=e)
             else:
-                self.print_log("INFO",
-                               "The cached webpage HTML is loaded from {}".format(
-                                   cached_webpage_filepath))
+                self.print_log(
+                    "INFO",
+                    "The cached webpage HTML is loaded from {}".format(
+                        cached_webpage_filepath))
                 # Get the webpage's datetime modified as the datetime the
                 # webpage was originally accessed
+                # TODO: `utcfromtimestamp` or `fromtimestamp`?
                 self.session.data.set_job_post(
                     cached_webpage_filepath=cached_webpage_filepath,
-                    webpage_accessed=os.path.getmtime(cached_webpage_filepath))
+                    webpage_accessed=datetime.utcfromtimestamp(
+                        os.path.getmtime(cached_webpage_filepath)))
                 return html
         else:
-            self.print_log("INFO", "The caching option is disabled")
+            self.print_log(
+                "INFO", "The caching option is disabled")
 
-        self.print_log("INFO",
-                       "The webpage HTML @ {} will be retrieved with an HTTP "
-                       "request".format(url))
+        self.print_log(
+            "INFO",
+            "The webpage HTML @ {} will be retrieved with an HTTP "
+            "request".format(url))
 
         # Secondly, try to get the webpage HTML with an HTTP request
+        # TODO: test this part where we download the job post HTML page
         try:
             html = self.get_webpage(url)
         except (OSError, js_e.HTTP404Error) as e:
             raise js_e.WebPageNotFoundError(e)
         else:
             # Get the datetime the webpage was retrieved (though not 100% accurate)
-            webpage_accessed = time.time()
+            # TODO: `utcnow` or `now`?
+            webpage_accessed = datetime.utcnow()
             try:
                 self.save_webpage_locally(url, cached_webpage_filepath, html)
             except (OSError, js_e.WebPageSavingError) as e:
                 self.print_log("ERROR", exception=e)
-                self.print_log("ERROR",
-                               "The webpage @ URL {} will not be saved "
-                               "locally".format(url))
+                self.print_log(
+                    "ERROR",
+                    "The webpage @ URL {} will not be saved locally".format(
+                        url))
                 cached_webpage_filepath = None
             else:
                 self.print_log("INFO",
@@ -1434,16 +1537,17 @@ class JobsScraper:
                     "{} is not a subclass of Exception".format(exception)
                 # TODO: catch AttributeError if __str__() and __class__ not present
                 # The log message template is "exception_name: exception_msg"
-                msg = "{}: {}".format(exception.__class__.__name__,
-                                      exception.__str__())
+                msg = "{}: {}".format(
+                    exception.__class__.__name__,
+                    exception.__str__())
             if len(msg) > length_msg:
                 msg = msg[:length_msg] + " [...]"
 
             if self.session is None:
                 print("[{}] [{}] {}".format(level, caller_function_name, msg))
             else:
-                print("[{}] [{}] [{}] {}".format(level, self.session.job_post_id,
-                                                 caller_function_name, msg))
+                print("[{}] [{}] [{}] {}".format(
+                    level, self.session.job_post_id, caller_function_name, msg))
 
     def save_webpage_locally(self, url, filepath, html):
         if CACHED_WEBPAGES_DIRPATH:
@@ -1512,9 +1616,10 @@ class JobsScraper:
         except KeyError as e:
             raise KeyError(e)
         else:
-            self.print_log("DEBUG",
-                           "The country '{}' will be updated to the "
-                           "standard name '{}'.".format(country, alpha2))
+            self.print_log(
+                "DEBUG",
+                "The country '{}' will be updated to the standard name "
+                "'{}'.".format(country, alpha2))
             return alpha2
 
     @staticmethod

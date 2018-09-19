@@ -1,3 +1,6 @@
-db_filepath: ~/databases/dev_jobs_insights.sqlite
-scraped_job_data_filepath: ~/data/dev_jobs_insights/20180914-182227-all_sessions-0-50.pkl
-logging_filepath: logging_config.yaml
+db_url:
+  drivername: sqlite
+  database: ~/databases/job_data.sqlite
+
+scraped_job_data_dirpath: ~/data/dev_jobs_insights/scraped_job_data/20180917-105205-scraped_job_data
+logging_config_filepath: logging_config.yaml
