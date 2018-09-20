@@ -56,6 +56,7 @@ color_levels_pycharm = {
 }
 color_levels = color_levels_std
 log_levels = ['debug', 'info', 'warning', 'error', 'exception', 'critical']
+use_color = False
 
 
 def get_error_msg(exc):
@@ -73,14 +74,14 @@ def load_yaml(f):
 
 # By default (if `logger` is None), the file and console loggers are used
 # By default, the console logger's messages are colored (`use_color` is True)
-def log(msg, level, logger=None, use_color=True):
+def log(msg, level, logger=None):
     assert level in log_levels, "Log level '' not valid".format(level)
     if logger is None:
         clogger_method = clogger.__getattribute__(level)
         if use_color:
             clogger_method(set_color(msg, level))
         else:
-            clogger_method(msg, level)
+            clogger_method(msg)
         flogger_method = flogger.__getattribute__(level)
         flogger_method(msg)
     else:
@@ -88,7 +89,7 @@ def log(msg, level, logger=None, use_color=True):
         if use_color:
             logger_method(set_color(msg, level))
         else:
-            logger_method(msg, level)
+            logger_method(msg)
 
 
 def read_yaml_config(config_path):
@@ -121,6 +122,15 @@ def setup_logging(config_path):
 
 
 def main():
+    # Setup root logger without the logging configuration
+    rlogger = logging.getLogger()
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    ch.setFormatter(formatter)
+    rlogger.addHandler(ch)
+    rlogger.setLevel(logging.DEBUG)
+
     # Setup argument parser
     parser = argparse.ArgumentParser(
         description="Load scraped job data from pickle files into a database.",
@@ -136,6 +146,7 @@ def main():
     parser.add_argument(
         "-m", "--main_config", default="config.yaml",
         help="Filepath to the YAML main configuration file.")
+    # TODO: combine both options `pycharm_colors` and `use_color` into one option
     parser.add_argument(
         "-p", "--pycharm_colors",
         action='store_true',
@@ -143,21 +154,26 @@ def main():
         help="Use colors for the logging messages as specified for the Pycharm "
              "Terminal. By default, we use colors for the logging messages as "
              "defined for the standard Unix Terminal.")
+    parser.add_argument(
+        "-u", "--use_color",
+        action='store_true',
+        default=False,
+        help="Add colors to log messages.")
+
     # Process command-line arguments
     args = parser.parse_args()
+    global use_color
+    global color_levels
 
-    # Setup root logger without the logging configuration
-    rlogger = logging.getLogger()
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-    ch.setFormatter(formatter)
-    rlogger.addHandler(ch)
-    rlogger.setLevel(logging.DEBUG)
+    if args.use_color:
+        use_color = True
+        log("The log messages will be colored", level='info', logger=rlogger)
 
     if args.pycharm_colors:
-        global color_levels
         color_levels = color_levels_pycharm
+        use_color = True
+        # Since the user wants to use colors for the Pycharm Terminal, we set
+        # the global `use_color` flag to True
         log("The colors of the logging messages are those used for the Pycharm "
             "Terminal", level='info', logger=rlogger)
 
@@ -221,7 +237,7 @@ def main():
                 "#{} Loading the pickle file '{}'".format(
                     i, os.path.basename(job_data_filepath)),
                 level='info')
-            scraped_job_data = gu.load_pickle(job_data_filepath+'s')
+            scraped_job_data = gu.load_pickle(job_data_filepath)
         except FileNotFoundError as e:
             log(get_error_msg(e), level=args.error_log_level)
             log(
