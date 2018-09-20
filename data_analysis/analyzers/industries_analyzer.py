@@ -6,10 +6,10 @@ from utility import graphutil as g_util
 
 
 class IndustriesAnalyzer(Analyzer):
-    def __init__(self, conn, config_ini):
+    def __init__(self, conn, config):
         # Industries stats to compute
         self.stats_names = ["sorted_industries_count"]
-        super().__init__(conn, config_ini, self.stats_names)
+        super().__init__(conn, config, self.stats_names)
 
     def run_analysis(self):
         # Reset all industry stats to be computed
@@ -17,14 +17,14 @@ class IndustriesAnalyzer(Analyzer):
         # Get number of job posts for each industry
         # TODO: specify that the results are already sorted in decreasing order of industry's count, i.e.
         # from the most popular industry to the least one
-        results = self.count_industry_occurrences()
+        results = self._count_industry_occurrences()
         # TODO: Process the results by summing the similar industries (e.g. Software Development with
         # Software Development / Engineering or eCommerce with E-Commerce)
         # TODO: use Software Development instead of the longer Software Development / Engineering
         self.stats["sorted_industries_count"] = np.array(results)
         self.generate_graphs()
 
-    def count_industry_occurrences(self):
+    def _count_industry_occurrences(self):
         """
         Returns industries sorted in decreasing order of their occurrences in job posts.
         A list of tuples is returned where a tuple is of the form (industry, count).
@@ -38,12 +38,12 @@ class IndustriesAnalyzer(Analyzer):
 
     def generate_graphs(self):
         # Generate bar chart: industries vs number of job posts
-        top_k = self.config_ini["bar_chart_industries"]["top_k"]
+        top_k = self.config["bar_chart_industries"]["top_k"]
         config = {"x": self.stats["sorted_industries_count"][:top_k, 0],
                   "y": self.stats["sorted_industries_count"][:top_k, 1].astype(np.int32),
-                  "xlabel": self.config_ini["bar_chart_industries"]["xlabel"],
-                  "ylabel": self.config_ini["bar_chart_industries"]["ylabel"],
-                  "title": self.config_ini["bar_chart_industries"]["title"],
-                  "grid_which": self.config_ini["bar_chart_industries"]["grid_which"]}
+                  "xlabel": self.config["bar_chart_industries"]["xlabel"],
+                  "ylabel": self.config["bar_chart_industries"]["ylabel"],
+                  "title": self.config["bar_chart_industries"]["title"],
+                  "grid_which": self.config["bar_chart_industries"]["grid_which"]}
         # TODO: place number (of job posts) on top of each bar
         g_util.generate_bar_chart(config)

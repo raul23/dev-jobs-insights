@@ -126,11 +126,16 @@ def main():
         description="Load scraped job data from pickle files into a database.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
-        "-m", "--main_config", default="config.yaml",
-        help="Filepath to the YAML main configuration file.")
+        "-e", "--error_log_level", choices=['error', 'exception'],
+        default="error",
+        help="The logging level used for logging messages when an exception is "
+             "caught.")
     parser.add_argument(
         "-l", "--log_config", default="logging_config.yaml",
         help="Filepath to the YAML logging configuration file.")
+    parser.add_argument(
+        "-m", "--main_config", default="config.yaml",
+        help="Filepath to the YAML main configuration file.")
     parser.add_argument(
         "-p", "--pycharm_colors",
         action='store_true',
@@ -166,7 +171,7 @@ def main():
     except (OSError, ValueError, KeyError) as e:
         # TODO: change all 'error' levels to 'exception' once you are able to
         # write the traceback with one line, see https://bit.ly/2DkH63E
-        log(get_error_msg(e), level='error', logger=rlogger)
+        log(get_error_msg(e), level=args.error_log_level, logger=rlogger)
         log("Logging could not be setup. Program will exit.",
             level='error', logger=rlogger)
         sys.exit(1)
@@ -179,7 +184,7 @@ def main():
             level='info')
         config_dict = read_yaml_config(args.main_config)
     except OSError as e:
-        log(get_error_msg(e), 'error')
+        log(get_error_msg(e), level=args.error_log_level)
         log("Configuration file '{}' couldn't be read. Program will "
             "exit.".format(args.main_config),
             level='error')
@@ -216,9 +221,9 @@ def main():
                 "#{} Loading the pickle file '{}'".format(
                     i, os.path.basename(job_data_filepath)),
                 level='info')
-            scraped_job_data = gu.load_pickle(job_data_filepath)
+            scraped_job_data = gu.load_pickle(job_data_filepath+'s')
         except FileNotFoundError as e:
-            log(get_error_msg(e), 'error')
+            log(get_error_msg(e), level=args.error_log_level)
             log(
                 "Scraped job data from '{}' could not be loaded. Program will "
                 "exit.".format(os.path.basename(job_data_filepath)),
@@ -241,7 +246,7 @@ def main():
                 log(
                     "#{} Adding job data for job_post_id={}".format(
                         j, job_post_id),
-                    level='debug')
+                    level=args.error_log_level)
                 db_session.add(scraping_session.data.company)
                 db_session.commit()
             except IntegrityError as e:
