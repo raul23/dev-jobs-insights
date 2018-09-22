@@ -204,7 +204,7 @@ class JobsScraper:
 
                 self.print_log("INFO", "Finished Processing {}".format(url))
 
-                if count == 100:
+                if False and count == 100:
                     break
             except KeyError as e:
                 self.print_log("ERROR", "KeyError: {}".format(e.__str__()))

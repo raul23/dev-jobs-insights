@@ -21,23 +21,21 @@ from analyzers.skills_analyzer import SkillsAnalyzer
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 from utility.genutil import read_yaml_config
 from utility.script_boilerplate import LoggingBoilerplate
+# TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser(
     "~/PycharmProjects/github_projects/dev_jobs_insights/database"))
 from tables import Base
 
 
 class JobDataAnalyzer:
-    def __init__(self, main_config_path, logging_config_path,
-                 use_default_colors=False, use_pycharm_colors=False):
+    def __init__(self, main_config_path, logging_config):
         self.main_config_path = main_config_path
-        self.logging_config_path = logging_config_path
+        self.logging_config = logging_config
         sb = LoggingBoilerplate(
             module_name=__name__,
             module_file=__file__,
             cwd=os.getcwd(),
-            logging_config=logging_config_path,
-            use_default_colors=use_default_colors,
-            use_pycharm_colors=use_pycharm_colors)
+            logging_config=logging_config)
         self.logger = sb.get_logger()
         self.config = self._load_main_config()
         self.types_of_analysis = self._get_analyses()
@@ -57,7 +55,7 @@ class JobDataAnalyzer:
                 self.main_config_path))
             config_dict = read_yaml_config(self.main_config_path)
         except OSError as e:
-            self.logger.exception(e)
+            self.logger.critical(e)
             raise SystemExit("Configuration file '{}' couldn't be read. Program "
                              "will exit.".format(self.main_config_path))
         else:
@@ -65,7 +63,6 @@ class JobDataAnalyzer:
             return config_dict
 
     def _get_db_session(self):
-        ipdb.set_trace()
         # SQLAlchemy database setup
         self.logger.info("Database setup")
         db_url = self.config['db_url']
@@ -102,7 +99,8 @@ class JobDataAnalyzer:
 
         :return:
         """
-        ia = IndustriesAnalyzer(self.conn, self.db_session, self.config)
+        ia = IndustriesAnalyzer(
+            self.conn, self.db_session, self.config, self.logging_config)
         ia.run_analysis()
 
     def _analyze_job_benefits(self):

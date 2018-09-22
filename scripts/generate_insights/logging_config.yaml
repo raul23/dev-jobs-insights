@@ -1,12 +1,12 @@
 version: 1
 disable_existing_loggers: False
 formatters:
-  verbose:
-    format: "%(asctime)s | %(name)-45s | %(levelname)-8s | %(message)s"
+  console:
+    format: "%(name)-40s: %(levelname)-8s %(message)s"
   simple:
     format: "%(levelname)-8s %(message)s"
-  console:
-    format: "%(name)-45s: %(levelname)-8s %(message)s"
+  verbose:
+    format: "%(asctime)s | %(name)-40s | %(levelname)-8s | %(message)s"
 handlers:
   file:
     level: DEBUG
@@ -19,21 +19,85 @@ handlers:
     class: logging.StreamHandler
     formatter: console
 loggers:
-  generate_insights.run_data_analysis.file:
-    level: DEBUG
-    handlers: [file]
-    propagate: False
-  generate_insights.run_data_analysis.console:
+  analyzers.companies_analyzer.c:
     level: INFO
     handlers: [console]
     propagate: False
-  data_analysis.job_data_analyzer.file:
+  analyzers.companies_analyzer.f:
     level: DEBUG
     handlers: [file]
     propagate: False
-  data_analysis.job_data_analyzer.console:
+  analyzers.industries_analyzer.c:
     level: INFO
     handlers: [console]
+    propagate: False
+  analyzers.industries_analyzer.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  analyzers.job_benefits_analyzer.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  analyzers.job_benefits_analyzer.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  analyzers.job_locations_analyzer.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  analyzers.job_locations_analyzer.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  analyzers.job_posts_analyzer.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  analyzers.job_posts_analyzer.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  analyzers.job_salaries_analyzer.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  analyzers.job_salaries_analyzer.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  analyzers.roles_analyzer.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  analyzers.roles_analyzer.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  analyzers.skills_analyzer.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  analyzers.skills_analyzer.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  data_analysis.job_data_analyzer.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  data_analysis.job_data_analyzer.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  generate_insights.run_data_analysis.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  generate_insights.run_data_analysis.f:
+    level: DEBUG
+    handlers: [file]
     propagate: False
 root:
   level: DEBUG

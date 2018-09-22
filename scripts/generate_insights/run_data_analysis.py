@@ -26,9 +26,7 @@ if __name__ == '__main__':
         logger.info("Starting the job data analysis")
         ja.JobDataAnalyzer(
             main_config_path=sb.args.main_config,
-            logging_config_path=sb.args.logging_config,
-            use_default_colors=logger.use_default_colors,
-            use_pycharm_colors=logger.use_pycharm_colors).run_analysis()
+            logging_config=sb.logging_config_dict).run_analysis()
     except KeyboardInterrupt as e:
-        logger.exception(e)
+        logger.critical(e)
         sys.exit(1)
