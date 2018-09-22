@@ -46,7 +46,7 @@ HTTP_GET_TIMEOUT = 5
 DEBUG = False
 DEST_CURRENCY = "USD"
 DEST_SYMBOL = "$"
-GROUP_SIZE = 50
+GROUP_SIZE = 100
 
 
 # ref.: https://stackoverflow.com/a/50120316

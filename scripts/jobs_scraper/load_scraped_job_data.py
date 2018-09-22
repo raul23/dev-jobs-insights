@@ -262,7 +262,7 @@ def main():
                 log(
                     "#{} Adding job data for job_post_id={}".format(
                         j, job_post_id),
-                    level=args.error_log_level)
+                    level='info')
                 db_session.add(scraping_session.data.company)
                 db_session.commit()
             except IntegrityError as e:
@@ -271,7 +271,7 @@ def main():
                 # Possible cause #2: NOT NULL constraint failed
                 # Example: adding a `job_post` without an URL which is mandatory as
                 # specified in the schema
-                log(get_error_msg(e), 'error')
+                log(get_error_msg(e), args.error_log_level)
                 db_session.rollback()
             else:
                 log(
