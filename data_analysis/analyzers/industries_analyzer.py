@@ -1,42 +1,46 @@
+import os
+import sys
 # Third-party modules
+import ipdb
 import numpy as np
 # Own modules
 from .analyzer import Analyzer
-from utility import graphutil as g_util
 
 
 class IndustriesAnalyzer(Analyzer):
-    def __init__(self, conn, config):
+    def __init__(self, conn, db_session, config):
         # Industries stats to compute
         self.stats_names = ["sorted_industries_count"]
-        super().__init__(conn, config, self.stats_names)
+        super().__init__(conn, db_session, config, self.stats_names)
 
     def run_analysis(self):
-        # Reset all industry stats to be computed
+        # Reset all industries stats to be computed
         self.reset_stats()
         # Get number of job posts for each industry
-        # TODO: specify that the results are already sorted in decreasing order of industry's count, i.e.
-        # from the most popular industry to the least one
-        results = self._count_industry_occurrences()
-        # TODO: Process the results by summing the similar industries (e.g. Software Development with
-        # Software Development / Engineering or eCommerce with E-Commerce)
-        # TODO: use Software Development instead of the longer Software Development / Engineering
-        self.stats["sorted_industries_count"] = np.array(results)
-        self.generate_graphs()
+        # NOTE: the returned results are sorted in decreasing order of industries'
+        # count, i.e. from the most popular industry to the least popular industry
+        self._clean_industries_names()
+        industries_count = self._count_industries()
+        self.stats["sorted_industries_count"] = np.array(industries_count)
+        self._generate_graphs()
 
-    def _count_industry_occurrences(self):
+    def _count_industries(self):
         """
         Returns industries sorted in decreasing order of their occurrences in job posts.
         A list of tuples is returned where a tuple is of the form (industry, count).
 
         :return: list of tuples of the form (industry, count)
         """
-        sql = '''SELECT value, COUNT(*) as CountOf from job_overview WHERE name='Industry' GROUP BY value ORDER BY CountOf DESC'''
-        cur = self.conn.cursor()
-        cur.execute(sql)
-        return cur.fetchall()
+        sql = "SELECT name, COUNT(*) as CountOf from industries GROUP BY name ORDER BY CountOf DESC"
+        result = self.db_session.execute(sql).fetchall()
+        return result
 
-    def generate_graphs(self):
+    def _generate_graphs(self):
+        # Lazy import. Loading of module takes lots of time. So do it only when
+        # needed
+        # TODO: module path insertion is hardcoded
+        sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
+        from utility.graphutil import generate_bar_chart
         # Generate bar chart: industries vs number of job posts
         top_k = self.config["bar_chart_industries"]["top_k"]
         config = {"x": self.stats["sorted_industries_count"][:top_k, 0],
@@ -46,4 +50,31 @@ class IndustriesAnalyzer(Analyzer):
                   "title": self.config["bar_chart_industries"]["title"],
                   "grid_which": self.config["bar_chart_industries"]["grid_which"]}
         # TODO: place number (of job posts) on top of each bar
-        g_util.generate_bar_chart(config)
+        generate_bar_chart(config)
+
+    def _clean_industries_names(self):
+        # Standardize the names of the industries
+        # NOTE: only the most obvious industry names are standardized. The
+        # other less obvious ones are left intact, e.g. 'IT Consulting' could
+        # be renamed to 'Consulting' but 'Consulting' is a too broad category
+        # and you might lose information doing so. Same for
+        # 'Advertising Technology' and 'Advertising'.
+        # NOTE: Typos are also fixed
+        # Some industries should not even be considered as industries
+        # e.g. JavaScript, functional programming, facebook, iOS
+        # 'and Compliance' seems to be an incomplete name for an industry
+        # TODO: can we automate this part, at least the typos?
+        industry_names = {
+            'Software Development / Engineering': 'Software Development',
+            'eCommerce': 'E-Commerce',
+            'Retail - eCommerce': 'E-Commerce',
+            'Health Care': 'Healthcare',
+            'Fasion': 'Fashion',
+            'fintech': 'Financial Technology',
+            'blockchain': 'Blockchain',
+            'higher': 'Higher Education'
+        }
+        ipdb.set_trace()
+        for old_name, new_name in industry_names.items():
+            sql = "UPDATE industries SET name='{}' WHERE name='{}'".format(new_name, old_name)
+            result = self.db_session.execute(sql).fetchall()

@@ -1,0 +1,118 @@
+db_url:
+  drivername: sqlite
+  database: ~/databases/job_data.sqlite
+
+analysis_types:
+  companies: False
+  industries: True
+  job_benefits: False
+  job_locations: False
+  job_posts: False
+  job_salaries: False
+  locations: False
+  skills: False
+
+salary_analysis_by_topic:
+  industries: True
+  # TODO: break up locations into countries and us states
+  job_locations: True
+  roles: True
+  skills: True
+
+data_filepaths:
+  shape: ~/data/jobs_insights/basemap/st99_d00
+  countries: ~/data/jobs_insights/countries.json
+  us_states: ~/data/jobs_insights/us_states.json
+  cached_transl_countries: ~/data/jobs_insights/cached/cached_transl_countries.json
+  # Longitude and latitude coordinates of some cities around the world
+  cached_map_coords: ~/data/jobs_insights/cached/cached_locations.pkl
+
+# Items that will be saved:
+# - tables: CSV format
+# - graphs/maps: PNG format
+# - scatter plots: HTML+JavaScript (produced with Plotly)
+# - stats: PICKLE format (dict)
+saving_dirpath: ~/data/reports/
+
+basemap:
+  # The marker to be drawn on a map is scaled by a factor
+  marker_scale: 5
+
+geocoding_config:
+  # Number of seconds to wait between two requests to the geocoding service
+  wait_time: 1
+
+outliers:
+  # Thresholds for removing salary outliers, i.e. salaries in the range
+  # [MIN_SALARY, MAX_SALARY] (both inclusively) will be included, the
+  # rest will be discarded
+  min_salary: 15000
+  max_salary: 400000
+
+graphs_config:
+  bar_chart_countries:
+    display_graph: True
+    save_graph: True
+    top_k: 20
+    xlabel: Countries
+    ylabel: Number of job posts
+    title: Top %(top_k)s most popular countries
+    grid_which: both
+
+  bar_chart_industries:
+    display_graph: True
+    save_graph: True
+    top_k: 20
+    xlabel: Industries
+    ylabel: Number of job posts
+    title: Top %(top_k)s most popular industries
+    grid_which: major
+
+  bar_chart_us_states:
+    display_graph: True
+    save_graph: True
+    top_k: 20
+    xlabel: US states
+    ylabel: Number of job posts
+    title: US states popularity
+    grid_which: major
+
+  bar_chart_skills:
+    display_graph: True
+    save_graph: True
+    top_k: 20
+    xlabel: Technologies (aka skills)
+    ylabel: Number of job posts
+    title: Top %(top_k)s most popular technologies
+    grid_which: major
+
+  histogram_salary:
+    xlabel: Mid-range salaries
+    ylabel: Number of job posts
+    title: "Histogram: Mid-range salaries"
+    grid_which: major
+    xaxis_major_mutiplelocator: 10000
+    xaxis_minor_mutiplelocator: 1000
+    yaxis_major_mutiplelocator: 5
+    yaxis_minor_mutiplelocator: 1
+
+  pie_chart_countries:
+    display_graph: True
+    save_graph: True
+    title: Countries popularity by %% of job posts
+
+  pie_chart_us_states:
+    display_graph: True
+    save_graph: True
+    title: US States popularity by %% of job posts
+
+  scatter_salary_topic:
+    mode: markers
+    yaxis_tickformat: $0.0f
+    # Titles for each topic's scatter plot which each will be appended to
+    # "Average mid-range salary of "
+    countries_title: Countries
+    us_states_title: US states
+    industries_title: Industries
+    roles_title: Job roles
+    skills_title: Technologies

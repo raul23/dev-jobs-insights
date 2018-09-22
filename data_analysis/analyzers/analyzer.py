@@ -1,10 +1,9 @@
 class Analyzer:
-    def __init__(self, conn, config, stats_names):
-        # TODO: explain that stats_names must be a list of stats names
-        # Sanity check on list of stats names
-        assert type(stats_names) is list, "stats_names must be a list"
-        # Connection to jobs_insights.sqlite db
+    def __init__(self, conn, db_session, config, stats_names):
+        # `stats_names` must be a list of stats names
+        # Connection to SQLite db
         self.conn = conn
+        self.db_session = db_session
         self.config = config
         # Stats to compute
         self.stats_names = stats_names
@@ -17,5 +16,5 @@ class Analyzer:
     def run_analysis(self):
         raise NotImplementedError
 
-    def generate_graphs(self):
+    def _generate_graphs(self):
         raise NotImplementedError

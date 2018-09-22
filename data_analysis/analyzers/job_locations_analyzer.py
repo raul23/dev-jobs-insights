@@ -5,10 +5,10 @@ from .analyzer import Analyzer
 
 
 class JobLocationsAnalyzer(Analyzer):
-    def __init__(self, conn, config):
+    def __init__(self, conn, db_session, config):
         # Job locations stats to compute
         self.stats_names = ["sorted_job_locations_count"]
-        super().__init__(conn, config, self.stats_names)
+        super().__init__(conn, db_session, config, self.stats_names)
 
     def run_analysis(self):
         pass

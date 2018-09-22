@@ -97,20 +97,23 @@ class JobPost(Base, AbstractTable):
 # ref.: https://bit.ly/2xd3bM3
 class ExperienceLevel(Base, AbstractTable):
     __tablename__ = 'experience_levels'
-    job_post_id = Column(Integer, ForeignKey('job_posts.id'), primary_key=True)
-    name = Column(String(250), primary_key=True)  # name of experience level
+    id = Column(Integer, primary_key=True)
+    job_post_id = Column(Integer, ForeignKey('job_posts.id'))
+    name = Column(String(250))  # name of experience level
 
 
 class Industry(Base, AbstractTable):
     __tablename__ = 'industries'
-    job_post_id = Column(Integer, ForeignKey('job_posts.id'), primary_key=True)
-    name = Column(String(250), primary_key=True)  # name of industry
+    id = Column(Integer, primary_key=True)
+    job_post_id = Column(Integer, ForeignKey('job_posts.id'))
+    name = Column(String(250))  # name of industry
 
 
 class JobBenefit(Base, AbstractTable):
     __tablename__ = 'job_benefits'
-    job_post_id = Column(Integer, ForeignKey('job_posts.id'), primary_key=True)
-    name = Column(String(250), primary_key=True)  # name of job benefit
+    id = Column(Integer, primary_key=True)
+    job_post_id = Column(Integer, ForeignKey('job_posts.id'))
+    name = Column(String(250))  # name of job benefit
 
 
 # TODO: JobLocation and JobSalary have the same two columns: `id` and
@@ -133,6 +136,7 @@ class JobSalary(Base, AbstractTable):
     currency = Column(CHAR)
     conversion_time = Column(DateTime)
 
+    # TODO: remove it if isn't used somewhere
     def __str__(self):
         return "{}-{} {}".format(self.min_salary, self.max_salary,
                                  self.currency, )
@@ -140,11 +144,13 @@ class JobSalary(Base, AbstractTable):
 
 class Role(Base, AbstractTable):
     __tablename__ = 'roles'
-    job_post_id = Column(Integer, ForeignKey('job_posts.id'), primary_key=True)
-    name = Column(String(250), primary_key=True)  # name of role
+    id = Column(Integer, primary_key=True)
+    job_post_id = Column(Integer, ForeignKey('job_posts.id'))
+    name = Column(String(250))  # name of role
 
 
 class Skill(Base, AbstractTable):
     __tablename__ = 'skills'
-    job_post_id = Column(Integer, ForeignKey('job_posts.id'), primary_key=True)
-    name = Column(String(250), primary_key=True)  # name of skill
+    id = Column(Integer, primary_key=True)
+    job_post_id = Column(Integer, ForeignKey('job_posts.id'))
+    name = Column(String(250))  # name of skill
