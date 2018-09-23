@@ -1568,7 +1568,8 @@ class JobsScraper:
 
         :return:
         """
-        sql = '''SELECT job_id, author, url FROM entries'''
+        # TODO: change link to url once you re-generate the db
+        sql = '''SELECT job_id, author, link FROM entries'''
         cur = self.conn.cursor()
         cur.execute(sql)
         return cur.fetchall()

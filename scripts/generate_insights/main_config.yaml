@@ -1,6 +1,6 @@
 db_url:
   drivername: sqlite
-  database: ~/databases/test_job_data.sqlite
+  database: ~/databases/job_data.sqlite
 
 analysis_types:
   companies: False
@@ -65,7 +65,7 @@ graphs_config:
     top_k: 20
     xlabel: Industries
     ylabel: Number of job posts
-    title: Top %(top_k)s most popular industries
+    title: Top {} most popular industries
     grid_which: major
 
   bar_chart_us_states:

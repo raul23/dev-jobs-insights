@@ -34,34 +34,6 @@ class IndustriesAnalyzer(Analyzer):
         self.stats["sorted_industries_count"] = np.array(industries_count)
         self._generate_graphs()
 
-    def _count_industries(self):
-        """
-        Returns industries sorted in decreasing order of their occurrences in job posts.
-        A list of tuples is returned where a tuple is of the form (industry, count).
-
-        :return: list of tuples of the form (industry, count)
-        """
-        sql = "SELECT name, COUNT(*) as CountOf from industries GROUP BY name ORDER BY CountOf DESC"
-        result = self.db_session.execute(sql).fetchall()
-        return result
-
-    def _generate_graphs(self):
-        # Lazy import. Loading of module takes lots of time. So do it only when
-        # needed
-        # TODO: module path insertion is hardcoded
-        sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-        from utility.graphutil import generate_bar_chart
-        # Generate bar chart: industries vs number of job posts
-        top_k = self.config["bar_chart_industries"]["top_k"]
-        config = {"x": self.stats["sorted_industries_count"][:top_k, 0],
-                  "y": self.stats["sorted_industries_count"][:top_k, 1].astype(np.int32),
-                  "xlabel": self.config["bar_chart_industries"]["xlabel"],
-                  "ylabel": self.config["bar_chart_industries"]["ylabel"],
-                  "title": self.config["bar_chart_industries"]["title"],
-                  "grid_which": self.config["bar_chart_industries"]["grid_which"]}
-        # TODO: place number (of job posts) on top of each bar
-        generate_bar_chart(config)
-
     def _clean_industries_names(self):
         # Standardize the names of the industries
         # NOTE: only the most obvious industries names are standardized. The
@@ -83,17 +55,49 @@ class IndustriesAnalyzer(Analyzer):
             'blockchain': 'Blockchain',
             'higher': 'Higher Education'
         }
-        ipdb.set_trace()
         self.logger.info("Cleaning names of industries")
         for old_name, new_name in industry_names.items():
             sql = "UPDATE industries SET name='{1}' WHERE name='{0}'".format(
                 old_name, new_name)
             result = self.db_session.execute(sql)
             self.db_session.commit()
-            if result.rowcount == 1:
+            if result.rowcount > 0:
                 self.logger.info(
-                    "The industry name '{0}' was changed to '{1}'".format(
-                        old_name, new_name))
+                    "The industry name '{0}' was changed to '{1}': {2} time{3}".format(
+                        old_name, new_name, result.rowcount, 's' if result.rowcount > 1 else ''))
             else:
-                self.logger.info(
+                self.logger.warning(
                     "The industry name '{0}' couldn't be found".format(old_name))
+
+    def _count_industries(self):
+        """
+        Returns industries sorted in decreasing order of their occurrences in job posts.
+        A list of tuples is returned where a tuple is of the form (industry, count).
+
+        :return: list of tuples of the form (industry, count)
+        """
+        sql = "SELECT name, COUNT(*) as CountOf from industries GROUP BY name " \
+              "ORDER BY CountOf DESC"
+        result = self.db_session.execute(sql).fetchall()
+        return result
+
+    def _generate_graphs(self):
+        ipdb.set_trace()
+        # Lazy import. Loading of module takes lots of time. So do it only when
+        # needed
+        from utility.graphutil import generate_bar_chart
+        # Generate bar chart: industries vs number of job posts
+        sorted_industries_count = self.stats["sorted_industries_count"]
+        bar_chart_industries \
+            = self.main_config["graphs_config"]["bar_chart_industries"]
+        top_k = self.main_config["graphs_config"]["bar_chart_industries"]["top_k"]
+        config = {
+            "x": sorted_industries_count[:top_k, 0],
+            "y": sorted_industries_count[:top_k, 1].astype(np.int32),
+            "xlabel": bar_chart_industries["xlabel"],
+            "ylabel": bar_chart_industries["ylabel"],
+            "title": bar_chart_industries["title"].format(top_k),
+            "grid_which": bar_chart_industries["grid_which"]
+        }
+        # TODO: place number (of job posts) on top of each bar
+        generate_bar_chart(config)

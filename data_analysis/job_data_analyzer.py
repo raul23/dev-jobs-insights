@@ -64,9 +64,9 @@ class JobDataAnalyzer:
 
     def _get_db_session(self):
         # SQLAlchemy database setup
-        self.logger.info("Database setup")
         db_url = self.config['db_url']
         db_url['database'] = os.path.expanduser(db_url['database'])
+        self.logger.info("Database setup of {}".format(db_url['database']))
         engine = create_engine(URL(**db_url))
         Base.metadata.bind = engine
         # Setup database session
