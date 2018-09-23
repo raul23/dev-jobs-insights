@@ -91,13 +91,10 @@ class IndustriesAnalyzer(Analyzer):
         bar_chart_industries \
             = self.main_config["graphs_config"]["bar_chart_industries"]
         top_k = self.main_config["graphs_config"]["bar_chart_industries"]["top_k"]
-        config = {
-            "x": sorted_industries_count[:top_k, 0],
-            "y": sorted_industries_count[:top_k, 1].astype(np.int32),
-            "xlabel": bar_chart_industries["xlabel"],
-            "ylabel": bar_chart_industries["ylabel"],
-            "title": bar_chart_industries["title"].format(top_k),
-            "grid_which": bar_chart_industries["grid_which"]
-        }
         # TODO: place number (of job posts) on top of each bar
-        generate_bar_chart(config)
+        generate_bar_chart(
+            x=sorted_industries_count[:top_k, 0],
+            y=sorted_industries_count[:top_k, 1].astype(np.int32),
+            xlabel=bar_chart_industries["xlabel"],
+            ylabel=bar_chart_industries["ylabel"],
+            title=bar_chart_industries["title"].format(top_k))
