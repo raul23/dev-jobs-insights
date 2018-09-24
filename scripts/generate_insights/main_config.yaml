@@ -4,13 +4,13 @@ db_url:
 
 analysis_types:
   companies: False
-  industries: True
-  job_benefits: False
+  industries: False
+  job_benefits: True
   job_locations: False
   job_posts: False
   job_salaries: False
   locations: False
-  skills: True
+  skills: False
 
 salary_analysis_by_topic:
   industries: True
@@ -53,7 +53,9 @@ graphs_config:
   # `grid_which: major` not be used in:
   # - bar_chart_industries
   # - bar_chart_skills
+  # - bar_chart_job_benefits
   # TODO: is there in YAML something like `%(top_k)s` (used in *.ini)
+  max_xtick_label_length: 40
   bar_chart_countries:
     display_graph: True
     save_graph: True
@@ -70,6 +72,15 @@ graphs_config:
     xlabel: Industries
     ylabel: Number of job posts
     title: Top {} most popular industries
+    grid_which: major
+
+  bar_chart_job_benefits:
+    display_graph: True
+    save_graph: True
+    top_k: 20
+    xlabel: Job benefits
+    ylabel: Number of job posts
+    title: Top {} most popular job benefits
     grid_which: major
 
   bar_chart_us_states:
@@ -90,7 +101,7 @@ graphs_config:
     title: Top {} most popular technologies
     grid_which: major
 
-  histogram_salary:
+  histogram_job_salaries:
     xlabel: Mid-range salaries
     ylabel: Number of job posts
     title: "Histogram: Mid-range salaries"
@@ -110,7 +121,7 @@ graphs_config:
     save_graph: True
     title: US States popularity by %% of job posts
 
-  scatter_salary_topic:
+  scatter_job_salaries_topic:
     mode: markers
     yaxis_tickformat: $0.0f
     # Titles for each topic's scatter plot which each will be appended to

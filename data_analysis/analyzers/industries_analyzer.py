@@ -31,7 +31,9 @@ class IndustriesAnalyzer(Analyzer):
         # count, i.e. from the most popular industry to the least popular industry
         self._clean_industries_names()
         industries_count = self._count_industries()
-        self.logger.debug("There are {} distinct industries".format(
+        self.logger.debug(
+            "There are {} distinct industries".format(len(industries_count)))
+        self.logger.debug("There are in total {} industries".format(
             sum(j for i, j in industries_count)))
         self.stats["sorted_industries_count"] = np.array(industries_count)
         self._generate_graphs()

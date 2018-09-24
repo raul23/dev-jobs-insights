@@ -11,6 +11,9 @@ class Analyzer:
         self.stats = {}
         self.reset_stats()
 
+    def _shrink_labels(self, labels, max_length):
+        pass
+
     def reset_stats(self):
         self.stats = dict(zip(self.stats_names, [None] * len(self.stats_names)))
 

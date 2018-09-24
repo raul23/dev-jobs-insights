@@ -29,7 +29,9 @@ class SkillsAnalyzer(Analyzer):
         # Get counts of skills, i.e. for each skill we want to know its number of
         # occurrences in job posts
         skills_count = self._count_skills()
-        self.logger.debug("There are {} distinct skills".format(
+        self.logger.debug(
+            "There are {} distinct skills".format(len(skills_count)))
+        self.logger.debug("There are in total {} skills".format(
             sum(j for i, j in skills_count)))
         # NOTE: these are all the skills and they are sorted in order of
         # decreasing number of occurrences (i.e. most popular skill at first)
