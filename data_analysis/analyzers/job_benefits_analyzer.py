@@ -64,11 +64,15 @@ class JobBenefitsAnalyzer(Analyzer):
         bar_chart_job_benefits = \
             self.main_config["graphs_config"]["bar_chart_job_benefits"]
         top_k = bar_chart_job_benefits["top_k"]
-        # TODO: place number (of job posts) on top of each bar
+        new_labels = self._shrink_labels(
+            labels=sorted_job_benefits_count[:top_k, 0],
+            max_length=bar_chart_job_benefits["max_xtick_label_length"])
         generate_bar_chart(
-            # x=self._shrink_labels(sorted_job_benefits_count[:top_k, 0], self.main_config["graphs_config"][""]),
-            x=sorted_job_benefits_count[:top_k, 0],
+            x=np.array(new_labels),
             y=sorted_job_benefits_count[:top_k, 1].astype(np.int32),
             xlabel=bar_chart_job_benefits["xlabel"],
             ylabel=bar_chart_job_benefits["ylabel"],
-            title=bar_chart_job_benefits["title"].format(top_k))
+            title=bar_chart_job_benefits["title"].format(top_k),
+            grid_which=bar_chart_job_benefits["grid_which"],
+            fig_width=bar_chart_job_benefits["fig_width"],
+            fig_height=bar_chart_job_benefits["fig_height"])

@@ -96,10 +96,15 @@ class IndustriesAnalyzer(Analyzer):
         bar_chart_industries \
             = self.main_config["graphs_config"]["bar_chart_industries"]
         top_k = self.main_config["graphs_config"]["bar_chart_industries"]["top_k"]
-        # TODO: place number (of job posts) on top of each bar
+        new_labels = self._shrink_labels(
+            labels=sorted_industries_count[:top_k, 0],
+            max_length=bar_chart_industries["max_xtick_label_length"])
         generate_bar_chart(
-            x=sorted_industries_count[:top_k, 0],
+            x=np.array(new_labels),
             y=sorted_industries_count[:top_k, 1].astype(np.int32),
             xlabel=bar_chart_industries["xlabel"],
             ylabel=bar_chart_industries["ylabel"],
-            title=bar_chart_industries["title"].format(top_k))
+            title=bar_chart_industries["title"].format(top_k),
+            grid_which=bar_chart_industries["grid_which"],
+            fig_width=bar_chart_industries["fig_width"],
+            fig_height=bar_chart_industries["fig_height"])

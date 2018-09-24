@@ -12,7 +12,9 @@ class Analyzer:
         self.reset_stats()
 
     def _shrink_labels(self, labels, max_length):
-        pass
+        return [label[:max_length]
+                if len(label) < max_length else '{}...'.format(label[:max_length])
+                for label in labels]
 
     def reset_stats(self):
         self.stats = dict(zip(self.stats_names, [None] * len(self.stats_names)))

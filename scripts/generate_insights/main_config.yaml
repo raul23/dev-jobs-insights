@@ -4,13 +4,13 @@ db_url:
 
 analysis_types:
   companies: False
-  industries: False
+  industries: True
   job_benefits: True
   job_locations: False
   job_posts: False
   job_salaries: False
   locations: False
-  skills: False
+  skills: True
 
 salary_analysis_by_topic:
   industries: True
@@ -55,7 +55,6 @@ graphs_config:
   # - bar_chart_skills
   # - bar_chart_job_benefits
   # TODO: is there in YAML something like `%(top_k)s` (used in *.ini)
-  max_xtick_label_length: 40
   bar_chart_countries:
     display_graph: True
     save_graph: True
@@ -64,6 +63,9 @@ graphs_config:
     ylabel: Number of job posts
     title: Top %(top_k)s most popular countries
     grid_which: both
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
 
   bar_chart_industries:
     display_graph: True
@@ -73,6 +75,9 @@ graphs_config:
     ylabel: Number of job posts
     title: Top {} most popular industries
     grid_which: major
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
 
   bar_chart_job_benefits:
     display_graph: True
@@ -82,6 +87,9 @@ graphs_config:
     ylabel: Number of job posts
     title: Top {} most popular job benefits
     grid_which: major
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 7.5
 
   bar_chart_us_states:
     display_graph: True
@@ -91,6 +99,9 @@ graphs_config:
     ylabel: Number of job posts
     title: US states popularity
     grid_which: major
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
 
   bar_chart_skills:
     display_graph: True
@@ -100,6 +111,9 @@ graphs_config:
     ylabel: Number of job posts
     title: Top {} most popular technologies
     grid_which: major
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
 
   histogram_job_salaries:
     xlabel: Mid-range salaries

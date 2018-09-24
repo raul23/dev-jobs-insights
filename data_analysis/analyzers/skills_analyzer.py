@@ -61,10 +61,16 @@ class SkillsAnalyzer(Analyzer):
         sorted_skills_count = self.stats["sorted_skills_count"]
         bar_chart_skills = self.main_config["graphs_config"]["bar_chart_skills"]
         top_k = bar_chart_skills["top_k"]
-        # TODO: place number (of job posts) on top of each bar
+        new_labels = self._shrink_labels(
+            labels=sorted_skills_count[:top_k, 0],
+            max_length=bar_chart_skills["max_xtick_label_length"])
         generate_bar_chart(
-            x=sorted_skills_count[:top_k, 0],
+            x=np.array(new_labels),
             y=sorted_skills_count[:top_k, 1].astype(np.int32),
             xlabel=bar_chart_skills["xlabel"],
             ylabel=bar_chart_skills["ylabel"],
-            title=bar_chart_skills["title"].format(top_k))
+            title=bar_chart_skills["title"].format(top_k),
+            grid_which=bar_chart_skills["grid_which"],
+            fig_width=bar_chart_skills["fig_width"],
+            fig_height=bar_chart_skills["fig_height"])
+
