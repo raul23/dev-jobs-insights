@@ -11,14 +11,34 @@ class Analyzer:
         self.stats = {}
         self.reset_stats()
 
-    def _generate_graphs(self):
+    def _generate_bar_chart(self, sorted_stats_count, bar_chart_config):
         raise NotImplementedError
+
+    """
+    def _generate_pie_chart(self, sorted_stats_count, bar_chart_config):
+        raise NotImplementedError
+
+    def _generate_histogram(self, sorted_stats_count, bar_chart_config):
+        raise NotImplementedError
+
+    def _generate_scatter_plot(self, sorted_stats_count, bar_chart_config):
+        raise NotImplementedError
+    """
 
     @staticmethod
     def _shrink_labels(labels, max_length):
-        return [label[:max_length]
-                if len(label) < max_length else '{}...'.format(label[:max_length])
-                for label in labels]
+        new_labels = []
+        for l in labels:
+            # The column (e.g. region in `job_locations`) could be `None`, we
+            # can't do `len(None)` since it is not a string. Thus this special
+            # case.
+            if l is None:
+                new_labels.append('None')
+            elif len(l) < max_length:
+                new_labels.append(l[:max_length])
+            else:
+                new_labels.append('{}...'.format(l[:max_length]))
+        return new_labels
 
     def reset_stats(self):
         self.stats = dict(zip(self.stats_names, [None] * len(self.stats_names)))

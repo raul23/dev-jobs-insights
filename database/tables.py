@@ -1,4 +1,11 @@
 # TODO: change filename to 'job_data_tables.py'
+# TODO: is alright to use `None` as value for empty columns or should we use
+# the empty string '' instead? Does using `None` uses less storage space than
+# using the empty string ''? e.g. in the `JobLocation` table, the column `region`
+# (aka US state) might be missing in the job posts, and you need to be careful
+# manipulating strings because if you do len(None) you will an error, `None`
+# should be changed to its string equivalent `str(None)` before manipulating
+# string columns, see `_shrink_labels()` in `analyzer.py`
 from sqlalchemy import Boolean, CHAR, Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship

@@ -4,14 +4,13 @@ db_url:
 
 analysis_types:
   companies: False
-  industries: True
-  job_benefits: True
-  job_locations: False
+  industries: False
+  job_benefits: False
+  job_locations: True
   job_posts: False
   job_salaries: False
-  locations: False
-  roles: True
-  skills: True
+  roles: False
+  skills: False
 
 salary_analysis_by_topic:
   industries: True
@@ -51,18 +50,31 @@ outliers:
   max_salary: 400000
 
 graphs_config:
-  # `grid_which: major` not be used in:
-  # - bar_chart_industries
-  # - bar_chart_skills
-  # - bar_chart_job_benefits
   # TODO: is there in YAML something like `%(top_k)s` (used in *.ini)
+  # TODO: make room between rectangles in char bart, so you can display long
+  # xtick label on two lines
+  # TODO: add bold to xlabel and ylabel
+  # TODO: on the graph, add date the data was obtained and some other metadata,
+  # e.g. total of job posts
   bar_chart_countries:
     display_graph: True
     save_graph: True
     top_k: 20
     xlabel: Countries
     ylabel: Number of job posts
-    title: Top %(top_k)s most popular countries @ stackoverflow.com/jobs
+    title: Top {} most popular countries @ stackoverflow.com/jobs
+    grid_which: both
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+
+  bar_chart_european_countries:
+    display_graph: True
+    save_graph: True
+    top_k: 20
+    xlabel: Countries
+    ylabel: Number of job posts
+    title: Top {} most popular european countries @ stackoverflow.com/jobs
     grid_which: both
     max_xtick_label_length: 30
     fig_width: 8
@@ -92,18 +104,6 @@ graphs_config:
     fig_width: 8
     fig_height: 7.5
 
-  bar_chart_us_states:
-    display_graph: True
-    save_graph: True
-    top_k: 20
-    xlabel: US states
-    ylabel: Number of job posts
-    title: US states popularity
-    grid_which: major
-    max_xtick_label_length: 30
-    fig_width: 8
-    fig_height: 6
-
   bar_chart_roles:
     display_graph: True
     save_graph: True
@@ -123,6 +123,18 @@ graphs_config:
     xlabel: Technologies (aka skills)
     ylabel: Number of job posts
     title: Top {} most popular technologies @ stackoverflow.com/jobs
+    grid_which: major
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+
+  bar_chart_us_states:
+    display_graph: True
+    save_graph: True
+    top_k: 20
+    xlabel: US states
+    ylabel: Number of job posts
+    title: Top {} most popular US states @ stackoverflow.com/jobs
     grid_which: major
     max_xtick_label_length: 30
     fig_width: 8
@@ -149,6 +161,8 @@ graphs_config:
     title: US States popularity by %% of job posts
 
   scatter_job_salaries_topic:
+    display_graph: True
+    save_graph: True
     mode: markers
     yaxis_tickformat: $0.0f
     # Titles for each topic's scatter plot which each will be appended to

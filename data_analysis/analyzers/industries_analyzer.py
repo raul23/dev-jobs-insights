@@ -36,7 +36,11 @@ class IndustriesAnalyzer(Analyzer):
         self.logger.debug("There are in total {} industries".format(
             sum(j for i, j in industries_count)))
         self.stats["sorted_industries_count"] = np.array(industries_count)
-        self._generate_graphs()
+        bar_chart_config \
+            = self.main_config["graphs_config"]["bar_chart_industries"]
+        self._generate_bar_chart(
+            sorted_stats_count=self.stats["sorted_industries_count"],
+            bar_chart_config=bar_chart_config)
 
     def _clean_industries_names(self):
         # Standardize the names of the industries
@@ -85,26 +89,25 @@ class IndustriesAnalyzer(Analyzer):
         return self.db_session.execute(sql).fetchall()
 
     # Generate bar chart: industries vs number of job posts
-    def _generate_graphs(self):
+    def _generate_bar_chart(self, sorted_stats_count, bar_chart_config):
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
         self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import generate_bar_chart
         self.logger.debug("finished loading module 'utility.graphutil'")
-        self.logger.info("Generating bar chart: industries vs number of job posts ...")
-        sorted_industries_count = self.stats["sorted_industries_count"]
-        bar_chart_industries \
-            = self.main_config["graphs_config"]["bar_chart_industries"]
-        top_k = self.main_config["graphs_config"]["bar_chart_industries"]["top_k"]
+        self.logger.info(
+            "Generating bar chart: {} vs Number of job posts ...".format(
+                bar_chart_config["xlabel"]))
+        top_k = bar_chart_config["top_k"]
         new_labels = self._shrink_labels(
-            labels=sorted_industries_count[:top_k, 0],
-            max_length=bar_chart_industries["max_xtick_label_length"])
+            labels=sorted_stats_count[:top_k, 0],
+            max_length=bar_chart_config["max_xtick_label_length"])
         generate_bar_chart(
             x=np.array(new_labels),
-            y=sorted_industries_count[:top_k, 1].astype(np.int32),
-            xlabel=bar_chart_industries["xlabel"],
-            ylabel=bar_chart_industries["ylabel"],
-            title=bar_chart_industries["title"].format(top_k),
-            grid_which=bar_chart_industries["grid_which"],
-            fig_width=bar_chart_industries["fig_width"],
-            fig_height=bar_chart_industries["fig_height"])
+            y=sorted_stats_count[:top_k, 1].astype(np.int32),
+            xlabel=bar_chart_config["xlabel"],
+            ylabel=bar_chart_config["ylabel"],
+            title=bar_chart_config["title"].format(top_k),
+            grid_which=bar_chart_config["grid_which"],
+            fig_width=bar_chart_config["fig_width"],
+            fig_height=bar_chart_config["fig_height"])

@@ -125,7 +125,8 @@ class JobDataAnalyzer:
 
         :return:
         """
-        jla = JobLocationsAnalyzer(self.conn, self.db_session, self.config)
+        jla = JobLocationsAnalyzer(
+            self.conn, self.db_session, self.config, self.logging_config)
         jla.run_analysis()
 
     def _analyze_job_posts(self):

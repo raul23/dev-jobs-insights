@@ -37,7 +37,11 @@ class RolesAnalyzer(Analyzer):
         # decreasing number of occurrences (i.e. most popular role at
         # first)
         self.stats["sorted_roles_count"] = np.array(roles_count)
-        self._generate_graphs()
+        bar_chart_config \
+            = self.main_config["graphs_config"]["bar_chart_roles"]
+        self._generate_bar_chart(
+            sorted_stats_count=self.stats["sorted_roles_count"],
+            bar_chart_config=bar_chart_config)
 
     def _count_roles(self):
         """
@@ -52,27 +56,25 @@ class RolesAnalyzer(Analyzer):
         return self.db_session.execute(sql).fetchall()
 
     # Generate bar chart of roles vs number of job posts
-    def _generate_graphs(self):
+    def _generate_bar_chart(self, sorted_stats_count, bar_chart_config):
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
         self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import generate_bar_chart
         self.logger.debug("finished loading module 'utility.graphutil'")
         self.logger.info(
-            "Generating bar chart: roles vs number of job posts ...")
-        sorted_roles_count = self.stats["sorted_roles_count"]
-        bar_chart_roles = \
-            self.main_config["graphs_config"]["bar_chart_roles"]
-        top_k = bar_chart_roles["top_k"]
+            "Generating bar chart: {} vs Number of job posts ...".format(
+                bar_chart_config["xlabel"]))
+        top_k = bar_chart_config["top_k"]
         new_labels = self._shrink_labels(
-            labels=sorted_roles_count[:top_k, 0],
-            max_length=bar_chart_roles["max_xtick_label_length"])
+            labels=sorted_stats_count[:top_k, 0],
+            max_length=bar_chart_config["max_xtick_label_length"])
         generate_bar_chart(
             x=np.array(new_labels),
-            y=sorted_roles_count[:top_k, 1].astype(np.int32),
-            xlabel=bar_chart_roles["xlabel"],
-            ylabel=bar_chart_roles["ylabel"],
-            title=bar_chart_roles["title"].format(top_k),
-            grid_which=bar_chart_roles["grid_which"],
-            fig_width=bar_chart_roles["fig_width"],
-            fig_height=bar_chart_roles["fig_height"])
+            y=sorted_stats_count[:top_k, 1].astype(np.int32),
+            xlabel=bar_chart_config["xlabel"],
+            ylabel=bar_chart_config["ylabel"],
+            title=bar_chart_config["title"].format(top_k),
+            grid_which=bar_chart_config["grid_which"],
+            fig_width=bar_chart_config["fig_width"],
+            fig_height=bar_chart_config["fig_height"])
