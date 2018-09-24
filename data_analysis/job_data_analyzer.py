@@ -77,12 +77,18 @@ class JobDataAnalyzer:
     def run_analysis(self):
         for analysis_type in self.types_of_analysis:
             try:
+                self.logger.info(
+                    "Starting '{}' analysis".format(analysis_type))
                 analyze_method = self.__getattribute__(
                     "_analyze_{}".format(analysis_type))
                 analyze_method()
             except (AttributeError, FileNotFoundError) as e:
                 self.logger.exception(e)
-                self.logger.error("The analysis type '{}' will be skipped")
+                self.logger.error(
+                    "The '{}' analysis will be skipped".format(analysis_type))
+            else:
+                self.logger.debug(
+                    "Successfully ended '{}' analysis".format(analysis_type))
 
     def _analyze_companies(self):
         """
@@ -149,7 +155,7 @@ class JobDataAnalyzer:
 
         :return:
         """
-        sa = SkillsAnalyzer(self.conn, self.db_session, self.config)
+        sa = SkillsAnalyzer(self.conn, self.db_session, self.config, self.logging_config)
         sa.run_analysis()
 
     def generate_report(self):

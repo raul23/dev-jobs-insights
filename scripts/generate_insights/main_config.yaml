@@ -10,7 +10,7 @@ analysis_types:
   job_posts: False
   job_salaries: False
   locations: False
-  skills: False
+  skills: True
 
 salary_analysis_by_topic:
   industries: True
@@ -50,6 +50,10 @@ outliers:
   max_salary: 400000
 
 graphs_config:
+  # `grid_which: major` not be used in:
+  # - bar_chart_industries
+  # - bar_chart_skills
+  # TODO: is there in YAML something like `%(top_k)s` (used in *.ini)
   bar_chart_countries:
     display_graph: True
     save_graph: True
@@ -83,7 +87,7 @@ graphs_config:
     top_k: 20
     xlabel: Technologies (aka skills)
     ylabel: Number of job posts
-    title: Top %(top_k)s most popular technologies
+    title: Top {} most popular technologies
     grid_which: major
 
   histogram_salary:

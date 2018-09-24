@@ -30,3 +30,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt as e:
         logger.critical(e)
         sys.exit(1)
+    else:
+        logger.debug("Successfully ended the job data analysis")
+        sys.exit(0)

@@ -31,6 +31,8 @@ class IndustriesAnalyzer(Analyzer):
         # count, i.e. from the most popular industry to the least popular industry
         self._clean_industries_names()
         industries_count = self._count_industries()
+        self.logger.debug("There are {} distinct industries".format(
+            sum(j for i, j in industries_count)))
         self.stats["sorted_industries_count"] = np.array(industries_count)
         self._generate_graphs()
 
@@ -76,17 +78,18 @@ class IndustriesAnalyzer(Analyzer):
 
         :return: list of tuples of the form (industry, count)
         """
-        sql = "SELECT name, COUNT(*) as CountOf from industries GROUP BY name " \
+        sql = "SELECT name, COUNT(name) as CountOf from industries GROUP BY name " \
               "ORDER BY CountOf DESC"
-        result = self.db_session.execute(sql).fetchall()
-        return result
+        return self.db_session.execute(sql).fetchall()
 
+    # Generate bar chart: industries vs number of job posts
     def _generate_graphs(self):
-        ipdb.set_trace()
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
+        self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import generate_bar_chart
-        # Generate bar chart: industries vs number of job posts
+        self.logger.debug("finished loading module 'utility.graphutil'")
+        self.logger.info("Generating bar chart: industries vs number of job posts ...")
         sorted_industries_count = self.stats["sorted_industries_count"]
         bar_chart_industries \
             = self.main_config["graphs_config"]["bar_chart_industries"]
