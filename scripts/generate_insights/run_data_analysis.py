@@ -31,5 +31,6 @@ if __name__ == '__main__':
         logger.critical(e)
         sys.exit(1)
     else:
-        logger.debug("Successfully ended the job data analysis")
+        logger.info("Successfully ended the whole job data analysis")
+        logger.info("Program will exit")
         sys.exit(0)

@@ -87,7 +87,7 @@ class JobDataAnalyzer:
                 self.logger.error(
                     "The '{}' analysis will be skipped".format(analysis_type))
             else:
-                self.logger.debug(
+                self.logger.info(
                     "Successfully ended '{}' analysis".format(analysis_type))
 
     def _analyze_companies(self):
@@ -147,16 +147,19 @@ class JobDataAnalyzer:
 
         :return:
         """
-        ra = RolesAnalyzer(self.conn, self.db_session, self.config)
+        ra = RolesAnalyzer(
+            self.conn, self.db_session, self.config, self.logging_config)
         ra.run_analysis()
 
     def _analyze_skills(self):
         """
-        Analysis of skills (i.e. technologies such as java, python) which consist in ...
+        Analysis of skills (i.e. technologies such as java, python) which
+        consist in ...
 
         :return:
         """
-        sa = SkillsAnalyzer(self.conn, self.db_session, self.config, self.logging_config)
+        sa = SkillsAnalyzer(
+            self.conn, self.db_session, self.config, self.logging_config)
         sa.run_analysis()
 
     def generate_report(self):

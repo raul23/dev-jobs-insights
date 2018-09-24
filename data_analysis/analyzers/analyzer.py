@@ -11,7 +11,11 @@ class Analyzer:
         self.stats = {}
         self.reset_stats()
 
-    def _shrink_labels(self, labels, max_length):
+    def _generate_graphs(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def _shrink_labels(labels, max_length):
         return [label[:max_length]
                 if len(label) < max_length else '{}...'.format(label[:max_length])
                 for label in labels]
@@ -20,7 +24,4 @@ class Analyzer:
         self.stats = dict(zip(self.stats_names, [None] * len(self.stats_names)))
 
     def run_analysis(self):
-        raise NotImplementedError
-
-    def _generate_graphs(self):
         raise NotImplementedError

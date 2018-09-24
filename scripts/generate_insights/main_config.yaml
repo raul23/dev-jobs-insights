@@ -10,6 +10,7 @@ analysis_types:
   job_posts: False
   job_salaries: False
   locations: False
+  roles: True
   skills: True
 
 salary_analysis_by_topic:
@@ -61,7 +62,7 @@ graphs_config:
     top_k: 20
     xlabel: Countries
     ylabel: Number of job posts
-    title: Top %(top_k)s most popular countries
+    title: Top %(top_k)s most popular countries @ stackoverflow.com/jobs
     grid_which: both
     max_xtick_label_length: 30
     fig_width: 8
@@ -73,7 +74,7 @@ graphs_config:
     top_k: 20
     xlabel: Industries
     ylabel: Number of job posts
-    title: Top {} most popular industries
+    title: Top {} most popular industries @ stackoverflow.com/jobs
     grid_which: major
     max_xtick_label_length: 30
     fig_width: 8
@@ -85,7 +86,7 @@ graphs_config:
     top_k: 20
     xlabel: Job benefits
     ylabel: Number of job posts
-    title: Top {} most popular job benefits
+    title: Top {} most popular job benefits @ stackoverflow.com/jobs
     grid_which: major
     max_xtick_label_length: 30
     fig_width: 8
@@ -103,13 +104,25 @@ graphs_config:
     fig_width: 8
     fig_height: 6
 
+  bar_chart_roles:
+    display_graph: True
+    save_graph: True
+    top_k: 20
+    xlabel: Roles
+    ylabel: Number of job posts
+    title: Top {} most popular roles @ stackoverflow.com/jobs
+    grid_which: major
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+
   bar_chart_skills:
     display_graph: True
     save_graph: True
     top_k: 20
     xlabel: Technologies (aka skills)
     ylabel: Number of job posts
-    title: Top {} most popular technologies
+    title: Top {} most popular technologies @ stackoverflow.com/jobs
     grid_which: major
     max_xtick_label_length: 30
     fig_width: 8
