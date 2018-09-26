@@ -27,20 +27,21 @@ class IndustriesAnalyzer(Analyzer):
         # Reset all industries stats to be computed
         self.reset_stats()
         # Get number of job posts for each industry
-        # NOTE: the returned results are sorted in decreasing order of industries'
-        # count, i.e. from the most popular industry to the least popular industry
+        # NOTE: the returned results are sorted in decreasing order of
+        # industries' count, i.e. from the most popular industry to the least
+        # popular industry
         self._clean_industries_names()
         industries_count = self._count_industries()
         self.logger.debug(
             "There are {} distinct industries".format(len(industries_count)))
-        self.logger.debug("There are in total {} industries".format(
-            sum(j for i, j in industries_count)))
+        self.logger.debug(
+            "There are {} occurrences of industries in job posts".format(
+                sum(j for i, j in industries_count)))
         self.stats["sorted_industries_count"] = np.array(industries_count)
-        bar_chart_config \
-            = self.main_config["graphs_config"]["bar_chart_industries"]
+        bar_config = self.main_config["graphs_config"]["bar_chart_industries"]
         self._generate_bar_chart(
             sorted_stats_count=self.stats["sorted_industries_count"],
-            bar_chart_config=bar_chart_config)
+            bar_chart_config=bar_config)
 
     def _clean_industries_names(self):
         # Standardize the names of the industries
@@ -71,21 +72,24 @@ class IndustriesAnalyzer(Analyzer):
             self.db_session.commit()
             if result.rowcount > 0:
                 self.logger.info(
-                    "The industry name '{0}' was changed to '{1}': {2} time{3}".format(
-                        old_name, new_name, result.rowcount, 's' if result.rowcount > 1 else ''))
+                    "The industry name '{0}' was changed to '{1}': {2} "
+                    "time{3}".format(
+                        old_name, new_name, result.rowcount,
+                        's' if result.rowcount > 1 else ''))
             else:
                 self.logger.warning(
                     "The industry name '{0}' couldn't be found".format(old_name))
 
     def _count_industries(self):
         """
-        Returns industries sorted in decreasing order of their occurrences in job posts.
-        A list of tuples is returned where a tuple is of the form (industry, count).
+        Returns industries sorted in decreasing order of their occurrences in
+        job posts. A list of tuples is returned where a tuple is of the form
+        (industry, count).
 
         :return: list of tuples of the form (industry, count)
         """
-        sql = "SELECT name, COUNT(name) as CountOf from industries GROUP BY name " \
-              "ORDER BY CountOf DESC"
+        sql = "SELECT name, COUNT(name) as CountOf from industries " \
+              "GROUP BY name ORDER BY CountOf DESC"
         return self.db_session.execute(sql).fetchall()
 
     # Generate bar chart: industries vs number of job posts

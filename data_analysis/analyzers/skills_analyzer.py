@@ -29,18 +29,17 @@ class SkillsAnalyzer(Analyzer):
         # Get counts of skills, i.e. for each skill we want to know its number of
         # occurrences in job posts
         skills_count = self._count_skills()
-        self.logger.debug(
-            "There are {} distinct skills".format(len(skills_count)))
-        self.logger.debug("There are in total {} skills".format(
-            sum(j for i, j in skills_count)))
+        self.logger.debug("There are {} distinct skills".format(
+            len(skills_count)))
+        self.logger.debug("There are {} occurrences of skills in job "
+                          "posts".format(sum(j for i, j in skills_count)))
         # NOTE: these are all the skills and they are sorted in order of
         # decreasing number of occurrences (i.e. most popular skill at first)
         self.stats["sorted_skills_count"] = np.array(skills_count)
-        bar_chart_config \
-            = self.main_config["graphs_config"]["bar_chart_skills"]
+        bar_config = self.main_config["graphs_config"]["bar_chart_skills"]
         self._generate_bar_chart(
             sorted_stats_count=self.stats["sorted_skills_count"],
-            bar_chart_config=bar_chart_config)
+            bar_chart_config=bar_config)
 
     def _count_skills(self):
         """

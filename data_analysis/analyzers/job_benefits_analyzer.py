@@ -29,19 +29,18 @@ class JobBenefitsAnalyzer(Analyzer):
         # Get counts of job benefits, i.e. for each job benefit we want to know
         # its number of occurrences in job posts
         job_benefits_count = self._count_job_benefits()
-        self.logger.debug(
-            "There are {} distinct job benefits".format(len(job_benefits_count)))
-        self.logger.debug("There are in total {} job benefits".format(
-            sum(j for i, j in job_benefits_count)))
+        self.logger.debug("There are {} distinct job benefits".format(
+            len(job_benefits_count)))
+        self.logger.debug("There are {} occrrences of job benefits in job "
+                          "posts".format(sum(j for i, j in job_benefits_count)))
         # NOTE: these are all the job benefits and they are sorted in order of
         # decreasing number of occurrences (i.e. most popular job benefit at
         # first)
         self.stats["sorted_job_benefits_count"] = np.array(job_benefits_count)
-        bar_chart_config \
-            = self.main_config["graphs_config"]["bar_chart_job_benefits"]
+        bar_config = self.main_config["graphs_config"]["bar_chart_job_benefits"]
         self._generate_bar_chart(
             sorted_stats_count=self.stats["sorted_job_benefits_count"],
-            bar_chart_config=bar_chart_config)
+            bar_chart_config=bar_config)
 
     def _count_job_benefits(self):
         """

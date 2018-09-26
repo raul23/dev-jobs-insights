@@ -13,6 +13,9 @@ COUNTRIES_FILEPATH = os.path.expanduser("~/data/dev_jobs_insights/countries.json
 if __name__ == '__main__':
     countries = {}
     invalid_countries = []
+    # TODO: why use `iso3166`? You could use `pycountry_convert.map_countries`
+    # which is a dict like this e.g.:
+    # 'Canada': {'alpha2': 'CA', 'alpha3': 'CAN', 'numeric': '124'}
     for alpha2, country in iso3166.countries_by_alpha2.items():
         try:
             continent = country_alpha2_to_continent_code(alpha2)

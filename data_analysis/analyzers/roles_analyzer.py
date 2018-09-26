@@ -29,19 +29,17 @@ class RolesAnalyzer(Analyzer):
         # Get counts of roles, i.e. for each role we want to know its number of
         # occurrences in job posts
         roles_count = self._count_roles()
-        self.logger.debug(
-            "There are {} distinct roles".format(len(roles_count)))
-        self.logger.debug("There are in total {} roles".format(
-            sum(j for i, j in roles_count)))
+        self.logger.debug("There are {} distinct roles".format(len(roles_count)))
+        self.logger.debug("There are {} occurrences of roles in job "
+                          "posts".format(sum(j for i, j in roles_count)))
         # NOTE: these are all the roles and they are sorted in order of
         # decreasing number of occurrences (i.e. most popular role at
         # first)
         self.stats["sorted_roles_count"] = np.array(roles_count)
-        bar_chart_config \
-            = self.main_config["graphs_config"]["bar_chart_roles"]
+        bar_config = self.main_config["graphs_config"]["bar_chart_roles"]
         self._generate_bar_chart(
             sorted_stats_count=self.stats["sorted_roles_count"],
-            bar_chart_config=bar_chart_config)
+            bar_chart_config=bar_config)
 
     def _count_roles(self):
         """

@@ -1,3 +1,4 @@
+# TODO: rename the file to `exc.py`
 class CurrencyRateError(Exception):
     """Raised when there is any error when calling the method get_rate()
     from forex_python.converter.CurrencyRates, e.g. RatesNotAvailableError or

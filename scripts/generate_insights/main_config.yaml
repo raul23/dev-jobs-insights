@@ -20,27 +20,20 @@ salary_analysis_by_topic:
   skills: True
 
 data_filepaths:
-  shape: ~/data/jobs_insights/basemap/st99_d00
-  countries: ~/data/jobs_insights/countries.json
-  us_states: ~/data/jobs_insights/us_states.json
-  cached_transl_countries: ~/data/jobs_insights/cached/cached_transl_countries.json
-  # Longitude and latitude coordinates of some cities around the world
-  cached_map_coords: ~/data/jobs_insights/cached/cached_locations.pkl
+  countries: ~/data/dev_jobs_insights/countries.json
+  us_states: ~/data/dev_jobs_insights/us_states.json
+  reversed_us_states: ~/data/dev_jobs_insights/reversed_us_states.json
+  shape: ~/data/dev_jobs_insights/basemap/st99_d00
+  # Longitude and latitude coordinates of some locations (cities and countries)
+  # around the world
+  cache_loc_geo_coords: ~/data/dev_jobs_insights/cache/locations_geo_coords.pkl
 
-# Items that will be saved:
+# Items that will be saved for the report:
 # - tables: CSV format
 # - graphs/maps: PNG format
 # - scatter plots: HTML+JavaScript (produced with Plotly)
 # - stats: PICKLE format (dict)
 saving_dirpath: ~/data/reports/
-
-basemap:
-  # The marker to be drawn on a map is scaled by a factor
-  marker_scale: 5
-
-geocoding_config:
-  # Number of seconds to wait between two requests to the geocoding service
-  wait_time: 1
 
 outliers:
   # Thresholds for removing salary outliers, i.e. salaries in the range
@@ -50,16 +43,16 @@ outliers:
   max_salary: 400000
 
 graphs_config:
-  # TODO: is there in YAML something like `%(top_k)s` (used in *.ini)
+  # TODO: is there in YAML something like `%(topk)s` (used in *.ini)
   # TODO: make room between rectangles in char bart, so you can display long
   # xtick label on two lines
   # TODO: add bold to xlabel and ylabel
   # TODO: on the graph, add date the data was obtained and some other metadata,
   # e.g. total of job posts
-  bar_chart_countries:
+  bar_chart_all_countries:
     display_graph: True
     save_graph: True
-    top_k: 20
+    topk: 20
     xlabel: Countries
     ylabel: Number of job posts
     title: Top {} most popular countries @ stackoverflow.com/jobs
@@ -68,10 +61,10 @@ graphs_config:
     fig_width: 8
     fig_height: 6
 
-  bar_chart_european_countries:
+  bar_chart_eu_countries:
     display_graph: True
     save_graph: True
-    top_k: 20
+    topk: 20
     xlabel: Countries
     ylabel: Number of job posts
     title: Top {} most popular european countries @ stackoverflow.com/jobs
@@ -83,7 +76,7 @@ graphs_config:
   bar_chart_industries:
     display_graph: True
     save_graph: True
-    top_k: 20
+    topk: 20
     xlabel: Industries
     ylabel: Number of job posts
     title: Top {} most popular industries @ stackoverflow.com/jobs
@@ -95,7 +88,7 @@ graphs_config:
   bar_chart_job_benefits:
     display_graph: True
     save_graph: True
-    top_k: 20
+    topk: 20
     xlabel: Job benefits
     ylabel: Number of job posts
     title: Top {} most popular job benefits @ stackoverflow.com/jobs
@@ -107,7 +100,7 @@ graphs_config:
   bar_chart_roles:
     display_graph: True
     save_graph: True
-    top_k: 20
+    topk: 20
     xlabel: Roles
     ylabel: Number of job posts
     title: Top {} most popular roles @ stackoverflow.com/jobs
@@ -119,7 +112,7 @@ graphs_config:
   bar_chart_skills:
     display_graph: True
     save_graph: True
-    top_k: 20
+    topk: 20
     xlabel: Technologies (aka skills)
     ylabel: Number of job posts
     title: Top {} most popular technologies @ stackoverflow.com/jobs
@@ -131,7 +124,7 @@ graphs_config:
   bar_chart_us_states:
     display_graph: True
     save_graph: True
-    top_k: 20
+    topk: 20
     xlabel: US states
     ylabel: Number of job posts
     title: Top {} most popular US states @ stackoverflow.com/jobs
@@ -172,3 +165,90 @@ graphs_config:
     industries_title: Industries
     roles_title: Job roles
     skills_title: Technologies
+
+maps_config:
+  # Number of seconds to wait between two requests to the geocoding service
+  wait_time: 1
+  europe_map:
+    display_graph: True
+    save_graph: True
+    # The marker to be drawn on a map is scaled by a factor
+    marker_scale: 1.5
+    basemap:
+      projection: lcc
+      llcrnrlon: -119
+      llcrnrlat: 22
+      urcrnrlon: -64
+      urcrnrlat: 49
+      lat_1: 32
+      lat_2: 45
+      lon_0: -95
+
+  usa_map:
+    display_graph: True
+    save_graph: True
+    draw_parallels: False
+    draw_meridians: False
+    fig_width: 10
+    fig_height: 7
+    title: Distribution of job posts in the USA
+    # TODO: annotation is disabled
+    annotation:
+      topk: 5
+      fontsize: 4
+      fontweight: bold
+      ha: left
+      va: bottom
+      color: k
+    basemap:
+      # TODO: find out the complete name of the map projection used
+      # We are using the Lambert [...] map projection and cropping the map to
+      # display only the USA territory
+      projection: lcc
+      llcrnrlon: -119
+      llcrnrlat: 22
+      urcrnrlon: -64
+      urcrnrlat: 49
+      lat_1: 33
+      lat_2: 45
+      lon_0: -95
+    map_coordinates:
+      color: Red
+      marker: o
+       # The marker to be drawn on a map is scaled by a factor
+      marker_scale: 2
+
+  world_map:
+    display_graph: True
+    save_graph: True
+    # TODO: drawing parallels and meridians disabled
+    draw_parallels: True
+    draw_meridians: True
+    draw_coastlines: True
+    draw_countries: True
+    draw_map_boundary: True
+    draw_states: True
+    fill_continents: True
+    fig_width: 8
+    fig_height: 6
+    title: Distribution of job posts around the world
+    # TODO: annotation is disabled
+    annotation:
+      topk: 5
+      fontsize: 4
+      fontweight: bold
+      ha: left
+      va: bottom
+      color: k
+    basemap:
+      # A Miller cylindrical projection
+      projection: mill
+      llcrnrlon: -180
+      llcrnrlat: -60
+      urcrnrlon: 180
+      urcrnrlat: 80
+    map_coordinates:
+      color: Red
+      marker: o
+       # The marker to be drawn on a map is scaled by a factor
+      marker_scale: 1.5

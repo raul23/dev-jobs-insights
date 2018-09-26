@@ -41,7 +41,7 @@ class Analyzer:
         return new_labels
 
     def reset_stats(self):
-        self.stats = dict(zip(self.stats_names, [None] * len(self.stats_names)))
+        self.stats = dict(zip(self.stats_names, [{}] * len(self.stats_names)))
 
     def run_analysis(self):
         raise NotImplementedError
