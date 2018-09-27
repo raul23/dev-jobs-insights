@@ -61,18 +61,16 @@ class JobLocationsAnalyzer(Analyzer):
         # NOTE: these are all the countries and they are sorted in order of
         # decreasing number of occurrences (i.e. most popular country at first)
         countries_count = self._count_all_countries()
-        self.stats['sorted_countries_count'] = countries_count
+        self.stats['sorted_all_countries_count'] = countries_count
         self.logger.debug(
             "There are {} distinct countries".format(len(countries_count)))
         self.logger.debug(
             "There are {} occurrences of countries in the job posts".format(
                 sum(j for i, j in countries_count)))
         bar_config = self.main_config['graphs_config']['bar_chart_all_countries']
-        """
         self._generate_bar_chart(
-            sorted_stats_count=self.stats["sorted_all_countries_count"],
+            sorted_locations_count=self.stats["sorted_all_countries_count"],
             bar_chart_config=bar_config)
-        """
         ###############################
         #      US states analysis
         ###############################
@@ -95,11 +93,9 @@ class JobLocationsAnalyzer(Analyzer):
             self.logger.debug("There are {} 'None' US state".format(
                 np.array(us_states_count)[indices[0]][0][1]))
         bar_config = self.main_config['graphs_config']['bar_chart_us_states']
-        """
         self._generate_bar_chart(
-            sorted_stats_count=self.stats['sorted_us_states_count'],
+            sorted_locations_count=self.stats['sorted_us_states_count'],
             bar_chart_config=bar_config)
-        """
         ###############################
         #       European analysis
         ###############################
@@ -117,18 +113,16 @@ class JobLocationsAnalyzer(Analyzer):
             "There are {} occurrences of european countries in the job "
             "posts".format(sum(j for i, j in eu_countries_count)))
         bar_config = self.main_config['graphs_config']['bar_chart_eu_countries']
-        """
         self._generate_bar_chart(
-            sorted_stats_count=self.stats['sorted_eu_countries_count'],
+            sorted_locations_count=self.stats['sorted_eu_countries_count'],
             bar_chart_config=bar_config)
-        """
         ###############################
         #           Maps
         ###############################
         # Generate map with markers added on US states that have job posts
         self._generate_usa_map()
         # Generate map with markers added on countries that have job posts
-        # self._generate_world_map()
+        self._generate_world_map()
         # Generate map with markers added on european countries that have job
         # posts
         # self._generate_europe_map()
@@ -211,6 +205,7 @@ class JobLocationsAnalyzer(Analyzer):
         return self.db_session.execute(sql).fetchall()
 
     def _generate_bar_chart(self, sorted_locations_count, bar_chart_config):
+        sorted_locations_count = np.array(sorted_locations_count)
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
         self.logger.info("loading module 'utility.graphutil' ...")

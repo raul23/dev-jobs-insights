@@ -11,7 +11,7 @@ class Analyzer:
         self.stats = {}
         self.reset_stats()
 
-    def _generate_bar_chart(self, sorted_stats_count, bar_chart_config):
+    def _generate_bar_chart(self, sorted_locations_count, bar_chart_config):
         raise NotImplementedError
 
     """
