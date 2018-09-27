@@ -57,23 +57,24 @@ class SkillsAnalyzer(Analyzer):
         sorted_topic_count = np.array(sorted_topic_count)
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
+        # TODO: add spinner when loading this module
         self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import draw_bar_chart
         self.logger.debug("finished loading module 'utility.graphutil'")
         self.logger.info(
             "Generating bar chart: {} vs {} ...".format(
-                bar_chart_config["xlabel"], bar_chart_config["ylabel"]))
-        topk = bar_chart_config["topk"]
+                bar_chart_config['xlabel'], bar_chart_config['ylabel']))
+        topk = bar_chart_config['topk']
         new_labels = self._shrink_labels(
             labels=sorted_topic_count[:topk, 0],
-            max_length=bar_chart_config["max_xtick_label_length"])
+            max_length=bar_chart_config['max_xtick_label_length'])
         draw_bar_chart(
             x=np.array(new_labels),
             y=sorted_topic_count[:topk, 1].astype(np.int32),
-            xlabel=bar_chart_config["xlabel"],
-            ylabel=bar_chart_config["ylabel"],
-            title=bar_chart_config["title"].format(topk),
-            grid_which=bar_chart_config["grid_which"],
-            fig_width=bar_chart_config["fig_width"],
-            fig_height=bar_chart_config["fig_height"])
-
+            xlabel=bar_chart_config['xlabel'],
+            ylabel=bar_chart_config['ylabel'],
+            title=bar_chart_config['title'].format(topk),
+            grid_which=bar_chart_config['grid_which'],
+            color=bar_chart_config['color'],
+            fig_width=bar_chart_config['fig_width'],
+            fig_height=bar_chart_config['fig_height'])

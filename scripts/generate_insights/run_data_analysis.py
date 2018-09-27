@@ -1,4 +1,6 @@
-# print("loading modules ...")
+# TODO: add loading screen
+from spinner import spinner
+spinner.start()
 import argparse
 import os
 import sys
@@ -12,6 +14,7 @@ from data_analysis import job_data_analyzer as ja
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 from utility.script_boilerplate import ScriptBoilerplate
+spinner.stop()
 
 
 if __name__ == '__main__':

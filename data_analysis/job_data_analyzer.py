@@ -139,7 +139,8 @@ class JobDataAnalyzer:
         jla.run_analysis()
 
     def _analyze_job_salaries(self):
-        jsa = JobSalariesAnalyzer(self.conn, self.db_session, self.config)
+        jsa = JobSalariesAnalyzer(
+            self.conn, self.db_session, self.config, self.logging_config)
         jsa.run_analysis()
 
     def _analyze_roles(self):

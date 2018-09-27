@@ -11,17 +11,21 @@ class Analyzer:
         self.stats = {}
         self.reset_stats()
 
-    def _generate_bar_chart(self, sorted_locations_count, bar_chart_config):
+    # TODO: add decorator to call `reset_stats` at first
+    def run_analysis(self):
+        raise NotImplementedError
+
+    def _generate_bar_chart(self, sorted_topic_count, bar_chart_config):
         raise NotImplementedError
 
     """
-    def _generate_pie_chart(self, sorted_stats_count, bar_chart_config):
+    def _generate_pie_chart(self, sorted_topic_count, pie_chart_config):
         raise NotImplementedError
 
-    def _generate_histogram(self, sorted_stats_count, bar_chart_config):
+    def _generate_histogram(self, sorted_topic_count, hist_config):
         raise NotImplementedError
 
-    def _generate_scatter_plot(self, sorted_stats_count, bar_chart_config):
+    def _generate_scatter_plot(self, sorted_topic_count, scatter_plot_config):
         raise NotImplementedError
     """
 
@@ -42,6 +46,3 @@ class Analyzer:
 
     def reset_stats(self):
         self.stats = dict(zip(self.stats_names, [{}] * len(self.stats_names)))
-
-    def run_analysis(self):
-        raise NotImplementedError

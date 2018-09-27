@@ -4,20 +4,29 @@ db_url:
 
 analysis_types:
   companies: False
-  industries: True
-  job_benefits: True
-  job_locations: True
+  industries: False
+  job_benefits: False
+  job_locations: False
   job_posts: False
-  job_salaries: False
-  roles: True
-  skills: True
+  job_salaries: True
+  roles: False
+  skills: False
 
 salary_analysis_by_topic:
+  europe: False
+  us_states: False
+  world: False
   industries: True
-  # TODO: break up locations into countries and us states
-  job_locations: True
-  roles: True
-  skills: True
+  roles: False
+  skills: False
+
+salary_currency: USD
+salary_thresholds:
+  # Thresholds for removing salary outliers, i.e. salaries in the range
+  # [MIN_SALARY, MAX_SALARY] (both inclusively) will be included, the
+  # rest will be discarded
+  min_salary: 8000
+  max_salary: 400000
 
 data_filepaths:
   countries: ~/data/dev_jobs_insights/countries.json
@@ -50,13 +59,6 @@ data_filepaths:
 # - stats: PICKLE format (dict)
 saving_dirpath: ~/data/reports/
 
-outliers:
-  # Thresholds for removing salary outliers, i.e. salaries in the range
-  # [MIN_SALARY, MAX_SALARY] (both inclusively) will be included, the
-  # rest will be discarded
-  min_salary: 15000
-  max_salary: 400000
-
 graphs_config:
   # TODO: is there in YAML something like `%(topk)s` (used in *.ini)
   # TODO: make room between rectangles in char bart, so you can display long
@@ -72,6 +74,7 @@ graphs_config:
     ylabel: Number of job posts
     title: Top {} most popular countries @ stackoverflow.com/jobs
     grid_which: both
+    color: b
     max_xtick_label_length: 30
     fig_width: 8
     fig_height: 6
@@ -84,6 +87,7 @@ graphs_config:
     ylabel: Number of job posts
     title: Top {} most popular european countries @ stackoverflow.com/jobs
     grid_which: both
+    color: b
     max_xtick_label_length: 30
     fig_width: 8
     fig_height: 6
@@ -96,6 +100,7 @@ graphs_config:
     ylabel: Number of job posts
     title: Top {} most popular industries @ stackoverflow.com/jobs
     grid_which: major
+    color: b
     max_xtick_label_length: 30
     fig_width: 8
     fig_height: 6
@@ -108,6 +113,7 @@ graphs_config:
     ylabel: Number of job posts
     title: Top {} most popular job benefits @ stackoverflow.com/jobs
     grid_which: major
+    color: b
     max_xtick_label_length: 30
     fig_width: 8
     fig_height: 7.5
@@ -120,6 +126,7 @@ graphs_config:
     ylabel: Number of job posts
     title: Top {} most popular roles @ stackoverflow.com/jobs
     grid_which: major
+    color: b
     max_xtick_label_length: 30
     fig_width: 8
     fig_height: 6
@@ -132,6 +139,7 @@ graphs_config:
     ylabel: Number of job posts
     title: Top {} most popular technologies @ stackoverflow.com/jobs
     grid_which: major
+    color: b
     max_xtick_label_length: 30
     fig_width: 8
     fig_height: 6
@@ -144,19 +152,27 @@ graphs_config:
     ylabel: Number of job posts
     title: Top {} most popular US states @ stackoverflow.com/jobs
     grid_which: major
+    color: b
     max_xtick_label_length: 30
     fig_width: 8
     fig_height: 6
 
   histogram_job_salaries:
+    start_bins: 0
+    end_bins: max
+    size_bins: 10000
     xlabel: Mid-range salaries
     ylabel: Number of job posts
     title: "Histogram: Mid-range salaries"
     grid_which: major
+    color: b
     xaxis_major_mutiplelocator: 10000
+    # xaxis_minor_mutiplelocator no used
     xaxis_minor_mutiplelocator: 1000
     yaxis_major_mutiplelocator: 5
     yaxis_minor_mutiplelocator: 1
+    fig_width: 8
+    fig_height: 6
 
   pie_chart_countries:
     display_graph: True
@@ -173,13 +189,13 @@ graphs_config:
     save_graph: True
     mode: markers
     yaxis_tickformat: $0.0f
-    # Titles for each topic's scatter plot which each will be appended to
-    # "Average mid-range salary of "
-    countries_title: Countries
-    us_states_title: US states
-    industries_title: Industries
-    roles_title: Job roles
-    skills_title: Technologies
+    # Titles for each topic's scatter plot
+    europe_title: Average mid-range salaries in Europe
+    world_title: Average mid-range salaries in the World
+    us_states_title: Average mid-range salaries in the USA
+    industries_title: Average mid-range salaries across Industries
+    roles_title: Average mid-range salaries accross Job roles
+    skills_title: Average mid-range salary accross Technologies
 
 maps_config:
   # Number of seconds to wait between two requests to the geocoding service

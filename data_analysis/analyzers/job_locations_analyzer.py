@@ -12,7 +12,7 @@ from .analyzer import Analyzer
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 from utility.genutil import add_plural, dump_pickle_with_logger, \
-    get_geo_coords_with_logger, load_pickle, load_pickle_with_logger
+    get_geo_coords_with_logger, load_pickle_with_logger
 from utility.script_boilerplate import LoggingBoilerplate
 
 
@@ -52,7 +52,6 @@ class JobLocationsAnalyzer(Analyzer):
     def run_analysis(self):
         # Reset all locations stats to be computed
         self.reset_stats()
-        self.stats['locations_info'] = {}
         ###############################
         #    All countries analysis
         ###############################
@@ -125,6 +124,7 @@ class JobLocationsAnalyzer(Analyzer):
         self._generate_world_map()
         # Generate map with markers added on european countries that have job
         # posts
+        # TODO: implement `_generate_europe_map()`
         # self._generate_europe_map()
 
     def _count_all_countries(self):
@@ -204,32 +204,36 @@ class JobLocationsAnalyzer(Analyzer):
         sql = "SELECT city, region, country FROM job_locations WHERE country='US'"
         return self.db_session.execute(sql).fetchall()
 
+    # TODO: `sorted_topic_count` should be a numpy array since
+    # `_generate_histogram()` takes a numpy array as input
     def _generate_bar_chart(self, sorted_topic_count, bar_chart_config):
         sorted_topic_count = np.array(sorted_topic_count)
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
+        # TODO: add spinner when loading this module
         self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import draw_bar_chart
         self.logger.debug("finished loading module 'utility.graphutil'")
         self.logger.info(
             "Generating bar chart: {} vs {} ...".format(
-                bar_chart_config["xlabel"], bar_chart_config["ylabel"]))
-        topk = bar_chart_config["topk"]
+                bar_chart_config['xlabel'], bar_chart_config['ylabel']))
+        topk = bar_chart_config['topk']
         new_labels = self._shrink_labels(
             labels=sorted_topic_count[:topk, 0],
-            max_length=bar_chart_config["max_xtick_label_length"])
+            max_length=bar_chart_config['max_xtick_label_length'])
         draw_bar_chart(
             x=np.array(new_labels),
             y=sorted_topic_count[:topk, 1].astype(np.int32),
-            xlabel=bar_chart_config["xlabel"],
-            ylabel=bar_chart_config["ylabel"],
-            title=bar_chart_config["title"].format(topk),
-            grid_which=bar_chart_config["grid_which"],
-            fig_width=bar_chart_config["fig_width"],
-            fig_height=bar_chart_config["fig_height"])
+            xlabel=bar_chart_config['xlabel'],
+            ylabel=bar_chart_config['ylabel'],
+            title=bar_chart_config['title'].format(topk),
+            grid_which=bar_chart_config['grid_which'],
+            color=bar_chart_config['color'],
+            fig_width=bar_chart_config['fig_width'],
+            fig_height=bar_chart_config['fig_height'])
 
     def _generate_europe_map(self):
-        pass
+        raise NotImplementedError
 
     def _generate_usa_map(self):
         map_cfg = self.main_config['maps_config']['usa_map']
