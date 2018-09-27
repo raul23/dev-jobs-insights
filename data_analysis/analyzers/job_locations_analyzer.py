@@ -69,7 +69,7 @@ class JobLocationsAnalyzer(Analyzer):
                 sum(j for i, j in countries_count)))
         bar_config = self.main_config['graphs_config']['bar_chart_all_countries']
         self._generate_bar_chart(
-            sorted_locations_count=self.stats["sorted_all_countries_count"],
+            sorted_topic_count=self.stats["sorted_all_countries_count"],
             bar_chart_config=bar_config)
         ###############################
         #      US states analysis
@@ -94,7 +94,7 @@ class JobLocationsAnalyzer(Analyzer):
                 np.array(us_states_count)[indices[0]][0][1]))
         bar_config = self.main_config['graphs_config']['bar_chart_us_states']
         self._generate_bar_chart(
-            sorted_locations_count=self.stats['sorted_us_states_count'],
+            sorted_topic_count=self.stats['sorted_us_states_count'],
             bar_chart_config=bar_config)
         ###############################
         #       European analysis
@@ -114,7 +114,7 @@ class JobLocationsAnalyzer(Analyzer):
             "posts".format(sum(j for i, j in eu_countries_count)))
         bar_config = self.main_config['graphs_config']['bar_chart_eu_countries']
         self._generate_bar_chart(
-            sorted_locations_count=self.stats['sorted_eu_countries_count'],
+            sorted_topic_count=self.stats['sorted_eu_countries_count'],
             bar_chart_config=bar_config)
         ###############################
         #           Maps
@@ -204,29 +204,29 @@ class JobLocationsAnalyzer(Analyzer):
         sql = "SELECT city, region, country FROM job_locations WHERE country='US'"
         return self.db_session.execute(sql).fetchall()
 
-    def _generate_bar_chart(self, sorted_locations_count, bar_chart_config):
-        sorted_locations_count = np.array(sorted_locations_count)
+    def _generate_bar_chart(self, sorted_topic_count, bar_chart_config):
+        sorted_topic_count = np.array(sorted_topic_count)
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
         self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import draw_bar_chart
         self.logger.debug("finished loading module 'utility.graphutil'")
         self.logger.info(
-            "Generating bar chart: {} vs Number of job posts ...".format(
-                bar_chart_config['xlabel']))
-        topk = bar_chart_config['topk']
+            "Generating bar chart: {} vs {} ...".format(
+                bar_chart_config["xlabel"], bar_chart_config["ylabel"]))
+        topk = bar_chart_config["topk"]
         new_labels = self._shrink_labels(
-            labels=sorted_locations_count[:topk, 0],
-            max_length=bar_chart_config['max_xtick_label_length'])
+            labels=sorted_topic_count[:topk, 0],
+            max_length=bar_chart_config["max_xtick_label_length"])
         draw_bar_chart(
             x=np.array(new_labels),
-            y=sorted_locations_count[:topk, 1].astype(np.int32),
-            xlabel=bar_chart_config['xlabel'],
-            ylabel=bar_chart_config['ylabel'],
-            title=bar_chart_config['title'].format(topk),
-            grid_which=bar_chart_config['grid_which'],
-            fig_width=bar_chart_config['fig_width'],
-            fig_height=bar_chart_config['fig_height'])
+            y=sorted_topic_count[:topk, 1].astype(np.int32),
+            xlabel=bar_chart_config["xlabel"],
+            ylabel=bar_chart_config["ylabel"],
+            title=bar_chart_config["title"].format(topk),
+            grid_which=bar_chart_config["grid_which"],
+            fig_width=bar_chart_config["fig_width"],
+            fig_height=bar_chart_config["fig_height"])
 
     def _generate_europe_map(self):
         pass
@@ -347,8 +347,8 @@ class JobLocationsAnalyzer(Analyzer):
                 len(locations)))
         # TODO: add a progress bar
         # TODO: testing code to be removed
-        filepath = os.path.expanduser("~/data/dev_jobs_insights/cache/locations_geo_coords.pkl")
-        locations_geo_coords = load_pickle(filepath)
+        # filepath = os.path.expanduser("~/data/dev_jobs_insights/cache/locations_geo_coords.pkl")
+        # locations_geo_coords = load_pickle(filepath)
         for i, (city, region, country) in enumerate(locations, start=1):
 
             # Build location string from list of strings (city, region, country)
@@ -390,21 +390,24 @@ class JobLocationsAnalyzer(Analyzer):
                 self.logger.debug("Address '{}'".format(address))
             else:
                 try:
-                    # TODO: testing code to be removed
-                    """
+                    ipdb.set_trace()
                     geo_coords = get_geo_coords_with_logger(
                         geolocator, location, self.logger)
+                    # TODO: testing code to be removed
                     """
                     self.logger.debug(
                         "Sending request to the geocoding service for location "
                         "'{}'".format(location))
                     geo_coords = locations_geo_coords.get(location)
+                    """
                 except (geopy.exc.GeocoderTimedOut,
                         geopy.exc.GeocoderServiceError):
                     report['first_try_geocoder_error'].append(location)
                     # TODO: test this part
                     ipdb.set_trace()
                     continue
+                # TODO: testing code to be removed
+                """
                 else:
                     self.logger.debug(
                         "Geo coordinates received from the geocoding service")
@@ -413,6 +416,7 @@ class JobLocationsAnalyzer(Analyzer):
                         "Geo coordinates: {} lat, {} long [{}]".format(
                             geo_coords.latitude, geo_coords.longitude,
                             geo_coords.point))
+                """
                 if geo_coords is None and use_country_fallback:
                     # TODO: test this part
                     ipdb.set_trace()
@@ -429,12 +433,10 @@ class JobLocationsAnalyzer(Analyzer):
                         "...".format(wait_time, add_plural(wait_time)))
                     time.sleep(wait_time)
                     try:
-                        # TODO: testing code to be removed
-                        """
                         geo_coords = get_geo_coords_with_logger(
                             geolocator, country, self.logger)
-                        """
-                        geo_coords = locations_geo_coords.get(location)
+                        # TODO: testing code to be removed
+                        # geo_coords = locations_geo_coords.get(location)
                     except (geopy.exc.GeocoderTimedOut,
                             geopy.exc.GeocoderServiceError) as e:
                         report['second_try_geocoder_error'].append(location)

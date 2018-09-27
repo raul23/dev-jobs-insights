@@ -78,7 +78,7 @@ class JobDataAnalyzer:
         for analysis_type in self.types_of_analysis:
             try:
                 self.logger.info(
-                    "Starting '{}' analysis".format(analysis_type))
+                    "Starting the '{}' analysis".format(analysis_type))
                 analyze_method = self.__getattribute__(
                     "_analyze_{}".format(analysis_type))
                 analyze_method()
@@ -88,7 +88,7 @@ class JobDataAnalyzer:
                     "The '{}' analysis will be skipped".format(analysis_type))
             else:
                 self.logger.info(
-                    "Successfully ended '{}' analysis".format(analysis_type))
+                    "End of the '{}' analysis".format(analysis_type))
 
     def _analyze_companies(self):
         """

@@ -4,13 +4,13 @@ db_url:
 
 analysis_types:
   companies: False
-  industries: False
-  job_benefits: False
+  industries: True
+  job_benefits: True
   job_locations: True
   job_posts: False
   job_salaries: False
-  roles: False
-  skills: False
+  roles: True
+  skills: True
 
 salary_analysis_by_topic:
   industries: True
