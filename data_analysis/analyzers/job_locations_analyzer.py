@@ -238,10 +238,12 @@ class JobLocationsAnalyzer(Analyzer):
 
     def _generate_usa_map(self):
         map_cfg = self.main_config['maps_config']['usa_map']
-        locations_geo_coords = self._get_locations_geo_coords(
+        addresses_data = self._get_locations_geo_coords(
             locations=self._get_us_states())
         # TODO: annotation is disabled because the names overlap
-        """
+        """ 
+        # IMPORTANT: Old code using the old dict structure with locations 
+        # instead of addresses as keys
         topk = map_cfg['annotation']['topk']
         topk_locations = sorted(locations_geo_coords.items(),
                                 key=lambda x: x[1]['count'])[-topk:]
@@ -258,13 +260,13 @@ class JobLocationsAnalyzer(Analyzer):
         us_states_filepath = os.path.expanduser(
             self.main_config['data_filepaths']['reversed_us_states'])
         draw_usa_map(
-            locations_geo_coords=locations_geo_coords,
+            addresses_data=addresses_data,
             shape_filepath=shape_filepath,
             us_states_filepath=us_states_filepath,
             title=map_cfg['title'],
             fig_width=map_cfg['fig_width'],
             fig_height=map_cfg['fig_height'],
-            # annotate_locations=topk_locations,
+            # annotate_addresses=topk_addresses,
             # annotation_cfg=map_cfg['annotation'],
             basemap_cfg=map_cfg['basemap'],
             map_coords_cfg=map_cfg['map_coordinates'],
@@ -273,7 +275,7 @@ class JobLocationsAnalyzer(Analyzer):
 
     def _generate_world_map(self):
         map_cfg = self.main_config['maps_config']['world_map']
-        locations_geo_coords = self._get_locations_geo_coords(
+        addresses_data, _ = self._get_locations_geo_coords(
             locations=self._get_all_locations())
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
@@ -281,11 +283,11 @@ class JobLocationsAnalyzer(Analyzer):
         from utility.graphutil import draw_world_map
         self.logger.debug("finished loading module 'utility.graphutil'")
         draw_world_map(
-            locations_geo_coords=locations_geo_coords,
+            addresses_data=addresses_data,
             title=map_cfg['title'],
             fig_width=map_cfg['fig_width'],
             fig_height=map_cfg['fig_height'],
-            # annotate_locations=topk_locations,
+            # annotate_addresses=topk_addresses,
             # annotation_cfg=map_cfg['annotation'],
             basemap_cfg=map_cfg['basemap'],
             map_coords_cfg=map_cfg['map_coordinates'],
@@ -304,10 +306,10 @@ class JobLocationsAnalyzer(Analyzer):
     # TODO: check country is always present
     def _get_locations_geo_coords(self, locations, use_country_fallback=False):
         new_geo_coords = False
-        # Current addresses' geographic coordinates. By current we mean the
-        # actual session. Thus, this dictionary (and other similar dictionaries)
-        # records anything that is needed as data for the current session
-        # computations.
+        # `cur_adrs_data`: current addresses' geographic coordinates. By current
+        # we mean the actual session. Thus, this dictionary (and other similar
+        # dictionaries) records anything that is needed as data for the current
+        # session computations.
         # keys: addresses as given by the geocode service
         # values: dict
         #           key1: 'geo_coords'
@@ -318,7 +320,7 @@ class JobLocationsAnalyzer(Analyzer):
         #           key3: 'locations'
         #           val3: set, set of the location names having the given geo
         #                 coordinates
-        cur_adrs_geo_coords = {}
+        cur_adrs_data = {}
         # Current locations mappings to addresses
         # keys: location name
         # values: addresses as given by the geocode service
@@ -326,12 +328,13 @@ class JobLocationsAnalyzer(Analyzer):
         counts = 0
         # Skipped locations stats
         # TODO: explain fields of dict
-        skipped_locs = {'empty_locations': 0,
-                        'already_added': [],
-                        'first_try_geopy_error': [],
-                        'second_try_geopy_error': [],
-                        'second_try_geopy_none': []}
-        # Waiting time in seconds between requests to geocode service
+        report = {'empty_locations': 0,
+                  'already_added': [],
+                  'similar_locations': {},
+                  'first_try_geocoder_error': [],
+                  'second_try_geocoder_error': [],
+                  'second_try_geocoder_none': []}
+        # Waiting time in seconds between requests to geocoding service
         wait_time = self.main_config['maps_config']['wait_time']
         # Get the location's longitude and latitude
         # We are using the module geopy to get the longitude and latitude of
@@ -348,7 +351,7 @@ class JobLocationsAnalyzer(Analyzer):
             "Requesting geographic coordinates for {} locations ...".format(
                 len(locations)))
         # TODO: add a progress bar
-        ipdb.set_trace()
+        # TODO: testing code to be removed
         filepath = os.path.expanduser("~/data/dev_jobs_insights/cache/locations_geo_coords.pkl")
         locations_geo_coords = load_pickle(filepath)
         for i, (city, region, country) in enumerate(locations, start=1):
@@ -369,52 +372,68 @@ class JobLocationsAnalyzer(Analyzer):
                 # NOTE: This case shouldn't happen because all job locations
                 # have at least a country
                 self.logger.warning("The location is empty")
-                skipped_locs['empty_locations'] += 1
+                report['empty_locations'] += 1
                 continue
             elif location in cur_loc_mappings:
+                # Location already added
+                report['already_added'].append(location)
+                address = self.locations_mappings.get(location)
+                cur_adrs_data[address]['count'] += 1
+                counts += 1
                 self.logger.debug(
                     "Location '{}' was already added!".format(location))
-                skipped_locs['already_added'].append(location)
-                address = self.locations_mappings.get(location)
-                cur_adrs_geo_coords[address]['count'] += 1
-                counts += 1
+                self.logger.debug("Address '{}'".format(address))
                 continue
             elif location in self.locations_mappings:
                 # We already computed the location's latitude and longitude with
-                # the geopy service
+                # the geocoding service
                 address = self.locations_mappings.get(location)
                 geo_coords = self.addresses_geo_coords[address]
                 self.logger.debug(
                     "Location '{}' found in cache! Geo coordinates: {}".format(
                         location, geo_coords.point))
+                self.logger.debug("Address '{}'".format(address))
             else:
                 try:
+                    # TODO: testing code to be removed
                     """
                     geo_coords = get_geo_coords_with_logger(
                         geolocator, location, self.logger)
                     """
+                    self.logger.debug(
+                        "Sending request to the geocoding service for location "
+                        "'{}'".format(location))
                     geo_coords = locations_geo_coords.get(location)
                 except (geopy.exc.GeocoderTimedOut,
                         geopy.exc.GeocoderServiceError):
-                    skipped_locs['first_try_geopy_error'].append(location)
+                    report['first_try_geocoder_error'].append(location)
                     # TODO: test this part
                     ipdb.set_trace()
                     continue
+                else:
+                    self.logger.debug(
+                        "Geo coordinates received from the geocoding service")
+                    self.logger.debug(
+                        "Geo coordinates of '{}': {} lat, {} long [{}]".format(
+                            geo_coords.address, geo_coords.latitude,
+                            geo_coords.longitude, geo_coords.point))
                 if geo_coords is None and use_country_fallback:
                     # TODO: test this part
                     ipdb.set_trace()
-                    # The geopy service could not provide the geo coordinates.
+                    # The geocoding service could not provide the geo coordinates.
                     # Use the country instead of the region
                     # IMPORTANT: we assume that `location` is a region
                     self.logger.warning(
-                        "The geopy could not provide the geo coordinates for "
-                        "the location '{}'. We will use the country '{}' only in "
-                        "the second request to geopy".format(location, country))
+                        "The geocoding service could not provide the geo "
+                        "coordinates for the location '{}'. We will use only "
+                        "the country '{}' in the second request to geopy".format(
+                            location, country))
                     self.logger.debug(
-                        "Waiting {} second{} for the next geopy request "
+                        "Waiting {} second{} for the next geoco request "
                         "...".format(wait_time, add_plural(wait_time)))
                     time.sleep(wait_time)
                     try:
+                        # TODO: testing code to be removed
                         """
                         geo_coords = get_geo_coords_with_logger(
                             geolocator, country, self.logger)
@@ -422,16 +441,16 @@ class JobLocationsAnalyzer(Analyzer):
                         geo_coords = locations_geo_coords.get(location)
                     except (geopy.exc.GeocoderTimedOut,
                             geopy.exc.GeocoderServiceError) as e:
-                        skipped_locs['second_try_geopy_error'].append(location)
+                        report['second_try_geocoder_error'].append(location)
                         continue
                     if geo_coords is None:
                         self.logger.error(
-                            "The geopy service could not for a second try"
+                            "The geocoding service could not for a second try "
                             "provide the geo coordinates this time using only "
-                            "with the country '{}'".format(country))
+                            "the country '{}'".format(country))
                         self.logger.critical(
                             "The location '{}' will be skipped".format(location))
-                        skipped_locs['second_try_geopy_none'].append(location)
+                        report['second_try_geocoder_none'].append(location)
                         continue
                     else:
                         self.logger.debug(
@@ -440,51 +459,69 @@ class JobLocationsAnalyzer(Analyzer):
                                 geo_coords.address, geo_coords.latitude,
                                 geo_coords.longitude, geo_coords.point))
                 self.logger.debug(
-                    "Waiting {} second{} for the next geopy request "
+                    "Waiting {} second{} for the next geocoding request "
                     "...".format(wait_time, add_plural(wait_time)))
                 time.sleep(wait_time)
                 new_geo_coords = True
                 # Update the cached dict with the geo coords
-                self.logger.debug(
-                    "Dictionaries updated!")
                 self.addresses_geo_coords.setdefault(
                     geo_coords.address, geo_coords)
                 self.locations_mappings.setdefault(location, geo_coords.address)
-            self.logger.debug(
-                "Location '{}' [{}] added!".format(location, geo_coords.point))
-            cur_adrs_geo_coords.setdefault(geo_coords.address, {})
-            cur_adrs_geo_coords[geo_coords.address].setdefault('geo_coords',
+                self.logger.debug("Dictionaries updated!")
+            cur_adrs_data.setdefault(geo_coords.address, {})
+            cur_adrs_data[geo_coords.address].setdefault('geo_coords',
                                                                geo_coords)
-            cur_adrs_geo_coords[geo_coords.address].setdefault('count', 0)
-            cur_adrs_geo_coords[geo_coords.address]['count'] += 1
-            cur_adrs_geo_coords[geo_coords.address].setdefault('locations', set())
-            cur_adrs_geo_coords[geo_coords.address]['locations'].add(location)
+            cur_adrs_data[geo_coords.address].setdefault('count', 0)
+            cur_adrs_data[geo_coords.address]['count'] += 1
+            cur_adrs_data[geo_coords.address].setdefault('locations', set())
+            cur_adrs_data[geo_coords.address]['locations'].add(location)
             cur_loc_mappings.setdefault(location, geo_coords.address)
+            if len(cur_adrs_data[geo_coords.address]['locations']) > 1:
+                # Simlar locations: same locations but different spellings
+                sim_locs = cur_adrs_data[geo_coords.address]['locations']
+                report['similar_locations'].setdefault(geo_coords.address, set())
+                report['similar_locations'][geo_coords.address].update(sim_locs)
+            self.logger.debug(
+                "Location '{}' added!".format(location))
             counts += 1
-        ipdb.set_trace()
         # Sanity check
-        n_locs = len(skipped_locs['already_added']) + len(cur_loc_mappings)
-        assert n_locs == counts, \
-            "Inconsistency in the number of valid locations and the count of " \
-            "geo coordinates"
+        n_valid_locs = len(report['already_added']) + len(cur_loc_mappings)
+        assert n_valid_locs == counts, \
+            "Inconsistency in the number of valid locations and the number of " \
+            "times geo coordinates were computed"
         self.logger.info("Finished collecting all geo coordinates")
         self.logger.info("***** Report *****")
-        self.logger.info("# of successfully added locations: {}".format(
-                len(cur_adrs_geo_coords)))
+        self.logger.info("# of total locations: {}".format(len(locations)))
+        self.logger.info("# of valid locations: {}".format(counts))
+        self.logger.info("# of successfully added addresses: {}".format(
+                len(cur_adrs_data)))
         self.logger.info("# of empty locations: {}".format(
-            skipped_locs['empty_locations']))
+            report['empty_locations']))
         self.logger.info("# of duplicated locations: {}".format(
-                len(skipped_locs['already_added'])))
+                len(report['already_added'])))
+        self.logger.info("# of distinct locations: {}".format(
+            len(cur_loc_mappings)))
+        self.logger.info("# of addresses with more than one location: {}".format(
+            len(report['similar_locations'])))
+        self.logger.info("# of similar locations: {}".format(
+            sum(len(v) for k, v in report['similar_locations'].items())))
         self.logger.info(
-            "# of skipped locations with first-try-geopy-error: {}".format(
-                len(skipped_locs['first_try_geopy_error'])))
+            "# of skipped locations with first-try-geocoder-error: {}".format(
+                len(report['first_try_geocoder_error'])))
         self.logger.info(
-            "# of skipped locations with second-try-geopy-error: {}".format(
-                len(skipped_locs['second_try_geopy_error'])))
+            "# of skipped locations with second-try-geocoder-error: {}".format(
+                len(report['second_try_geocoder_error'])))
         self.logger.info(
-            "# of skipped locations with first-try-geopy-none: {}".format(
-                len(skipped_locs['second_try_geopy_none'])))
+            "# of skipped locations with first-try-geocoder-none: {}".format(
+                len(report['second_try_geocoder_none'])))
         self.logger.info("********************")
+        self.logger.info(
+            "These are all the addresses with more than one location:")
+        for i, (address, locations) in \
+                enumerate(report['similar_locations'].items(), start=1):
+            self.logger.info(
+                "#{}. Address '{}' --> {} locations {}".format(
+                    i, address, len(locations), locations))
         if new_geo_coords:
             # Save the geo coords
             self.logger.info("Saving the geographic coordinates ...")
@@ -500,7 +537,8 @@ class JobLocationsAnalyzer(Analyzer):
                     self.main_config['data_filepaths']['cache_loc_mappings']),
                 self.locations_mappings,
                 self.logger)
-        return cur_adrs_geo_coords, cur_loc_mappings
+        # TODO: is `cur_loc_mappings` necessary to return?
+        return cur_adrs_data, cur_loc_mappings
 
     @staticmethod
     def _get_european_countries():
