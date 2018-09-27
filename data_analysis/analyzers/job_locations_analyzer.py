@@ -126,9 +126,9 @@ class JobLocationsAnalyzer(Analyzer):
         #           Maps
         ###############################
         # Generate map with markers added on US states that have job posts
-        # self._generate_usa_map()
+        self._generate_usa_map()
         # Generate map with markers added on countries that have job posts
-        self._generate_world_map()
+        # self._generate_world_map()
         # Generate map with markers added on european countries that have job
         # posts
         # self._generate_europe_map()
@@ -238,7 +238,7 @@ class JobLocationsAnalyzer(Analyzer):
 
     def _generate_usa_map(self):
         map_cfg = self.main_config['maps_config']['usa_map']
-        addresses_data = self._get_locations_geo_coords(
+        addresses_data, _ = self._get_locations_geo_coords(
             locations=self._get_us_states())
         # TODO: annotation is disabled because the names overlap
         """ 
@@ -390,8 +390,8 @@ class JobLocationsAnalyzer(Analyzer):
                 address = self.locations_mappings.get(location)
                 geo_coords = self.addresses_geo_coords[address]
                 self.logger.debug(
-                    "Location '{}' found in cache! Geo coordinates: {}".format(
-                        location, geo_coords.point))
+                    "Location '{}' found in cache!".format(location))
+                self.logger.debug("Geo coordinates: {}".format(geo_coords.point))
                 self.logger.debug("Address '{}'".format(address))
             else:
                 try:
@@ -413,10 +413,11 @@ class JobLocationsAnalyzer(Analyzer):
                 else:
                     self.logger.debug(
                         "Geo coordinates received from the geocoding service")
+                    self.logger.debug("Address: {}".format(geo_coords.address))
                     self.logger.debug(
-                        "Geo coordinates of '{}': {} lat, {} long [{}]".format(
-                            geo_coords.address, geo_coords.latitude,
-                            geo_coords.longitude, geo_coords.point))
+                        "Geo coordinates: {} lat, {} long [{}]".format(
+                            geo_coords.latitude, geo_coords.longitude,
+                            geo_coords.point))
                 if geo_coords is None and use_country_fallback:
                     # TODO: test this part
                     ipdb.set_trace()
@@ -454,10 +455,13 @@ class JobLocationsAnalyzer(Analyzer):
                         continue
                     else:
                         self.logger.debug(
-                            "Geo coordinates of '{}': {} lat, {} long "
-                            "[{}]".format(
-                                geo_coords.address, geo_coords.latitude,
-                                geo_coords.longitude, geo_coords.point))
+                            "Geo coordinates received from the geocoding service")
+                        self.logger.debug(
+                            "Address: {}".format(geo_coords.address))
+                        self.logger.debug(
+                            "Geo coordinates: {} lat, {} long [{}]".format(
+                                geo_coords.latitude, geo_coords.longitude,
+                                geo_coords.point))
                 self.logger.debug(
                     "Waiting {} second{} for the next geocoding request "
                     "...".format(wait_time, add_plural(wait_time)))
@@ -512,7 +516,7 @@ class JobLocationsAnalyzer(Analyzer):
             "# of skipped locations with second-try-geocoder-error: {}".format(
                 len(report['second_try_geocoder_error'])))
         self.logger.info(
-            "# of skipped locations with first-try-geocoder-none: {}".format(
+            "# of skipped locations with second-try-geocoder-none: {}".format(
                 len(report['second_try_geocoder_none'])))
         self.logger.info("********************")
         self.logger.info(
