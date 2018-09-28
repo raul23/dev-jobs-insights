@@ -20,7 +20,7 @@ class Spinner:
             self.delay = delay
 
     def spinner_task(self):
-        print("loading modules...")
+        print("startup ...")
         while self.busy:
             sys.stdout.write(next(self.spinner_generator))
             sys.stdout.flush()

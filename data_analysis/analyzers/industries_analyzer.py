@@ -11,16 +11,16 @@ from utility.script_boilerplate import LoggingBoilerplate
 
 
 class IndustriesAnalyzer(Analyzer):
-    def __init__(self, conn, db_session, main_config, logging_config):
+    def __init__(self, conn, db_session, main_cfg, logging_cfg):
         # Industries stats to compute
         self.stats_names = ["sorted_industries_count"]
-        super().__init__(conn, db_session, main_config, logging_config,
+        super().__init__(conn, db_session, main_cfg, logging_cfg,
                          self.stats_names)
         sb = LoggingBoilerplate(
             module_name=__name__,
             module_file=__file__,
             cwd=os.getcwd(),
-            logging_config=logging_config)
+            logging_cfg=logging_cfg)
         self.logger = sb.get_logger()
 
     def run_analysis(self):
@@ -38,10 +38,10 @@ class IndustriesAnalyzer(Analyzer):
             "There are {} occurrences of industries in job posts".format(
                 sum(j for i, j in industries_count)))
         self.stats["sorted_industries_count"] = industries_count
-        bar_config = self.main_config["graphs_config"]["bar_chart_industries"]
+        bar_cfg = self.main_cfg["graphs_cfg"]["bar_chart_industries"]
         self._generate_bar_chart(
             sorted_topic_count=self.stats["sorted_industries_count"],
-            bar_chart_config=bar_config)
+            bar_chart_cfg=bar_cfg)
 
     def _clean_industries_names(self):
         # Standardize the names of the industries
@@ -95,7 +95,7 @@ class IndustriesAnalyzer(Analyzer):
     # TODO: this method should be in the parent class `Analyzer`
     # `Analyzer` will need to have access to logger. Thus logging setup should
     # be done within `Analyzer`.
-    def _generate_bar_chart(self, sorted_topic_count, bar_chart_config):
+    def _generate_bar_chart(self, sorted_topic_count, bar_chart_cfg):
         sorted_topic_count = np.array(sorted_topic_count)
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
@@ -105,18 +105,18 @@ class IndustriesAnalyzer(Analyzer):
         self.logger.debug("finished loading module 'utility.graphutil'")
         self.logger.info(
             "Generating bar chart: {} vs {} ...".format(
-                bar_chart_config['xlabel'], bar_chart_config['ylabel']))
-        topk = bar_chart_config['topk']
+                bar_chart_cfg['xlabel'], bar_chart_cfg['ylabel']))
+        topk = bar_chart_cfg['topk']
         new_labels = self._shrink_labels(
             labels=sorted_topic_count[:topk, 0],
-            max_length=bar_chart_config['max_xtick_label_length'])
+            max_length=bar_chart_cfg['max_xtick_label_length'])
         draw_bar_chart(
             x=np.array(new_labels),
             y=sorted_topic_count[:topk, 1].astype(np.int32),
-            xlabel=bar_chart_config['xlabel'],
-            ylabel=bar_chart_config['ylabel'],
-            title=bar_chart_config['title'].format(topk),
-            grid_which=bar_chart_config['grid_which'],
-            color=bar_chart_config['color'],
-            fig_width=bar_chart_config['fig_width'],
-            fig_height=bar_chart_config['fig_height'])
+            xlabel=bar_chart_cfg['xlabel'],
+            ylabel=bar_chart_cfg['ylabel'],
+            title=bar_chart_cfg['title'].format(topk),
+            grid_which=bar_chart_cfg['grid_which'],
+            color=bar_chart_cfg['color'],
+            fig_width=bar_chart_cfg['fig_width'],
+            fig_height=bar_chart_cfg['fig_height'])

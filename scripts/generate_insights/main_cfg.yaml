@@ -1,0 +1,798 @@
+db_url:
+  drivername: sqlite
+  database: ~/databases/job_data.sqlite
+#=============================
+#         COMPANIES
+#=============================
+companies:
+  run_analysis: True
+#=============================
+#         INDUSTRIES
+#=============================
+industries:
+  run_analysis: True
+  bar_chart_industries:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: Industries
+    ylabel: Number of job posts
+    title: Top {} most popular industries @ stackoverflow.com/jobs
+    grid_which: major
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+#=============================
+#         JOB BENEFITS
+#=============================
+job_benefits:
+  run_analysis: True
+  bar_chart_job_benefits:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: Job benefits
+    ylabel: Number of job posts
+    title: Top {} most popular job benefits @ stackoverflow.com/jobs
+    grid_which: major
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 7.5
+#=============================
+#       JOB LOCATIONS
+#=============================
+job_locations:
+  run_analysis: True
+  # Number of seconds to wait between two requests to the geocoding service
+  wait_time: 0.001
+  #=============================
+  #         BAR CHARTS
+  #=============================
+  bar_chart_europe:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: Countries
+    ylabel: Number of job posts
+    title: Top {} most popular european countries @ stackoverflow.com/jobs
+    grid_which: both
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+  bar_chart_usa:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: US states
+    ylabel: Number of job posts
+    title: Top {} most popular US states @ stackoverflow.com/jobs
+    grid_which: major
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+  bar_chart_world:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: Countries
+    ylabel: Number of job posts
+    title: Top {} most popular countries @ stackoverflow.com/jobs
+    grid_which: both
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+  #=============================
+  #          MAPS
+  #=============================
+  # TODO: `map_europe` is disabled
+  map_europe:
+    display_graph: True
+    save_graph: True
+    # The marker to be drawn on a map is scaled by a factor
+    marker_scale: 1.5
+    basemap:
+      projection: lcc
+      llcrnrlon: -119
+      llcrnrlat: 22
+      urcrnrlon: -64
+      urcrnrlat: 49
+      lat_1: 32
+      lat_2: 45
+      lon_0: -95
+  map_usa:
+    display_graph: True
+    save_graph: True
+    draw_parallels: False
+    draw_meridians: False
+    fig_width: 10
+    fig_height: 7
+    title: Distribution of Stackoverflow developer job posts in the USA
+    # TODO: annotation is disabled
+    annotation:
+      topk: 5
+      fontsize: 4
+      fontweight: bold
+      ha: left
+      va: bottom
+      color: k
+    basemap:
+      # TODO: find out the complete name of the map projection used
+      # We are using the Lambert [...] map projection and cropping the map to
+      # display only the USA territory
+      projection: lcc
+      llcrnrlon: -119
+      llcrnrlat: 22
+      urcrnrlon: -64
+      urcrnrlat: 49
+      lat_1: 33
+      lat_2: 45
+      lon_0: -95
+    map_coordinates:
+      color: Red
+      marker: o
+       # The marker to be drawn on a map is scaled by a factor
+      marker_scale: 2
+  map_world:
+    display_graph: True
+    save_graph: True
+    # TODO: drawing parallels and meridians disabled
+    draw_parallels: True
+    draw_meridians: True
+    draw_coastlines: True
+    draw_countries: True
+    draw_map_boundary: True
+    draw_states: True
+    fill_continents: True
+    fig_width: 12
+    fig_height: 7
+    title: Distribution of Stackoverflow developer job posts in the world
+    # TODO: annotation is disabled
+    annotation:
+      topk: 5
+      fontsize: 4
+      fontweight: bold
+      ha: left
+      va: bottom
+      color: k
+    basemap:
+      # A Miller cylindrical projection
+      projection: mill
+      llcrnrlon: -180
+      llcrnrlat: -60
+      urcrnrlon: 180
+      urcrnrlat: 80
+    map_coordinates:
+      color: Red
+      marker: o
+       # The marker to be drawn on a map is scaled by a factor
+      marker_scale: 1.1
+  #=============================
+  #         PIE CHARTS
+  #=============================
+  pie_chart_europe:
+    display_graph: True
+    save_graph: True
+    title: European countries popularity by % of job posts
+  pie_chart_usa:
+    display_graph: True
+    save_graph: True
+    title: US States popularity by % of job posts
+  pie_chart_world:
+    display_graph: True
+    save_graph: True
+    title: Countries popularity by % of job posts
+#=============================
+#         JOB POSTS
+#=============================
+job_posts:
+  run_analysis: True
+#=============================
+#       JOB SALARIES
+#=============================
+job_salaries:
+  run_analysis: True
+  salary_currency: USD
+  salary_thresholds:
+    # Thresholds for removing salary outliers, i.e. salaries in the range
+    # [MIN_SALARY, MAX_SALARY] (both inclusively) will be included, the
+    # rest will be discarded
+    min_salary: 8000
+    max_salary: 400000
+  topics: # Dimensions of analysis
+    europe: True
+    industries: False
+    roles: False
+    skills: False
+    usa: False
+    world: False
+  #=============================
+  #         HISTOGRAM
+  #=============================
+  histogram_job_salaries:
+    display_graph: True
+    save_graph: True
+    start_bins: 0
+    end_bins: max
+    size_bins: 10000
+    xlabel: Mid-range salaries
+    ylabel: Number of job posts
+    title: "Histogram: Mid-range salaries among Stackoverflow developer job posts"
+    grid_which: major
+    color: b
+    xaxis_major_mutiplelocator: 10000
+    # xaxis_minor_mutiplelocator no used
+    xaxis_minor_mutiplelocator: 1000
+    yaxis_major_mutiplelocator: 5
+    yaxis_minor_mutiplelocator: 1
+    fig_width: 8
+    fig_height: 6
+  #=============================
+  #       SCATTER PLOTS
+  #=============================
+  scatter_salary_europe:
+    display_graph: True
+    save_graph: True
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries in Europe @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+  scatter_salary_industries:
+    display_graph: True
+    save_graph: True
+    # Plotly options need to be separated from my own options since it will
+    # complain about my options (e.g. `display_graph`) if I provide it with the
+    # whole `scatter_salary_industries` dict
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries across Industries @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+  scatter_salary_roles:
+    display_graph: True
+    save_graph: True
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries across Job Roles @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+  scatter_salary_skills:
+    display_graph: True
+    save_graph: True
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries across Technologies (aka skills) @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+  scatter_salary_usa:
+    display_graph: True
+    save_graph: True
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries in the USA @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+  scatter_salary_world:
+    display_graph: True
+    save_graph: True
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries in the World @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+
+analysis_types:
+  companies: False
+  industries: True
+  job_benefits: False
+  job_locations: False
+  job_posts: False
+  job_salaries: False
+  roles: False
+  skills: False
+
+salary_analysis_by_topic:
+  europe: True
+  us_states: False
+  world: False
+  industries: False
+  roles: False
+  skills: False
+
+salary_currency: USD
+salary_thresholds:
+  # Thresholds for removing salary outliers, i.e. salaries in the range
+  # [MIN_SALARY, MAX_SALARY] (both inclusively) will be included, the
+  # rest will be discarded
+  min_salary: 8000
+  max_salary: 400000
+
+data_filepaths:
+  countries: ~/data/dev_jobs_insights/countries.json
+  us_states: ~/data/dev_jobs_insights/us_states.json
+  reversed_us_states: ~/data/dev_jobs_insights/reversed_us_states.json
+  shape: ~/data/dev_jobs_insights/basemap/st99_d00
+  # `addresses_geo_coords`: dictionary of longitude and latitude coordinates of
+  # some addresses (cities and countries) around the world
+  # - keys: full addresses as given by geopy
+  # - values: `geopy.location.Location` objects (storing the geo coordinates)
+  cache_adr_geo_coords: ~/data/dev_jobs_insights/cache/addresses_geo_coords.pkl
+  # `locations_mappings`: mappings from location names to their corresponding
+  # `geopy.location.Location` objects. There can be more than one location name
+  # pointing to the same full geo coordinates. Thus, we can't use the location
+  # names as keys in a dict since you would get redundant data (e.g. three
+  # different spellings of a location pointing to the same geo coordinates) and
+  # as a consequence, we must resort to a 'location_name -> address' mapping
+  # dictionary that will allow us thereafter to index the dictionary storing the
+  # geo coordinates for a given location name.
+  # Steps to get the geo coordinates for a given location name:
+  #     1. For a given location name, get its address from `locations_mappings`
+  #     2. From the address obtained in 1., get its geo coordinates from
+  #        `addresses_geo_coords`
+  cache_loc_mappings: ~/data/dev_jobs_insights/cache/locations_mappings.pkl
+
+# Items that will be saved for the report:
+# - tables: CSV format
+# - graphs/maps: PNG format
+# - scatter plots: HTML+JavaScript (produced with Plotly)
+# - stats: PICKLE format (dict)
+saving_dirpath: ~/data/reports/
+
+graphs_cfg:
+  # TODO: is there in YAML something like `%(topk)s` (used in *.ini)
+  # TODO: make room between rectangles in char bart, so you can display long
+  # xtick label on two lines
+  # TODO: add bold to xlabel and ylabel
+  # TODO: on the graph, add date the data was obtained and some other metadata,
+  # e.g. total of job posts
+  # TODO: change name to bar_chart_world
+  bar_chart_all_countries:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: Countries
+    ylabel: Number of job posts
+    title: Top {} most popular countries @ stackoverflow.com/jobs
+    grid_which: both
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+
+  # TODO: change name to bar_chart_europe
+  bar_chart_eu_countries:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: Countries
+    ylabel: Number of job posts
+    title: Top {} most popular european countries @ stackoverflow.com/jobs
+    grid_which: both
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+
+  bar_chart_industries:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: Industries
+    ylabel: Number of job posts
+    title: Top {} most popular industries @ stackoverflow.com/jobs
+    grid_which: major
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+
+  bar_chart_job_benefits:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: Job benefits
+    ylabel: Number of job posts
+    title: Top {} most popular job benefits @ stackoverflow.com/jobs
+    grid_which: major
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 7.5
+
+  bar_chart_roles:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: Roles
+    ylabel: Number of job posts
+    title: Top {} most popular roles @ stackoverflow.com/jobs
+    grid_which: major
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+
+  bar_chart_skills:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: Technologies (aka skills)
+    ylabel: Number of job posts
+    title: Top {} most popular technologies @ stackoverflow.com/jobs
+    grid_which: major
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+
+  bar_chart_us_states:
+    display_graph: True
+    save_graph: True
+    topk: 20
+    xlabel: US states
+    ylabel: Number of job posts
+    title: Top {} most popular US states @ stackoverflow.com/jobs
+    grid_which: major
+    color: b
+    max_xtick_label_length: 30
+    fig_width: 8
+    fig_height: 6
+
+  histogram_job_salaries:
+    start_bins: 0
+    end_bins: max
+    size_bins: 10000
+    xlabel: Mid-range salaries
+    ylabel: Number of job posts
+    title: "Histogram: Mid-range salaries among Stackoverflow developer job posts"
+    grid_which: major
+    color: b
+    xaxis_major_mutiplelocator: 10000
+    # xaxis_minor_mutiplelocator no used
+    xaxis_minor_mutiplelocator: 1000
+    yaxis_major_mutiplelocator: 5
+    yaxis_minor_mutiplelocator: 1
+    fig_width: 8
+    fig_height: 6
+
+  scatter_salary_europe:
+    display_graph: True
+    save_graph: True
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries in Europe @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+
+  scatter_salary_industries:
+    display_graph: True
+    save_graph: True
+    # Plotly options need to be separated from my own options since it will
+    # complain about my options (e.g. `display_graph`) if I provide it with the
+    # whole `scatter_salary_industries` dict
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries across Industries @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+
+  scatter_salary_roles:
+    display_graph: True
+    save_graph: True
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries across Job Roles @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+
+  scatter_salary_skills:
+    display_graph: True
+    save_graph: True
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries across Technologies (aka skills) @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+
+  scatter_salary_us_states:
+    display_graph: True
+    save_graph: True
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries in the USA @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+
+  scatter_salary_world:
+    display_graph: True
+    save_graph: True
+    plotly:
+      scatter:
+        mode: markers
+      layout:
+        title: Average mid-range salaries in the World @ stackoverflow.com/jobs
+        hovermode: closest
+        yaxis:
+          title: Number of job posts
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          showline: True
+        xaxis:
+          title: Mid-range salaries
+          titlefont:
+            family: "Courier New, monospace"
+            size: 18
+            color: "#7f7f7f"
+          tickformat: $0.0f
+          showline: False
+
+maps_cfg:
+  # Number of seconds to wait between two requests to the geocoding service
+  wait_time: 0.001
+  # TODO: `europe_map` is disabled
+  europe_map:
+    display_graph: True
+    save_graph: True
+    # The marker to be drawn on a map is scaled by a factor
+    marker_scale: 1.5
+    basemap:
+      projection: lcc
+      llcrnrlon: -119
+      llcrnrlat: 22
+      urcrnrlon: -64
+      urcrnrlat: 49
+      lat_1: 32
+      lat_2: 45
+      lon_0: -95
+
+  usa_map:
+    display_graph: True
+    save_graph: True
+    draw_parallels: False
+    draw_meridians: False
+    fig_width: 10
+    fig_height: 7
+    title: Distribution of Stackoverflow developer job posts in the USA
+    # TODO: annotation is disabled
+    annotation:
+      topk: 5
+      fontsize: 4
+      fontweight: bold
+      ha: left
+      va: bottom
+      color: k
+    basemap:
+      # TODO: find out the complete name of the map projection used
+      # We are using the Lambert [...] map projection and cropping the map to
+      # display only the USA territory
+      projection: lcc
+      llcrnrlon: -119
+      llcrnrlat: 22
+      urcrnrlon: -64
+      urcrnrlat: 49
+      lat_1: 33
+      lat_2: 45
+      lon_0: -95
+    map_coordinates:
+      color: Red
+      marker: o
+       # The marker to be drawn on a map is scaled by a factor
+      marker_scale: 2
+
+  world_map:
+    display_graph: True
+    save_graph: True
+    # TODO: drawing parallels and meridians disabled
+    draw_parallels: True
+    draw_meridians: True
+    draw_coastlines: True
+    draw_countries: True
+    draw_map_boundary: True
+    draw_states: True
+    fill_continents: True
+    fig_width: 12
+    fig_height: 7
+    title: Distribution of Stackoverflow developer job posts in the world
+    # TODO: annotation is disabled
+    annotation:
+      topk: 5
+      fontsize: 4
+      fontweight: bold
+      ha: left
+      va: bottom
+      color: k
+    basemap:
+      # A Miller cylindrical projection
+      projection: mill
+      llcrnrlon: -180
+      llcrnrlat: -60
+      urcrnrlon: 180
+      urcrnrlat: 80
+    map_coordinates:
+      color: Red
+      marker: o
+       # The marker to be drawn on a map is scaled by a factor
+      marker_scale: 1.1

@@ -1,11 +1,12 @@
 class Analyzer:
-    def __init__(self, conn, db_session, main_config, logging_config, stats_names):
+    def __init__(self, conn, db_session, main_cfg, logging_cfg, stats_names):
         # `stats_names` must be a list of stats names
         # Connection to SQLite db
         self.conn = conn
         self.db_session = db_session
-        self.main_config = main_config
-        self.logging_config = logging_config
+        # TOOD: rename to main_cfg and logging_cfg
+        self.main_cfg = main_cfg
+        self.logging_cfg = logging_cfg
         # Stats to compute
         self.stats_names = stats_names
         self.stats = {}
@@ -25,7 +26,7 @@ class Analyzer:
     def _generate_histogram(self, sorted_topic_count, hist_config):
         raise NotImplementedError
 
-    def _generate_scatter_plot(self, sorted_topic_count, scatter_plot_config):
+    def _generate_scatter_plot(self, x, y, text, scatter_config):
         raise NotImplementedError
     """
 

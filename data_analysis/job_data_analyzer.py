@@ -9,11 +9,11 @@ from sqlalchemy.orm import sessionmaker
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser(
     "~/PycharmProjects/github_projects/dev_jobs_insights/data_analysis"))
-from analyzers.companies_analyzer import CompaniesAnalyzer
+# from analyzers.companies_analyzer import CompaniesAnalyzer
 from analyzers.industries_analyzer import IndustriesAnalyzer
 from analyzers.job_benefits_analyzer import JobBenefitsAnalyzer
 from analyzers.job_locations_analyzer import JobLocationsAnalyzer
-from analyzers.job_posts_analyzer import JobPostsAnalyzer
+# from analyzers.job_posts_analyzer import JobPostsAnalyzer
 from analyzers.job_salaries_analyzer import JobSalariesAnalyzer
 from analyzers.roles_analyzer import RolesAnalyzer
 from analyzers.skills_analyzer import SkillsAnalyzer
@@ -28,16 +28,16 @@ from tables import Base
 
 
 class JobDataAnalyzer:
-    def __init__(self, main_config_path, logging_config):
-        self.main_config_path = main_config_path
-        self.logging_config = logging_config
+    def __init__(self, main_cfg_path, logging_cfg):
+        self.main_cfg_path = main_cfg_path
+        self.logging_cfg = logging_cfg
         sb = LoggingBoilerplate(
             module_name=__name__,
             module_file=__file__,
             cwd=os.getcwd(),
-            logging_config=logging_config)
+            logging_cfg=logging_cfg)
         self.logger = sb.get_logger()
-        self.config = self._load_main_config()
+        self.cfg = self._load_main_cfg()
         self.types_of_analysis = self._get_analyses()
         # TODO: implement db connection with SQLite
         # Db connection to be used with SQLite
@@ -46,25 +46,25 @@ class JobDataAnalyzer:
         self.db_session = self._get_db_session()
 
     def _get_analyses(self):
-        return [k for k, v in self.config["analysis_types"].items() if v]
+        return [k for k, v in self.cfg["analysis_types"].items() if v]
 
-    def _load_main_config(self):
+    def _load_main_cfg(self):
         # Read YAML configuration file
         try:
             self.logger.info("Loading the YAML configuration file '{}'".format(
-                self.main_config_path))
-            config_dict = read_yaml_config(self.main_config_path)
+                self.main_cfg_path))
+            config_dict = read_yaml_config(self.main_cfg_path)
         except OSError as e:
             self.logger.critical(e)
             raise SystemExit("Configuration file '{}' couldn't be read. Program "
-                             "will exit.".format(self.main_config_path))
+                             "will exit.".format(self.main_cfg_path))
         else:
             self.logger.debug("Successfully loaded the YAML configuration file")
             return config_dict
 
     def _get_db_session(self):
         # SQLAlchemy database setup
-        db_url = self.config['db_url']
+        db_url = self.cfg['db_url']
         db_url['database'] = os.path.expanduser(db_url['database'])
         self.logger.info("Database setup of {}".format(db_url['database']))
         engine = create_engine(URL(**db_url))
@@ -96,8 +96,9 @@ class JobDataAnalyzer:
 
         :return:
         """
-        ca = CompaniesAnalyzer(self.conn, self.db_session, self.config)
-        ca.run_analysis()
+        # ca = CompaniesAnalyzer(self.conn, self.db_session, self.config)
+        # ca.run_analysis()
+        raise NotImplementedError
 
     def _analyze_industries(self):
         """
@@ -106,7 +107,7 @@ class JobDataAnalyzer:
         :return:
         """
         ia = IndustriesAnalyzer(
-            self.conn, self.db_session, self.config, self.logging_config)
+            self.conn, self.db_session, self.cfg, self.logging_cfg)
         ia.run_analysis()
 
     def _analyze_job_benefits(self):
@@ -116,7 +117,7 @@ class JobDataAnalyzer:
         :return:
         """
         jla = JobBenefitsAnalyzer(
-            self.conn, self.db_session, self.config, self.logging_config)
+            self.conn, self.db_session, self.cfg, self.logging_cfg)
         jla.run_analysis()
 
     def _analyze_job_locations(self):
@@ -126,7 +127,7 @@ class JobDataAnalyzer:
         :return:
         """
         jla = JobLocationsAnalyzer(
-            self.conn, self.db_session, self.config, self.logging_config)
+            self.conn, self.db_session, self.cfg, self.logging_cfg)
         jla.run_analysis()
 
     def _analyze_job_posts(self):
@@ -135,12 +136,13 @@ class JobDataAnalyzer:
 
         :return:
         """
-        jla = JobPostsAnalyzer(self.conn, self.db_session, self.config)
-        jla.run_analysis()
+        # jla = JobPostsAnalyzer(self.conn, self.db_session, self.config)
+        # jla.run_analysis()
+        raise NotImplementedError
 
     def _analyze_job_salaries(self):
         jsa = JobSalariesAnalyzer(
-            self.conn, self.db_session, self.config, self.logging_config)
+            self.conn, self.db_session, self.cfg, self.logging_cfg)
         jsa.run_analysis()
 
     def _analyze_roles(self):
@@ -150,7 +152,7 @@ class JobDataAnalyzer:
         :return:
         """
         ra = RolesAnalyzer(
-            self.conn, self.db_session, self.config, self.logging_config)
+            self.conn, self.db_session, self.cfg, self.logging_cfg)
         ra.run_analysis()
 
     def _analyze_skills(self):
@@ -161,7 +163,7 @@ class JobDataAnalyzer:
         :return:
         """
         sa = SkillsAnalyzer(
-            self.conn, self.db_session, self.config, self.logging_config)
+            self.conn, self.db_session, self.cfg, self.logging_cfg)
         sa.run_analysis()
 
     def generate_report(self):
