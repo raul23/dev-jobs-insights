@@ -5,23 +5,20 @@ import ipdb
 import numpy as np
 # Own modules
 from .analyzer import Analyzer
-# TODO: module path insertion is hardcoded
-sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from utility.script_boilerplate import LoggingBoilerplate
 
 
 class IndustriesAnalyzer(Analyzer):
     def __init__(self, conn, db_session, main_cfg, logging_cfg):
         # Industries stats to compute
         self.stats_names = ["sorted_industries_count"]
-        super().__init__(conn, db_session, main_cfg, logging_cfg,
-                         self.stats_names)
-        sb = LoggingBoilerplate(
-            module_name=__name__,
-            module_file=__file__,
-            cwd=os.getcwd(),
-            logging_cfg=logging_cfg)
-        self.logger = sb.get_logger()
+        super().__init__(conn,
+                         db_session,
+                         main_cfg,
+                         logging_cfg,
+                         self.stats_names,
+                         __name__,
+                         __file__,
+                         os.getcwd())
 
     def run_analysis(self):
         # Reset all industries stats to be computed

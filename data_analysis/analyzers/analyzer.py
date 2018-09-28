@@ -1,16 +1,29 @@
+import os
+import sys
+# Own modules
+# TODO: module path insertion is hardcoded
+sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
+from utility.script_boilerplate import LoggingBoilerplate
+
+
 class Analyzer:
-    def __init__(self, conn, db_session, main_cfg, logging_cfg, stats_names):
+    def __init__(self, conn, db_session, main_cfg, logging_cfg, stats_names,
+                 module_name, module_file, cwd):
         # `stats_names` must be a list of stats names
         # Connection to SQLite db
         self.conn = conn
         self.db_session = db_session
-        # TOOD: rename to main_cfg and logging_cfg
         self.main_cfg = main_cfg
         self.logging_cfg = logging_cfg
         # Stats to compute
         self.stats_names = stats_names
         self.stats = {}
         self.reset_stats()
+        sb = LoggingBoilerplate(module_name,
+                                module_file,
+                                cwd,
+                                logging_cfg)
+        self.logger = sb.get_logger()
 
     # TODO: add decorator to call `reset_stats` at first
     def run_analysis(self):
