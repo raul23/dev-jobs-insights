@@ -1,5 +1,7 @@
 import os
 import sys
+# Third-party modules
+import numpy as np
 # Own modules
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
@@ -29,8 +31,31 @@ class Analyzer:
     def run_analysis(self):
         raise NotImplementedError
 
-    def _generate_bar_chart(self, sorted_topic_count, bar_chart_config):
-        raise NotImplementedError
+    def _generate_bar_chart(self, sorted_topic_count, bar_chart_cfg):
+        sorted_topic_count = np.array(sorted_topic_count)
+        # Lazy import. Loading of module takes lots of time. So do it only when
+        # needed
+        # TODO: add spinner when loading this module
+        self.logger.info("loading module 'utility.graphutil' ...")
+        from utility.graphutil import draw_bar_chart
+        self.logger.debug("finished loading module 'utility.graphutil'")
+        self.logger.info(
+            "Generating bar chart: {} vs {} ...".format(
+                bar_chart_cfg['xlabel'], bar_chart_cfg['ylabel']))
+        topk = bar_chart_cfg['topk']
+        new_labels = self._shrink_labels(
+            labels=sorted_topic_count[:topk, 0],
+            max_length=bar_chart_cfg['max_xtick_label_length'])
+        draw_bar_chart(
+            x=np.array(new_labels),
+            y=sorted_topic_count[:topk, 1].astype(np.int32),
+            xlabel=bar_chart_cfg['xlabel'],
+            ylabel=bar_chart_cfg['ylabel'],
+            title=bar_chart_cfg['title'].format(topk),
+            grid_which=bar_chart_cfg['grid_which'],
+            color=bar_chart_cfg['color'],
+            fig_width=bar_chart_cfg['fig_width'],
+            fig_height=bar_chart_cfg['fig_height'])
 
     """
     def _generate_pie_chart(self, sorted_topic_count, pie_chart_config):
