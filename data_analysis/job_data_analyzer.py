@@ -19,7 +19,7 @@ from analyzers.roles_analyzer import RolesAnalyzer
 from analyzers.skills_analyzer import SkillsAnalyzer
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from utility.genutil import read_yaml_config
+from utility.genutil import create_timestamped_directory, read_yaml_config
 from utility.script_boilerplate import LoggingBoilerplate
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser(
@@ -37,8 +37,24 @@ class JobDataAnalyzer:
             cwd=os.getcwd(),
             logging_cfg=logging_cfg)
         self.logger = sb.get_logger()
-        self.cfg = self._load_main_cfg()
-        self.types_of_analysis = self._get_analyses()
+        self.main_cfg = self._load_main_cfg()
+        # Create saving directory
+        # Folder name will begin with the date+time
+        error = False
+        try:
+            self.logger.info("Creating the report directory ...")
+            report_dirpath = create_timestamped_directory(
+                "report", os.path.expanduser(self.main_cfg['saving_dirpath']))
+        except PermissionError as e:
+            self.logger.critical(e)
+            self.logger.error("The report folder couldn't be created. "
+                              "Program will exit.")
+            raise SystemExit
+        else:
+            self.logger.info("Directory '{}' created!".format(report_dirpath))
+        # Update the main config with the newly create saving directory
+        self.main_cfg.update({'saving_dirpath': report_dirpath})
+        self.types_of_analyses = self._get_analyses()
         # TODO: implement db connection with SQLite
         # Db connection to be used with SQLite
         # self.conn = gu.connect_db("")
@@ -46,7 +62,8 @@ class JobDataAnalyzer:
         self.db_session = self._get_db_session()
 
     def _get_analyses(self):
-        return [k for k, v in self.cfg["analysis_types"].items() if v]
+        return [k for k, v in self.main_cfg.items()
+                if isinstance(v, dict) and self.main_cfg[k].get('run_analysis')]
 
     def _load_main_cfg(self):
         # Read YAML configuration file
@@ -64,7 +81,7 @@ class JobDataAnalyzer:
 
     def _get_db_session(self):
         # SQLAlchemy database setup
-        db_url = self.cfg['db_url']
+        db_url = self.main_cfg['db_url']
         db_url['database'] = os.path.expanduser(db_url['database'])
         self.logger.info("Database setup of {}".format(db_url['database']))
         engine = create_engine(URL(**db_url))
@@ -75,13 +92,13 @@ class JobDataAnalyzer:
         return db_session
 
     def run_analysis(self):
-        for analysis_type in self.types_of_analysis:
+        for analysis_type in self.types_of_analyses:
             try:
                 self.logger.info(
                     "Starting the '{}' analysis".format(analysis_type))
                 analyze_method = self.__getattribute__(
                     "_analyze_{}".format(analysis_type))
-                analyze_method()
+                analyze_method(analysis_type)
             except (AttributeError, FileNotFoundError) as e:
                 self.logger.exception(e)
                 self.logger.error(
@@ -90,7 +107,7 @@ class JobDataAnalyzer:
                 self.logger.info(
                     "End of the '{}' analysis".format(analysis_type))
 
-    def _analyze_companies(self):
+    def _analyze_companies(self, analysis_type):
         """
         Analysis of companies
 
@@ -100,37 +117,46 @@ class JobDataAnalyzer:
         # ca.run_analysis()
         raise NotImplementedError
 
-    def _analyze_industries(self):
+    def _analyze_industries(self, analysis_type):
         """
         Analysis of industries
 
         :return:
         """
-        ia = IndustriesAnalyzer(
-            self.conn, self.db_session, self.cfg, self.logging_cfg)
+        ia = IndustriesAnalyzer(analysis_type,
+                                self.conn,
+                                self.db_session,
+                                self.main_cfg,
+                                self.logging_cfg)
         ia.run_analysis()
 
-    def _analyze_job_benefits(self):
+    def _analyze_job_benefits(self, analysis_type):
         """
         Analysis of job benefits which consist in ...
 
         :return:
         """
-        jla = JobBenefitsAnalyzer(
-            self.conn, self.db_session, self.cfg, self.logging_cfg)
+        jla = JobBenefitsAnalyzer(analysis_type,
+                                  self.conn,
+                                  self.db_session,
+                                  self.main_cfg,
+                                  self.logging_cfg)
         jla.run_analysis()
 
-    def _analyze_job_locations(self):
+    def _analyze_job_locations(self, analysis_type):
         """
         Analysis of job locations which consist in ...
 
         :return:
         """
-        jla = JobLocationsAnalyzer(
-            self.conn, self.db_session, self.cfg, self.logging_cfg)
+        jla = JobLocationsAnalyzer(analysis_type,
+                                   self.conn,
+                                   self.db_session,
+                                   self.main_cfg,
+                                   self.logging_cfg)
         jla.run_analysis()
 
-    def _analyze_job_posts(self):
+    def _analyze_job_posts(self, analysis_type):
         """
         Analysis of job posts which consist in ...
 
@@ -140,30 +166,39 @@ class JobDataAnalyzer:
         # jla.run_analysis()
         raise NotImplementedError
 
-    def _analyze_job_salaries(self):
-        jsa = JobSalariesAnalyzer(
-            self.conn, self.db_session, self.cfg, self.logging_cfg)
+    def _analyze_job_salaries(self, analysis_type):
+        jsa = JobSalariesAnalyzer(analysis_type,
+                                  self.conn,
+                                  self.db_session,
+                                  self.main_cfg,
+                                  self.logging_cfg)
         jsa.run_analysis()
 
-    def _analyze_roles(self):
+    def _analyze_roles(self,analysis_type):
         """
         Analysis of roles
 
         :return:
         """
-        ra = RolesAnalyzer(
-            self.conn, self.db_session, self.cfg, self.logging_cfg)
+        ra = RolesAnalyzer(analysis_type,
+                           self.conn,
+                           self.db_session,
+                           self.main_cfg,
+                           self.logging_cfg)
         ra.run_analysis()
 
-    def _analyze_skills(self):
+    def _analyze_skills(self, analysis_type):
         """
         Analysis of skills (i.e. technologies such as java, python) which
         consist in ...
 
         :return:
         """
-        sa = SkillsAnalyzer(
-            self.conn, self.db_session, self.cfg, self.logging_cfg)
+        sa = SkillsAnalyzer(analysis_type,
+                            self.conn,
+                            self.db_session,
+                            self.main_cfg,
+                            self.logging_cfg)
         sa.run_analysis()
 
     def generate_report(self):

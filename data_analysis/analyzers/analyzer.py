@@ -1,6 +1,7 @@
 import os
 import sys
 # Third-party modules
+import ipdb
 import numpy as np
 # Own modules
 # TODO: module path insertion is hardcoded
@@ -9,9 +10,10 @@ from utility.script_boilerplate import LoggingBoilerplate
 
 
 class Analyzer:
-    def __init__(self, conn, db_session, main_cfg, logging_cfg, stats_names,
-                 module_name, module_file, cwd):
-        # `stats_names` must be a list of stats names
+    # `stats_names` must be a list of names of stats to compute
+    def __init__(self, analysis_type, conn, db_session, main_cfg, logging_cfg,
+                 stats_names, module_name, module_file, cwd):
+        self.analysis_type = analysis_type
         # Connection to SQLite db
         self.conn = conn
         self.db_session = db_session
@@ -31,31 +33,49 @@ class Analyzer:
     def run_analysis(self):
         raise NotImplementedError
 
-    def _generate_bar_chart(self, sorted_topic_count, bar_chart_cfg):
-        sorted_topic_count = np.array(sorted_topic_count)
+    # Generate HORIZONTAL bar
+    # `sorted_topic_count` is a numpy array and has two columns: labels and counts
+    # Each row of the input array tells how many counts they are of the given
+    # label.
+    def _generate_barh_chart(self, sorted_topic_count, barh_chart_cfg):
+        if not (barh_chart_cfg['display_graph'] or barh_chart_cfg['save_graph']):
+            self.logger.warning("The bar chart '{} vs {}' is disabled for the '{}' "
+                                "analysis".format(
+                                    barh_chart_cfg['ylabel'],
+                                    barh_chart_cfg['xlabel'],
+                                    self.analysis_type))
+            return 1
+        # Sanity check on input data
+        assert isinstance(sorted_topic_count, type(np.array([]))), \
+            "wrong type on input array 'sorted_topic_count'"
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
         # TODO: add spinner when loading this module
         self.logger.info("loading module 'utility.graphutil' ...")
-        from utility.graphutil import draw_bar_chart
+        from utility.graphutil import draw_barh_chart
         self.logger.debug("finished loading module 'utility.graphutil'")
         self.logger.info(
             "Generating bar chart: {} vs {} ...".format(
-                bar_chart_cfg['xlabel'], bar_chart_cfg['ylabel']))
-        topk = bar_chart_cfg['topk']
-        new_labels = self._shrink_labels(
+                barh_chart_cfg['ylabel'], barh_chart_cfg['xlabel']))
+        topk = barh_chart_cfg['topk']
+        shorter_labels = self._shrink_labels(
             labels=sorted_topic_count[:topk, 0],
-            max_length=bar_chart_cfg['max_xtick_label_length'])
-        draw_bar_chart(
-            x=np.array(new_labels),
-            y=sorted_topic_count[:topk, 1].astype(np.int32),
-            xlabel=bar_chart_cfg['xlabel'],
-            ylabel=bar_chart_cfg['ylabel'],
-            title=bar_chart_cfg['title'].format(topk),
-            grid_which=bar_chart_cfg['grid_which'],
-            color=bar_chart_cfg['color'],
-            fig_width=bar_chart_cfg['fig_width'],
-            fig_height=bar_chart_cfg['fig_height'])
+            max_length=barh_chart_cfg['max_label_length'])
+        draw_barh_chart(
+            x=sorted_topic_count[:topk, 1].astype(np.int32),
+            y=np.array(shorter_labels),
+            title=barh_chart_cfg['title'].format(topk),
+            xlabel=barh_chart_cfg['xlabel'],
+            add_text_right_bar=barh_chart_cfg['add_text_right_bar'],
+            color=barh_chart_cfg['color'],
+            fig_width=barh_chart_cfg['fig_width'],
+            fig_height=barh_chart_cfg['fig_height'],
+            grid_which=barh_chart_cfg['grid_which'],
+            display_graph=barh_chart_cfg['display_graph'],
+            save_graph=barh_chart_cfg['save_graph'],
+            fname=os.path.join(self.main_cfg['saving_dirpath'],
+                               barh_chart_cfg['fname']))
+        return 0
 
     """
     def _generate_pie_chart(self, sorted_topic_count, pie_chart_config):
@@ -69,6 +89,8 @@ class Analyzer:
     """
 
     @staticmethod
+    # `labels` is the input list of labels and a list is returned with shorter
+    # labels
     def _shrink_labels(labels, max_length):
         new_labels = []
         for l in labels:

@@ -1,4 +1,4 @@
-# TODO: add loading screen
+# TODO: place spinner in package's __init__
 from spinner import spinner
 spinner.start()
 import argparse

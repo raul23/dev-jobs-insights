@@ -1,15 +1,17 @@
 import os
 # Third-party modules
 import ipdb
+import numpy as np
 # Own modules
 from .analyzer import Analyzer
 
 
 class IndustriesAnalyzer(Analyzer):
-    def __init__(self, conn, db_session, main_cfg, logging_cfg):
+    def __init__(self, analysis_type, conn, db_session, main_cfg, logging_cfg):
         # Industries stats to compute
         self.stats_names = ["sorted_industries_count"]
-        super().__init__(conn,
+        super().__init__(analysis_type,
+                         conn,
                          db_session,
                          main_cfg,
                          logging_cfg,
@@ -33,10 +35,10 @@ class IndustriesAnalyzer(Analyzer):
             "There are {} occurrences of industries in job posts".format(
                 sum(j for i, j in industries_count)))
         self.stats["sorted_industries_count"] = industries_count
-        bar_cfg = self.main_cfg["graphs_cfg"]["bar_chart_industries"]
-        self._generate_bar_chart(
-            sorted_topic_count=self.stats["sorted_industries_count"],
-            bar_chart_cfg=bar_cfg)
+        barh_cfg = self.main_cfg["industries"]["barh_chart_industries"]
+        self._generate_barh_chart(
+            sorted_topic_count=np.array(self.stats["sorted_industries_count"]),
+            barh_chart_cfg=barh_cfg)
 
     def _clean_industries_names(self):
         # Standardize the names of the industries
