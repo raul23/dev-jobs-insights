@@ -6,6 +6,7 @@ import numpy as np
 # Own modules
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
+from utility.genutil import dump_pickle, load_json, load_pickle
 from utility.script_boilerplate import LoggingBoilerplate
 
 
@@ -33,17 +34,25 @@ class Analyzer:
     def run_analysis(self):
         raise NotImplementedError
 
+    def _dump_pickle(self, filepath, data):
+        self.logger.info("Saving path: {}".format(filepath))
+        try:
+            dump_pickle(filepath, data)
+        except FileNotFoundError as e:
+            self.logger.exception(e)
+            self.logger.error("The file '{}' couldn't be saved".format(filepath))
+            raise FileExistsError(e)
+        else:
+            self.logger.debug("Saved!")
+
     # Generate HORIZONTAL bar
     # `sorted_topic_count` is a numpy array and has two columns: labels and counts
     # Each row of the input array tells how many counts they are of the given
     # label.
-    def _generate_barh_chart(self, sorted_topic_count, barh_chart_cfg):
-        if not (barh_chart_cfg['display_graph'] or barh_chart_cfg['save_graph']):
-            self.logger.warning("The bar chart '{} vs {}' is disabled for the '{}' "
-                                "analysis".format(
-                                    barh_chart_cfg['ylabel'],
-                                    barh_chart_cfg['xlabel'],
-                                    self.analysis_type))
+    def _generate_barh_chart(self, barh_type, sorted_topic_count, barh_chart_cfg):
+        if not barh_chart_cfg['display_graph'] and not barh_chart_cfg['save_graph']:
+            self.logger.warning("The bar chart '{}' is disabled for the '{}' "
+                                "analysis".format(barh_type, self.analysis_type))
             return 1
         # Sanity check on input data
         assert isinstance(sorted_topic_count, type(np.array([]))), \
@@ -54,9 +63,7 @@ class Analyzer:
         self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import draw_barh_chart
         self.logger.debug("finished loading module 'utility.graphutil'")
-        self.logger.info(
-            "Generating bar chart: {} vs {} ...".format(
-                barh_chart_cfg['ylabel'], barh_chart_cfg['xlabel']))
+        self.logger.info("Generating bar chart '{}' ...".format(barh_type))
         topk = barh_chart_cfg['topk']
         shorter_labels = self._shrink_labels(
             labels=sorted_topic_count[:topk, 0],
@@ -76,6 +83,36 @@ class Analyzer:
             fname=os.path.join(self.main_cfg['saving_dirpath'],
                                barh_chart_cfg['fname']))
         return 0
+
+    def _load_json(self, filepath, encoding='utf8'):
+        try:
+            self.logger.info("Loading {}".format(filepath))
+            data = load_json(filepath, encoding)
+        except FileNotFoundError as e:
+            self.logger.exception(e)
+            self.logger.error("The file '{}' couldn't be saved".format(filepath))
+            raise FileExistsError(e)
+        else:
+            self.logger.debug("Saved!")
+            return data
+
+    # If the data to be loaded is a dictionary
+    def _load_dict(self, filepath, default=None):
+        if default is None:
+            dict_ = {}
+        else:
+            dict_ = default
+        try:
+            self.logger.info("Loading the dictionary from '{}'".format(filepath))
+            dict_ = load_pickle(filepath)
+        except FileNotFoundError as e:
+            self.logger.exception(e)
+            self.logger.warning("The dictionary '{}' will be initialized to {}".format(
+                filepath, dict_))
+        else:
+            self.logger.debug("Dictionary '{}' loaded!".format(filepath))
+        finally:
+            return dict_
 
     """
     def _generate_pie_chart(self, sorted_topic_count, pie_chart_config):

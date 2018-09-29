@@ -40,7 +40,6 @@ class JobDataAnalyzer:
         self.main_cfg = self._load_main_cfg()
         # Create saving directory
         # Folder name will begin with the date+time
-        error = False
         try:
             self.logger.info("Creating the report directory ...")
             report_dirpath = create_timestamped_directory(

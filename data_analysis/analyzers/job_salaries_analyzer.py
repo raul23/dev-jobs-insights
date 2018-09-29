@@ -1,18 +1,14 @@
 import os
-import sys
 # Third-party modules
 import ipdb
 import numpy as np
 from pycountry_convert import country_alpha2_to_continent_code, map_countries
 # Own modules
 from .analyzer import Analyzer
-# TODO: module path insertion is hardcoded
-sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from utility.script_boilerplate import LoggingBoilerplate
 
 
 class JobSalariesAnalyzer(Analyzer):
-    def __init__(self, conn, db_session, main_config, logging_config):
+    def __init__(self, analysis_type, conn, db_session, main_cfg, logging_cfg):
         # Salaries stats to compute
         # NOTE: not all fields are numpy arrays
         # e.g. `job_id_to_mid_range_salary` is a dict
@@ -32,16 +28,15 @@ class JobSalariesAnalyzer(Analyzer):
             "avg_mid_range_salaries_in_roles",
             "avg_mid_range_salaries_in_skills",
         ]
-        super().__init__(conn, db_session, main_config, logging_config,
-                         self.stats_names)
-        # TODO: the logging boilerplate code should be done within the parent
-        # class `Analyzer`
-        sb = LoggingBoilerplate(
-            module_name=__name__,
-            module_file=__file__,
-            cwd=os.getcwd(),
-            logging_config=logging_config)
-        self.logger = sb.get_logger()
+        super().__init__(analysis_type,
+                         conn,
+                         db_session,
+                         main_cfg,
+                         logging_cfg,
+                         self.stats_names,
+                         __name__,
+                         __file__,
+                         os.getcwd())
         # List of topics against which to compute salary stats/graphs
         self.salary_topics = self._get_salary_topics()
 
@@ -73,24 +68,26 @@ class JobSalariesAnalyzer(Analyzer):
                 # Generate scatter plot of number of job posts vs average
                 # mid-range salary for each topic (e.g. locations, roles)
                 key_scatter_cfg = 'scatter_salary_{}'.format(topic)
-                scatter_cfg = self.main_config['graphs_config'][key_scatter_cfg]
+                scatter_cfg = self.main_cfg['job_salaries'][key_scatter_cfg]
                 self._generate_scatter_plot(
+                    scatter_type=key_scatter_cfg,
                     y=self.stats[key_stats]['count'],
                     x=self.stats[key_stats]['average_mid_range_salary'],
                     text=self.stats[key_stats][topic],
                     scatter_cfg=scatter_cfg,
                     append_xlabel_title="({})".format(
-                        self.main_config['salary_currency']))
+                        self.main_cfg['job_salaries']['salary_currency']))
         ###########################
         #        GRAPHS
         ###########################
         # Histogram
-        hist_cfg = self.main_config['graphs_config']['histogram_job_salaries']
+        hist_cfg = self.main_cfg['job_salaries']['histogram_job_salaries']
         self._generate_histogram(
+            hist_type='histogram_job_salaries',
             sorted_topic_count=self.stats['sorted_mid_range_salaries'],
             hist_cfg=hist_cfg,
             append_xlabel_title="({})".format(
-                self.main_config['salary_currency']))
+                self.main_cfg['job_salaries']['salary_currency']))
         # TODO: add pie charts
         # self._generate_pie_chart()
 
@@ -159,8 +156,12 @@ class JobSalariesAnalyzer(Analyzer):
         pass
 
     # `sorted_topic_count` is a numpy array
-    def _generate_histogram(self, sorted_topic_count, hist_cfg,
+    def _generate_histogram(self, hist_type, sorted_topic_count, hist_cfg,
                             append_xlabel_title='', append_ylabel_title=''):
+        if not hist_cfg['display_graph'] and not hist_cfg['save_graph']:
+            self.logger.warning("The bar chart '{}' is disabled for the '{}' "
+                                "analysis".format(hist_type, self.analysis_type))
+            return 1
         if append_xlabel_title:
             hist_cfg['xlabel'] += " " + append_xlabel_title
         if append_ylabel_title:
@@ -170,9 +171,7 @@ class JobSalariesAnalyzer(Analyzer):
         self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import draw_histogram
         self.logger.debug("finished loading module 'utility.graphutil'")
-        self.logger.info(
-            "Generating histogram: {} vs {} ...".format(
-                hist_cfg["xlabel"], hist_cfg["ylabel"]))
+        self.logger.info("Generating histogram: {} ...".format(hist_type))
         if hist_cfg['start_bins'] == "min":
             start_bins = sorted_topic_count.min()
         else:
@@ -195,16 +194,26 @@ class JobSalariesAnalyzer(Analyzer):
             yaxis_major_mutiplelocator=hist_cfg['yaxis_major_mutiplelocator'],
             yaxis_minor_mutiplelocator=hist_cfg['yaxis_minor_mutiplelocator'],
             fig_width=hist_cfg['fig_width'],
-            fig_height=hist_cfg['fig_height'])
+            fig_height=hist_cfg['fig_height'],
+            display_graph=hist_cfg['display_graph'],
+            save_graph=hist_cfg['save_graph'],
+            fname=os.path.join(self.main_cfg['saving_dirpath'],
+                               hist_cfg['fname']))
 
     def _generate_pie_chart(self, sorted_topic_count, pie_chart_cfg):
         pass
 
     # TODO: check if we can add the currency directly within the YAML config file
     # like we can do it with config.ini using the '%(currency)s' operator
-    def _generate_scatter_plot(self, x, y, text, scatter_cfg,
+    def _generate_scatter_plot(self, scatter_type, x, y, text, scatter_cfg,
                                append_xlabel_title='', append_ylabel_title=''):
+        plot_cfg = scatter_cfg['plot']
         plotly_cfg = scatter_cfg['plotly']
+        if plot_cfg['output_type'] == 'None':
+            self.logger.warning(
+                "The scatter plot '{}' is disabled for the '{}' analysis".format(
+                    scatter_type, self.analysis_type))
+            return 1
         if append_xlabel_title:
             plotly_cfg['layout']['xaxis']['title'] += " " + append_xlabel_title
         if append_ylabel_title:
@@ -214,16 +223,16 @@ class JobSalariesAnalyzer(Analyzer):
         self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import draw_scatter_plot
         self.logger.debug("finished loading module 'utility.graphutil'")
-        self.logger.info(
-            "Generating scatter plot: {} vs {} ...".format(
-                plotly_cfg['layout']['yaxis']['title'],
-                plotly_cfg['layout']['xaxis']['title']))
-        ipdb.set_trace()
+        self.logger.info("Generating scatter plot '{}' ...".format(scatter_type))
+        # Add full path to plot's filename
+        plot_cfg['filename'] = os.path.join(
+            self.main_cfg['saving_dirpath'], plot_cfg['filename'])
         draw_scatter_plot(x=x,
                           y=y,
                           text=text,
                           scatter_cfg=plotly_cfg['scatter'],
-                          layout_cfg=plotly_cfg['layout'])
+                          layout_cfg=plotly_cfg['layout'],
+                          plot_cfg=plot_cfg)
 
     def _get_salaries(self):
         """
@@ -237,13 +246,13 @@ class JobSalariesAnalyzer(Analyzer):
         sql = "SELECT job_post_id, min_salary, max_salary FROM job_salaries " \
               "WHERE currency='{0}' and min_salary >= {1} and max_salary <= " \
               "{2}".format(
-                self.main_config['salary_currency'],
-                self.main_config['salary_thresholds']['min_salary'],
-                self.main_config['salary_thresholds']['max_salary'])
+                self.main_cfg['job_salaries']['salary_currency'],
+                self.main_cfg['job_salaries']['salary_thresholds']['min_salary'],
+                self.main_cfg['job_salaries']['salary_thresholds']['max_salary'])
         return self.db_session.execute(sql).fetchall()
 
     def _get_salary_topics(self):
-        return [k for k, v in self.main_config["salary_analysis_by_topic"].items()
+        return [k for k, v in self.main_cfg['job_salaries']["topics"].items()
                 if v]
 
     def _process_topic_with_salaries(self, topic_names, topic):
@@ -320,7 +329,7 @@ class JobSalariesAnalyzer(Analyzer):
               "({})".format(job_post_ids)
         return self.db_session.execute(sql).fetchall()
 
-    def _select_us_states(self, job_post_ids):
+    def _select_usa(self, job_post_ids):
         """
         Returns all US states with the specified `job_post_id`s. A list of
         tuples is returned where a tuple is of the form (job_post_id, country).

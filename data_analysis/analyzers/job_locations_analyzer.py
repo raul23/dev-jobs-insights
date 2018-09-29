@@ -6,70 +6,70 @@ import geopy
 from geopy.geocoders import Nominatim
 import ipdb
 import numpy as np
-from pycountry_convert import country_alpha2_to_continent_code, map_countries
+from pycountry_convert import country_alpha2_to_continent_code, \
+    country_alpha2_to_country_name, map_countries
 # Own modules
 from .analyzer import Analyzer
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from utility.genutil import add_plural, dump_pickle_with_logger, \
-    get_geo_coords_with_logger, load_pickle_with_logger
-from utility.script_boilerplate import LoggingBoilerplate
+from utility.genutil import add_plural, convert_list_to_str, \
+    get_geo_coords_with_logger
 
 
 class JobLocationsAnalyzer(Analyzer):
-    def __init__(self, conn, db_session, main_config, logging_config):
+    def __init__(self, analysis_type, conn, db_session, main_cfg, logging_cfg):
         # Locations stats to compute
+        # TODO: store numpy arrays instead and check other modules also
+        # so you won't have to convert list as a numpy array when generating the
+        # horizontal bar chart
         self.stats_names = [
             "sorted_all_countries_count", "sorted_eu_countries_count",
             "sorted_us_states_count"]
-        super().__init__(conn, db_session, main_config, logging_config,
-                         self.stats_names)
-        # TODO: the logging boilerplate code should be done within the parent
-        # class `Analyzer`
-        sb = LoggingBoilerplate(
-            module_name=__name__,
-            module_file=__file__,
-            cwd=os.getcwd(),
-            logging_config=logging_config)
-        self.logger = sb.get_logger()
-        # String of alpha_2 european countries where each alpha_2 are separated
-        # by ', ', e.g. "'GI', 'LU', 'PL', 'BE', 'RS', 'AX'"
-        # NOTE: each alpha_2 must be within single quotes because the SQL
-        # expression used in `_count_european_countries()` (that retrieves the
-        # count of each european country) won't work, more specifically the `IN`
-        # SQL operator will break
-        # TODO: `european_countries` is used for method 4 in
-        # `_count_european_countries()`, once the most efficient method will be
-        # chosen, this variable will be removed if method 4 is not the chosen one
-        self.european_countries = self._get_european_countries()
-        self.addresses_geo_coords = load_pickle_with_logger(os.path.expanduser(
-                self.main_config['data_filepaths']['cache_adr_geo_coords']),
-                self.logger)
-        self.locations_mappings = load_pickle_with_logger(os.path.expanduser(
-            self.main_config['data_filepaths']['cache_loc_mappings']),
-            self.logger)
+        super().__init__(analysis_type,
+                         conn,
+                         db_session,
+                         main_cfg,
+                         logging_cfg,
+                         self.stats_names,
+                         __name__,
+                         __file__,
+                         os.getcwd())
+        # TODO: use regular loading functions. Logger should be setup directly
+        # in the `genutil` module (each module should have its own logger).
+        self.addresses_geo_coords = self._load_dict(os.path.expanduser(
+                self.main_cfg['data_filepaths']['cache_adr_geo_coords']))
+        self.locations_mappings = self._load_dict(os.path.expanduser(
+            self.main_cfg['data_filepaths']['cache_loc_mappings']))
+        self.us_states = self._load_json(os.path.expanduser(
+            self.main_cfg['data_filepaths']['us_states']))
 
     def run_analysis(self):
         # Reset all locations stats to be computed
         self.reset_stats()
         ###############################
-        #    All countries analysis
+        #       European analysis
         ###############################
-        # Get counts of countries, i.e. for each country we want to know its
-        # number of occurrences in job posts
-        # NOTE: these are all the countries and they are sorted in order of
-        # decreasing number of occurrences (i.e. most popular country at first)
-        countries_count = self._count_all_countries()
-        self.stats['sorted_all_countries_count'] = countries_count
+        # Get counts of european countries, i.e. for each country we want to
+        # know its number of occurrences in job posts
+        # NOTE: These are all the european countries and they are sorted in
+        # order of decreasing number of occurrences (i.e. most popular european
+        # country at first)
+        # TODO: even if `display_graph` and `save_graph` are set to False,
+        # `_count_european_countries()` gets called
+        barh_cfg = self.main_cfg['job_locations']['barh_chart_europe']
+        eu_countries_count = self._count_european_countries(
+            use_fullnames=barh_cfg['use_fullnames'])
+        self.stats['sorted_eu_countries_count'] = eu_countries_count
         self.logger.debug(
-            "There are {} distinct countries".format(len(countries_count)))
+            "There are {} distinct european countries".format(
+                len(eu_countries_count)))
         self.logger.debug(
-            "There are {} occurrences of countries in the job posts".format(
-                sum(j for i, j in countries_count)))
-        bar_config = self.main_config['graphs_config']['bar_chart_all_countries']
-        self._generate_bar_chart(
-            sorted_topic_count=self.stats["sorted_all_countries_count"],
-            bar_chart_config=bar_config)
+            "There are {} occurrences of european countries in the job "
+            "posts".format(sum(j for i, j in eu_countries_count)))
+        self._generate_barh_chart(
+            barh_type='barh_chart_europe',
+            sorted_topic_count=np.array(self.stats['sorted_eu_countries_count']),
+            barh_chart_cfg=barh_cfg)
         ###############################
         #      US states analysis
         ###############################
@@ -77,7 +77,10 @@ class JobLocationsAnalyzer(Analyzer):
         # number of occurrences in job posts
         # NOTE: These are all the US states and they are sorted in order of
         # decreasing number of occurrences (i.e. most popular US state at first)
-        us_states_count = self._count_us_states()
+        barh_cfg = self.main_cfg['job_locations']['barh_chart_usa']
+        us_states_count = self._count_us_states(
+            use_fullnames=barh_cfg['use_fullnames'],
+            ignore_none=barh_cfg['ignore_none'])
         self.stats['sorted_us_states_count'] = us_states_count
         self.logger.debug(
             "There are {} distinct US states".format(len(us_states_count)))
@@ -91,43 +94,48 @@ class JobLocationsAnalyzer(Analyzer):
             assert len(indices) == 2, "There should be 2 indices"
             self.logger.debug("There are {} 'None' US state".format(
                 np.array(us_states_count)[indices[0]][0][1]))
-        bar_config = self.main_config['graphs_config']['bar_chart_us_states']
-        self._generate_bar_chart(
-            sorted_topic_count=self.stats['sorted_us_states_count'],
-            bar_chart_config=bar_config)
+        self._generate_barh_chart(
+            barh_type='barh_chart_usa',
+            sorted_topic_count=np.array(self.stats['sorted_us_states_count']),
+            barh_chart_cfg=barh_cfg)
         ###############################
-        #       European analysis
+        #       World analysis
         ###############################
-        # Get counts of european countries, i.e. for each country we want to
-        # know its number of occurrences in job posts
-        # NOTE: These are all the european countries and they are sorted in
-        # order of decreasing number of occurrences (i.e. most popular european
-        # country at first)
-        eu_countries_count = self._count_european_countries()
-        self.stats['sorted_eu_countries_count'] = eu_countries_count
+        # Get counts of countries, i.e. for each country we want to know its
+        # number of occurrences in job posts
+        # NOTE: these are all the countries and they are sorted in order of
+        # decreasing number of occurrences (i.e. most popular country at first)
+        barh_cfg = self.main_cfg['job_locations']['barh_chart_world']
+        countries_count = self._count_all_countries(
+            use_fullnames=barh_cfg['use_fullnames']
+        )
+        self.stats['sorted_all_countries_count'] = countries_count
         self.logger.debug(
-            "There are {} distinct european countries".format(
-                len(eu_countries_count)))
+            "There are {} distinct countries".format(len(countries_count)))
         self.logger.debug(
-            "There are {} occurrences of european countries in the job "
-            "posts".format(sum(j for i, j in eu_countries_count)))
-        bar_config = self.main_config['graphs_config']['bar_chart_eu_countries']
-        self._generate_bar_chart(
-            sorted_topic_count=self.stats['sorted_eu_countries_count'],
-            bar_chart_config=bar_config)
+            "There are {} occurrences of countries in the job posts".format(
+                sum(j for i, j in countries_count)))
+        self._generate_barh_chart(
+            barh_type='barh_chart_world',
+            sorted_topic_count=np.array(self.stats["sorted_all_countries_count"]),
+            barh_chart_cfg=barh_cfg)
         ###############################
         #           Maps
         ###############################
         # Generate map with markers added on US states that have job posts
-        self._generate_usa_map()
+        self._generate_map_usa(
+            map_type='map_usa',
+            map_cfg=self.main_cfg['job_locations']['map_usa'])
         # Generate map with markers added on countries that have job posts
-        self._generate_world_map()
+        self._generate_map_world(
+            map_type='map_world',
+            map_cfg=self.main_cfg['job_locations']['map_world'])
         # Generate map with markers added on european countries that have job
         # posts
-        # TODO: implement `_generate_europe_map()`
-        # self._generate_europe_map()
+        # TODO: implement `_generate_map_europe()`
+        # self._generate_map_europe()
 
-    def _count_all_countries(self):
+    def _count_all_countries(self, use_fullnames=False):
         """
         Returns countries sorted in decreasing order of their occurrences in
         job posts. A list of tuples is returned where a tuple is of the form
@@ -137,9 +145,16 @@ class JobLocationsAnalyzer(Analyzer):
         """
         sql = "SELECT country, COUNT(country) as CountOf FROM " \
               "job_locations GROUP BY country ORDER BY CountOf DESC"
-        return self.db_session.execute(sql).fetchall()
+        results = self.db_session.execute(sql).fetchall()
+        if use_fullnames:
+            # Convert country names' alpha2 to their full country names
+            list_countries_names = list_country_alpha2_to_country_name(results)
+            assert len(results) == len(list_countries_names), \
+                "Some countries are missing"
+            results = list_countries_names
+        return results
 
-    def _count_european_countries(self, method=4):
+    def _count_european_countries(self, method=1, use_fullnames=False):
         """
         Returns european countries sorted in decreasing order of their
         occurrences in job posts. A list of tuples is returned where a tuple is
@@ -147,26 +162,32 @@ class JobLocationsAnalyzer(Analyzer):
 
         :return: list of tuples of the form (country, count)
         """
-        retval = []
         # TODO: use timeit to time each method and choose the quickest
         if method == 1:
-            # TODO: 1st method: pure Python using `dict`
-            pass
-        elif method == 2:
-            # TODO: 2nd method: numpy using ...
-            pass
-        elif method == 3:
-            # TODO: 3rd method: pandas using ...
-            pass
-        else:
             # 4th method: SQL using `GROUP BY`
             sql = "SELECT country, COUNT(country) as CountOf FROM " \
                   "job_locations WHERE country in ({}) GROUP BY country ORDER " \
-                  "BY CountOf DESC".format(self.european_countries)
-            retval = self.db_session.execute(sql).fetchall()
-        return retval
+                  "BY CountOf DESC".format(get_european_countries_as_str())
+            results = self.db_session.execute(sql).fetchall()
+        elif method == 2:
+            # TODO: pure Python using `dict`
+            raise NotImplementedError("Method 2 (pure python using dict) not "
+                                      "implemented!")
+        elif method == 3:
+            # TODO: numpy using ...
+            raise NotImplementedError("Method 3 (numpy) not implemented!")
+        else:
+            # TODO: pandas using ...
+            raise NotImplementedError("Method 4 (pandas) not implemented!")
+        if use_fullnames:
+            # Convert country names' alpha2 to their full country names
+            list_countries_names = list_country_alpha2_to_country_name(results)
+            assert len(results) == len(list_countries_names), \
+                "Some countries are missing"
+            results = list_countries_names
+        return results
 
-    def _count_us_states(self):
+    def _count_us_states(self, use_fullnames=False, ignore_none=False):
         """
         Returns US states sorted in decreasing order of their occurrences in
         job posts. A list of tuples is returned where a tuple is of the form
@@ -178,7 +199,24 @@ class JobLocationsAnalyzer(Analyzer):
         """
         sql = "SELECT region, COUNT(country) as CountOf FROM job_locations " \
               "WHERE country='US' GROUP BY region ORDER BY CountOf DESC"
-        return self.db_session.execute(sql).fetchall()
+        results = self.db_session.execute(sql).fetchall()
+        if not use_fullnames and not ignore_none:
+            return results
+        if use_fullnames or ignore_none:
+            temp = []
+            for short_name, count in results:
+                if short_name is None and ignore_none:
+                    continue
+                if use_fullnames:
+                    if short_name is None:
+                        full_name = None
+                    else:
+                        full_name = self.us_states[short_name]
+                    temp.append((full_name, count))
+                else:
+                    temp.append((short_name, count))
+            results = temp
+        return results
 
     def _get_all_locations(self):
         """
@@ -200,43 +238,20 @@ class JobLocationsAnalyzer(Analyzer):
         # TODO: concatenate the three columns (city, region, country) into a
         # single string, e.g. 'Colorado Springs, CO, US'. You might get also
         # `None` within the string since not all job locations have a city or a
-        # region.
+        # region. If you find out how to to concatenate the three columns, then
+        # `get_location()` won't be needed within `_get_locations_geo_coords()`
         sql = "SELECT city, region, country FROM job_locations WHERE country='US'"
         return self.db_session.execute(sql).fetchall()
 
-    # TODO: `sorted_topic_count` should be a numpy array since
-    # `_generate_histogram()` takes a numpy array as input
-    def _generate_bar_chart(self, sorted_topic_count, bar_chart_config):
-        sorted_topic_count = np.array(sorted_topic_count)
-        # Lazy import. Loading of module takes lots of time. So do it only when
-        # needed
-        # TODO: add spinner when loading this module
-        self.logger.info("loading module 'utility.graphutil' ...")
-        from utility.graphutil import draw_bar_chart
-        self.logger.debug("finished loading module 'utility.graphutil'")
-        self.logger.info(
-            "Generating bar chart: {} vs {} ...".format(
-                bar_chart_config['xlabel'], bar_chart_config['ylabel']))
-        topk = bar_chart_config['topk']
-        new_labels = self._shrink_labels(
-            labels=sorted_topic_count[:topk, 0],
-            max_length=bar_chart_config['max_xtick_label_length'])
-        draw_bar_chart(
-            x=np.array(new_labels),
-            y=sorted_topic_count[:topk, 1].astype(np.int32),
-            xlabel=bar_chart_config['xlabel'],
-            ylabel=bar_chart_config['ylabel'],
-            title=bar_chart_config['title'].format(topk),
-            grid_which=bar_chart_config['grid_which'],
-            color=bar_chart_config['color'],
-            fig_width=bar_chart_config['fig_width'],
-            fig_height=bar_chart_config['fig_height'])
-
-    def _generate_europe_map(self):
+    def _generate_map_europe(self):
         raise NotImplementedError
 
-    def _generate_usa_map(self):
-        map_cfg = self.main_config['maps_config']['usa_map']
+    # TODO: get the `map_type` from the name of the function
+    def _generate_map_usa(self, map_type, map_cfg):
+        if not map_cfg['display_graph'] and not map_cfg['save_graph']:
+            self.logger.warning("The map '{}' is disabled for the '{}' "
+                                "analysis".format(map_type, self.analysis_type))
+            return 1
         addresses_data, _ = self._get_locations_geo_coords(
             locations=self._get_us_states())
         # TODO: annotation is disabled because the names overlap
@@ -253,11 +268,12 @@ class JobLocationsAnalyzer(Analyzer):
         self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import draw_usa_map
         self.logger.debug("finished loading module 'utility.graphutil'")
+        self.logger.info("Generating map '{}' ...".format(map_type))
         shape_filepath = os.path.expanduser(
-            self.main_config['data_filepaths']['shape'])
+            self.main_cfg['data_filepaths']['shape'])
         # TODO: explain why reversed US states is used
         us_states_filepath = os.path.expanduser(
-            self.main_config['data_filepaths']['reversed_us_states'])
+            self.main_cfg['data_filepaths']['reversed_us_states'])
         draw_usa_map(
             addresses_data=addresses_data,
             shape_filepath=shape_filepath,
@@ -270,10 +286,17 @@ class JobLocationsAnalyzer(Analyzer):
             basemap_cfg=map_cfg['basemap'],
             map_coords_cfg=map_cfg['map_coordinates'],
             draw_parallels=map_cfg['draw_parallels'],
-            draw_meridians=map_cfg['draw_meridians'])
+            draw_meridians=map_cfg['draw_meridians'],
+            display_graph=map_cfg['display_graph'],
+            save_graph=map_cfg['save_graph'],
+            fname=os.path.join(self.main_cfg['saving_dirpath'],
+                               map_cfg['fname']))
 
-    def _generate_world_map(self):
-        map_cfg = self.main_config['maps_config']['world_map']
+    def _generate_map_world(self, map_type, map_cfg):
+        if not map_cfg['display_graph'] and not map_cfg['save_graph']:
+            self.logger.warning("The map '{}' is disabled for the '{}' "
+                                "analysis".format(map_type, self.analysis_type))
+            return 1
         addresses_data, _ = self._get_locations_geo_coords(
             locations=self._get_all_locations())
         # Lazy import. Loading of module takes lots of time. So do it only when
@@ -281,6 +304,7 @@ class JobLocationsAnalyzer(Analyzer):
         self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import draw_world_map
         self.logger.debug("finished loading module 'utility.graphutil'")
+        self.logger.info("Generating map '{}' ...".format(map_type))
         draw_world_map(
             addresses_data=addresses_data,
             title=map_cfg['title'],
@@ -296,7 +320,11 @@ class JobLocationsAnalyzer(Analyzer):
             draw_meridians=map_cfg['draw_meridians'],
             draw_parallels=map_cfg['draw_parallels'],
             draw_states=map_cfg['draw_states'],
-            fill_continents=map_cfg['fill_continents'])
+            fill_continents=map_cfg['fill_continents'],
+            display_graph=map_cfg['display_graph'],
+            save_graph=map_cfg['save_graph'],
+            fname=os.path.join(self.main_cfg['saving_dirpath'],
+                               map_cfg['fname']))
 
     # `locations` is a list of tuples where each tuple is of the form
     # (city, region, country)
@@ -334,7 +362,7 @@ class JobLocationsAnalyzer(Analyzer):
                   'second_try_geocoder_error': [],
                   'second_try_geocoder_none': []}
         # Waiting time in seconds between requests to geocoding service
-        wait_time = self.main_config['maps_config']['wait_time']
+        wait_time = self.main_cfg['job_locations']['wait_time']
         # Get the location's longitude and latitude
         # We are using the module geopy to get the longitude and latitude of
         # locations which will then be transformed into map coordinates so we
@@ -394,33 +422,14 @@ class JobLocationsAnalyzer(Analyzer):
                 self.logger.debug("Address '{}'".format(address))
             else:
                 try:
-                    ipdb.set_trace()
                     geo_coords = get_geo_coords_with_logger(
                         geolocator, location, self.logger)
-                    # TODO: testing code to be removed
-                    """
-                    self.logger.debug(
-                        "Sending request to the geocoding service for location "
-                        "'{}'".format(location))
-                    geo_coords = locations_geo_coords.get(location)
-                    """
                 except (geopy.exc.GeocoderTimedOut,
                         geopy.exc.GeocoderServiceError):
                     report['first_try_geocoder_error'].append(location)
                     # TODO: test this part
                     ipdb.set_trace()
                     continue
-                # TODO: testing code to be removed
-                """
-                else:
-                    self.logger.debug(
-                        "Geo coordinates received from the geocoding service")
-                    self.logger.debug("Address: {}".format(geo_coords.address))
-                    self.logger.debug(
-                        "Geo coordinates: {} lat, {} long [{}]".format(
-                            geo_coords.latitude, geo_coords.longitude,
-                            geo_coords.point))
-                """
                 if geo_coords is None and use_country_fallback:
                     # TODO: test this part
                     ipdb.set_trace()
@@ -439,8 +448,6 @@ class JobLocationsAnalyzer(Analyzer):
                     try:
                         geo_coords = get_geo_coords_with_logger(
                             geolocator, country, self.logger)
-                        # TODO: testing code to be removed
-                        # geo_coords = locations_geo_coords.get(location)
                     except (geopy.exc.GeocoderTimedOut,
                             geopy.exc.GeocoderServiceError) as e:
                         report['second_try_geocoder_error'].append(location)
@@ -530,33 +537,46 @@ class JobLocationsAnalyzer(Analyzer):
         if new_geo_coords:
             # Save the geo coords
             self.logger.info("Saving the geographic coordinates ...")
-            dump_pickle_with_logger(
+            self._dump_pickle(
                 os.path.expanduser(
-                    self.main_config['data_filepaths']['cache_adr_geo_coords']),
-                self.addresses_geo_coords,
-                self.logger)
+                    self.main_cfg['data_filepaths']['cache_adr_geo_coords']),
+                self.addresses_geo_coords)
             # Save the locations mappings
             self.logger.info("Saving the locations mappings ...")
-            dump_pickle_with_logger(
+            self._dump_pickle(
                 os.path.expanduser(
-                    self.main_config['data_filepaths']['cache_loc_mappings']),
-                self.locations_mappings,
-                self.logger)
+                    self.main_cfg['data_filepaths']['cache_loc_mappings']),
+                self.locations_mappings)
         # TODO: is `cur_loc_mappings` necessary to return?
         return cur_adrs_data, cur_loc_mappings
 
-    @staticmethod
-    def _get_european_countries():
-        european_countries = set()
-        for _, values in map_countries().items():
-            try:
-                continent = country_alpha2_to_continent_code(values['alpha_2'])
-                if continent == "EU":
-                    european_countries.add(values['alpha_2'])
-            except KeyError:
-                # Possible cause: Invalid alpha_2, e.g. could be Antarctica which
-                # is not associated to a continent code
-                continue
-        european_countries = ", ".join(
-            map(lambda a: "'{}'".format(a), european_countries))
-        return european_countries
+
+# Useful inside SQL expressions
+def get_european_countries_as_str():
+    european_countries = set()
+    for _, values in map_countries().items():
+        try:
+            continent = country_alpha2_to_continent_code(values['alpha_2'])
+            if continent == "EU":
+                european_countries.add(values['alpha_2'])
+        except KeyError:
+            # Possible cause: Invalid alpha_2, e.g. could be Antarctica which
+            # is not associated to a continent code
+            continue
+    return convert_list_to_str(european_countries)
+
+
+def list_country_alpha2_to_country_name(list_countries_alpha2):
+    # Convert country names' alpha2 to their full country names
+    # TODO: is it better to have another column with the full country
+    # names? or will it take more storage?
+    list_countries_fullnames = []
+    # TODO: catch errors with `country_alpha2_to_country_name()`
+    for country_alpha2, count in list_countries_alpha2:
+        if country_alpha2 is None:
+            # Shouldn't happen but in any case ...
+            country_name = None
+        else:
+            country_name = country_alpha2_to_country_name(country_alpha2)
+        list_countries_fullnames.append((country_name, count))
+    return list_countries_fullnames

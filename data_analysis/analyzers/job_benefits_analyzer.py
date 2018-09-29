@@ -37,6 +37,7 @@ class JobBenefitsAnalyzer(Analyzer):
         self.stats["sorted_job_benefits_count"] = job_benefits_count
         barh_cfg = self.main_cfg["job_benefits"]["barh_chart_job_benefits"]
         self._generate_barh_chart(
+            barh_type='barh_chart_job_benefits',
             sorted_topic_count=np.array(self.stats["sorted_job_benefits_count"]),
             barh_chart_cfg=barh_cfg)
 
