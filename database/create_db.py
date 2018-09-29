@@ -5,7 +5,7 @@ import time
 
 
 DB_FILENAME = os.path.expanduser("~/databases/rss_feeds.sqlite")
-SCHEMA_FILENAME = "job_data_schema.sql"
+SCHEMA_FILENAME = "rss_feeds_schema.sql"
 
 
 if __name__ == '__main__':
