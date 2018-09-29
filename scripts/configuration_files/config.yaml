@@ -1,5 +1,0 @@
-db_url:
-  drivername: sqlite
-  database: ~/databases/job_data.sqlite
-
-scraped_job_data_dirpath: ~/data/dev_jobs_insights/scraped_job_data/20180917-105205-scraped_job_data
