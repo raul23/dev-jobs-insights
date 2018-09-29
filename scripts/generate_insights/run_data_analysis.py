@@ -24,6 +24,7 @@ if __name__ == '__main__':
         cwd=os.getcwd(),
         parser_desc="Run data analysis of Stackoverflow job posts.",
         parser_formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    sb.parse_args()
     logger = sb.get_logger()
     try:
         logger.info("Starting the job data analysis")

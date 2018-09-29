@@ -1,20 +1,24 @@
 import os
-import sys
-
+# Third-party modules
 from bs4 import BeautifulSoup
-
-# TODO: module path insertion is hardcoded
-sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from utility import genutil as g_util
+# Own modules
+from utility.genutil import get_local_time
+from utility.logging_boilerplate import LoggingBoilerplate
 
 
 class Entry:
-    def __init__(self, url, entry_dict):
+    def __init__(self, url, entry_dict, logging_cfg):
+        sb = LoggingBoilerplate(__name__,
+                                __file__,
+                                os.getcwd(),
+                                logging_cfg)
+        self.logger = sb.get_logger()
         self.feed_name = url  # Foreign key
         self.id = None  # Primary key
         self.title = None
         self.author = None
-        self.link = None
+        self.url = None
+        self.location = None
         self.summary = None
         self.published = None  # Date with format YYYY-MM-DD HH:MM:SS-HH:MM
         self.tags = []
@@ -30,27 +34,36 @@ class Entry:
             self.id = entry_dict.id
             self.title = entry_dict.get('title')
             self.author = entry_dict.get('author')
-            self.link = entry_dict.get('link')
-            raw_summary = entry_dict('summary')
+            self.url = entry_dict.get('link')
+            self.location = entry_dict.get('location')
+            raw_summary = entry_dict.get('summary')
             if raw_summary is not None:
                 self.summary = parse_summary(raw_summary)
-            # Extract published_parsed which is of time.struct_time type
-            # NOTE: the published_parsed date is given in UTC
-            published_parsed = entry_dict('published_parsed')
+            else:
+                self.logger.warning("No summary found in the entry "
+                                    "'{}'".format(self.id))
+            # Extract `published_parsed` which is of `time.struct_time` type
+            # NOTE: the `published_parsed` date is given in UTC
+            published_parsed = entry_dict.get('published_parsed')
             if published_parsed is not None:
                 # Convert UTC to local time
-                self.published = g_util.get_local_time(published_parsed)
+                self.published = get_local_time(published_parsed)
+            else:
+                self.logger.warning("No `published_parsed` in the entry "
+                             "'{}'".format(self.id))
             # Extract tags
-            tags = entry_dict('tags')
+            tags = entry_dict.get('tags')
             if tags is not None:
                 for tag in entry_dict.tags:
                     self.tags.append(tag.term)
+            else:
+                self.logger.warning("No tags in the entry '{}'".format(self.id))
         else:
-            print("[ERROR] Entry from {} doesn't have an id" % self.feed_name)
+            raise KeyError(
+                "Entry from '{}' doesn't have an id".format(self.feed_name))
 
 
 def parse_summary(raw_summary):
-    doc = BeautifulSoup(raw_summary, "html.parser")
     # NOTE: when you get text from HTML elements, call strip() to remove any
     # trailing whitespaces (e.g. new lines)
-    return doc.get_text().strip()
+    return BeautifulSoup(raw_summary, "html.parser").get_text().strip()

@@ -1,92 +1,101 @@
+import argparse
 import os
 import sys
-
+# Third-party modules
+import ipdb
 import feedparser
-
+# Own modules
 from entry import Entry
+from exc import *
 from feed import Feed
-# TODO: module path insertion is hardcoded
-sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from utility import genutil as g_util
-
-
-DB_FILEPATH = os.path.expanduser("~/databases/dev_jobs_insights.sqlite")
+from utility.genutil import connect_db, read_yaml_config
+from utility.script_boilerplate import ScriptBoilerplate
 
 
 class RSSReader:
-    def __init__(self, autocommit=False):
-        self.autocommit = autocommit
+    def __init__(self, db_filepath, logging_cfg, logger, autocommit=False):
+        self.db_filepath = db_filepath
         # Create db connection
-        self.conn = None
-        # Current feed URL being parsed
+        self.conn = connect_db(self.db_filepath)
+        # Current feed's URL being parsed
         self.feed_url = None
+        self.logging_cfg = logging_cfg
+        self.logger = logger
+        self.autocommit = autocommit
 
     def read(self, feed_url):
         self.feed_url = feed_url
-        self.conn = g_util.connect_db(DB_FILEPATH)
         with self.conn:
+            # ==============
             # Parse RSS feed
+            # ==============
             feed_parser_dict = feedparser.parse(feed_url)
-            # TODO: case where there is a parse exception, e.g. SAXParseException('not well-formed (invalid token)',)
-            # feed and entries will both be empty in that case. Check by removing the file extension of the feed file
+            # =============
             # Process feed
-            # TODO: another case you should check is when there is sqlite3.ProgrammingError, e.g. Incorrect number
-            # of bindings supplied. The current statement uses 2, and there are 1 supplied. Check by removing
-            # a field from a table
+            # =============
             self.process_feed(feed_parser_dict.feed)
+            # ===============
             # Process entries
+            # ===============
             self.process_entries(feed_parser_dict.entries)
 
     def process_feed(self, feed_dict):
         # Parse the feed dict
-        feed = Feed(self.feed_url, feed_dict)
+        feed = Feed(self.feed_url, feed_dict, self.logging_cfg)
         # Check if the current feed is already in the db
         if self.select_feed((feed.name,)) is None:
             # Insert current feed in db
             self.insert_feed((feed.name, feed.title, feed.updated))
         else:
-            print("[INFO] The feed '{}' is already in the database.".format(feed.name))
+            self.logger.info(
+                "The feed '{}' is already in the database.".format(feed.name))
 
     def process_entries(self, entries_list):
         # `entries_list` is a list of dict (of entries)
-        for entry_dict in entries_list:
-            # Process the entry
-            entry = self.process_entry(entry_dict)
-            if entry:
+        for i, entry_dict in enumerate(entries_list, start=1):
+            try:
+                # Process the entry
+                self.logger.info("Processing entry #{}".format(i))
+                entry = self.process_entry(entry_dict)
                 # Process tags associated with the entry
                 self.process_tags(entry)
+            except (KeyError, DuplicateEntryError) as e:
+                self.logger.exception(e)
+                self.logger.warning("The entry #{} will be skipped".format(i))
+            except FeedNotFoundError as e:
+                raise FeedNotFoundError(e)
+            else:
+                self.logger.debug("Entry #{} processed!".format(i))
 
     def process_entry(self, entry_dict):
         # Parse the given entry
-        entry = Entry(self.feed_url, entry_dict)
-        # Check if entry has an id
-        if entry.id:
-            # Check if the current entry is already in the db
-            if self.select_entry((entry.id,)) is None:  # New entry
-                # Sanity check if the `feed_name` (entries foreign key) is already
-                # in the Feeds table
-                # NOTE: the `feed_name` is a very important attribute for the entries table
-                # because it is a foreign key that links both the feeds and entries tables
-                if self.select_feed((entry.feed_name,)):  # feed found
-                    print("[INFO] The entry '{}' will be inserted in the database.".format(entry.title))
-                    # Insert current entry in db
-                    self.insert_entry((entry.id,
-                                       entry.feed_name,
-                                       entry.title,
-                                       entry.author,
-                                       entry.link,
-                                       entry.summary,
-                                       entry.published))
-                    return entry
-                else:
-                    print("[ERROR] The feed '{}' is not found in the db. Entry '{}' "
-                          "can not be processed any further.".format(entry.feed_name, entry.title))
+        entry = Entry(self.feed_url, entry_dict, self.logging_cfg)
+        # Check if the current entry is already in the db
+        if self.select_entry((entry.id,)) is None:  # New entry
+            # Sanity check if the `feed_name` (entries foreign key) is already
+            # in the Feeds table
+            # NOTE: the `feed_name` is a very important attribute for the
+            # entries table because it is a foreign key that links both the
+            # feeds and entries tables
+            if self.select_feed((entry.feed_name,)):  # feed found
+                self.logger.info("The entry '{}' will be inserted in the "
+                                 "database.".format(entry.title))
+                # Insert current entry in db
+                self.insert_entry((entry.id,
+                                   entry.feed_name,
+                                   entry.title,
+                                   entry.author,
+                                   entry.url,
+                                   entry.location,
+                                   entry.summary,
+                                   entry.published))
+                return entry
             else:
-                print("[INFO] The entry '{}' is already in the database.".format(entry.title))
+                raise FeedNotFoundError("The feed '{}' is not found in the "
+                                        "database.".format(entry.feed_name))
         else:
-            print("[ERROR] The entry {} doesn't have an id. It belongs to the feed '{}' "
-                  "and the entry will not be processed any further.".format(entry.title, entry.feed_name))
-        return None
+            raise DuplicateEntryError("The entry with id='{}' is already in the "
+                                      "database.".format(entry.id))
 
     def process_tags(self, entry):
         for tag in entry.tags:
@@ -95,10 +104,13 @@ class RSSReader:
                 # Insert tag in db
                 self.insert_tag((entry.id, tag,))
             else:
-                print("[INFO] The tag '{}' is already in the database.".format(tag))
+                self.logger.warning("The tag '{}' is already in the database. "
+                                    "The tag will be skipped.".format(tag))
+                continue
 
     def insert_entry(self, entry):
-        sql = '''INSERT INTO entries VALUES (?,?,?,?,?,?,?)'''
+        # TODO: automate adding number of '?' in the SQL expression
+        sql = '''INSERT INTO entries VALUES (?,?,?,?,?,?,?,?)'''
         self.sanity_check_sql(entry, sql)
         cur = self.conn.cursor()
         cur.execute(sql, entry)
@@ -122,7 +134,7 @@ class RSSReader:
         return cur.lastrowid
 
     def select_entry(self, entry):
-        sql = '''SELECT * FROM entries WHERE job_id=?'''
+        sql = '''SELECT * FROM entries WHERE job_post_id=?'''
         self.sanity_check_sql(entry, sql)
         cur = self.conn.cursor()
         cur.execute(sql, entry)
@@ -136,7 +148,7 @@ class RSSReader:
         return cur.fetchone()
 
     def select_tag(self, tag):
-        sql = '''SELECT * FROM tags WHERE job_id=? AND name=?'''
+        sql = '''SELECT * FROM tags WHERE job_post_id=? AND name=?'''
         self.sanity_check_sql(tag, sql)
         cur = self.conn.cursor()
         cur.execute(sql, tag)
@@ -151,8 +163,11 @@ class RSSReader:
 
     @staticmethod
     def sanity_check_sql(val, sql):
-        assert type(val) is tuple
-        assert len(val) == sql.count('?')
+        assert type(val) is tuple, \
+            "The values for the SQL expression are not of `tuple` type"
+        assert len(val) == sql.count('?'), \
+            "Wrong number of values ({}) in the SQL expression '{}'".format(
+                len(val), sql)
 
     def commit(self):
         """
@@ -165,12 +180,57 @@ class RSSReader:
 
 
 if __name__ == '__main__':
-    # List of RSS Feeds:
-    # - For more recent RSS feeds: https://stackoverflow.com/jobs/feed
-    # - Downloaded RSS feeds:
-    rss_feeds = ["/Users/nova/data/dev_jobs_insights/cache/rss_feeds/2018-08-09 - developer jobs - Stack Overflow.xhtml"]
+    sb = ScriptBoilerplate(
+        module_name=__name__,
+        module_file=__file__,
+        cwd=os.getcwd(),
+        parser_desc="Run data analysis of Stackoverflow job posts.",
+        parser_formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    sb.parse_args()
+    logger = sb.get_logger()
+    try:
+        logger.info("Loading the config file '{}'".format(sb.args.main_cfg))
+        main_cfg = read_yaml_config(sb.args.main_cfg)
+    except OSError as e:
+        logger.exception(e)
+        logger.error("The config file '{}' couldn't be loaded".format(
+            sb.args.main_cfg))
+        logger.warning("The program will exit")
+        sys.exit(1)
+    else:
+        logger.info("Config file loaded!")
+    rss_feeds = main_cfg['rss_feeds']
+    status_code = 0
+    try:
+        logger.info("Starting the RSS reader")
+        rss_reader = RSSReader(
+            db_filepath=os.path.expanduser(main_cfg['db_filepath']),
+            logging_cfg=sb.logging_cfg_dict,
+            logger=logger)
+        for feed_url in rss_feeds:
+            try:
+                logger.info("Reading the feed '{}'".format(feed_url))
+                rss_reader.read(feed_url)
+            except FeedNotFoundError as e:
+                logger.critical(e)
+                logger.warning("The feed '{}' will be skipped".format(feed_url))
+            else:
+                logger.info("End of processing feed '{}'")
+    except (AssertionError, KeyboardInterrupt) as e:
+        logger.critical(e)
+        status_code = 1
+    else:
+        logger.info("End of RSS reader")
+    finally:
+        logger.info("Program will exit")
+        sys.exit(status_code)
 
-    rss_reader = RSSReader()
-
-    for feed_url in rss_feeds:
-        rss_reader.read(feed_url)
+    # TODO: check case where there is a parse exception
+    # e.g. SAXParseException('not well-formed (invalid token)',)
+    # feed and entries will both be empty in that case. Check by removing
+    # the file extension of the feed file
+    # TODO: another case you should check is when there is a
+    # sqlite3.ProgrammingError
+    # e.g. Incorrect number of bindings supplied. The current statement
+    # uses 2, and there are 1 supplied.
+    # Check by removing a field from a table

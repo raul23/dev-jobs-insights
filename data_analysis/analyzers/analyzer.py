@@ -7,7 +7,7 @@ import numpy as np
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 from utility.genutil import dump_pickle, load_json, load_pickle
-from utility.script_boilerplate import LoggingBoilerplate
+from utility.logging_boilerplate import LoggingBoilerplate
 
 
 class Analyzer:

@@ -1,0 +1,9 @@
+# Database config
+db_filepath: ~/databases/rss_feeds.sqlite
+# ========================
+#     RSS feeds (list)
+# ========================
+rss_feeds:
+# For more recent RSS feeds: https://stackoverflow.com/jobs/feed
+- "/Users/nova/data/dev_jobs_insights/cache/rss_feeds/2018-09-28-Stack-Overflow.xhtml"
+# - "/Users/nova/data/dev_jobs_insights/cache/rss_feeds/2018-08-09-Stack-Overflow.xhtml"
