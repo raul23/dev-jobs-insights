@@ -215,7 +215,7 @@ if __name__ == '__main__':
                 logger.critical(e)
                 logger.warning("The feed '{}' will be skipped".format(feed_url))
             else:
-                logger.info("End of processing feed '{}'")
+                logger.info("End of processing feed '{}'".format(feed_url))
     except (AssertionError, KeyboardInterrupt) as e:
         logger.critical(e)
         status_code = 1

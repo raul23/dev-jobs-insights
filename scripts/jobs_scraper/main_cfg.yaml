@@ -1,0 +1,30 @@
+#=============================
+#      DATABASE CONFIG
+#=============================
+db_filepath: ~/databases/rss_feeds.sqlite
+#=============================
+#      DATA INPUT CONFIG
+#=============================
+data_filepaths:
+  # Short names --> Full names
+  us_states: ~/data/dev_jobs_insights/us_states.json
+  # NOTE: if `cached_webpages_dirpath` is 'None', then the webpages will not be
+  # cached. The webpages will then be retrieved from the internet.
+  cached_webpages_dirpath: ~/data/dev_jobs_insights/cache/webpages/stackoverflow_job_posts/
+  currencies_filepath: ~/data/dev_jobs_insights/currencies.json
+#=============================
+#       SAVING CONFIG
+#=============================
+saving_cfg:
+  scraped_job_data_dirpath: ~/data/dev_jobs_insights/scraped_job_data
+  split_size: 100
+#=============================
+#       SALARY CONFIG
+#=============================
+dest_currency: USD
+#=============================
+#     HTTP REQUEST CONFIG
+#=============================
+# All in seconds
+http_get_timeout: 5
+delay_between_requests: 2

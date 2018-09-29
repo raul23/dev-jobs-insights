@@ -7,17 +7,14 @@ import re
 import sqlite3
 import sys
 import time
-
+# Third-party modules
 from bs4 import BeautifulSoup
 from forex_python.converter import get_currency_name, get_rate, \
     RatesNotAvailableError
 from pycountry_convert import country_name_to_country_alpha2
 import requests
 import ipdb
-
-# TODO: module path insertion is hardcoded
-sys.path.insert(0, os.path.expanduser(
-    "~/PycharmProjects/github_projects"))
+# Own modules
 sys.path.insert(0, os.path.expanduser(
     "~/PycharmProjects/github_projects/dev_jobs_insights/database"))
 from job_data import JobData
@@ -46,7 +43,7 @@ HTTP_GET_TIMEOUT = 5
 DEBUG = False
 DEST_CURRENCY = "USD"
 DEST_SYMBOL = "$"
-GROUP_SIZE = 100
+SPLIT_SIZE = 100
 
 
 # ref.: https://stackoverflow.com/a/50120316
@@ -271,9 +268,9 @@ class JobsScraper:
         # see https://stackoverflow.com/a/2135179 for `sys.setrecursionlimit`
         with recursionlimit(15000):
             n_sessions = len(self.all_sessions)
-            n_groups = math.ceil(n_sessions / GROUP_SIZE)
+            n_groups = math.ceil(n_sessions / SPLIT_SIZE)
             start_index = 0
-            end_index = min(len(self.all_sessions), start_index + GROUP_SIZE)
+            end_index = min(len(self.all_sessions), start_index + SPLIT_SIZE)
             for i in range(n_groups):
                 sessions = dict(self.all_sessions[start_index:end_index])
                 # TODO: change WARNING to INFO
@@ -301,7 +298,7 @@ class JobsScraper:
                             start_index, end_index, all_sessions_filepath))
                     start_index = end_index
                     end_index = min(len(self.all_sessions),
-                                    start_index + GROUP_SIZE)
+                                    start_index + SPLIT_SIZE)
 
         self.print_log(
             "INFO",

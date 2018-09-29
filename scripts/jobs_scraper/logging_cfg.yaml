@@ -1,0 +1,49 @@
+version: 1
+disable_existing_loggers: False
+formatters:
+  console:
+    format: "%(name)-30s: %(levelname)-8s %(message)s"
+  simple:
+    format: "%(levelname)-8s %(message)s"
+  verbose:
+    format: "%(asctime)s | %(name)-40s | %(levelname)-8s | %(message)s"
+handlers:
+  file:
+    level: DEBUG
+    class: logging.FileHandler
+    filename: "debug.log"
+    mode: a
+    formatter: verbose
+  console:
+    level: INFO
+    class: logging.StreamHandler
+    formatter: console
+loggers:
+  jobs_rss_reader.rss_reader.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  jobs_rss_reader.rss_reader.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  jobs_rss_reader.feed.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  jobs_rss_reader.feed.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  jobs_rss_reader.entry.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  jobs_rss_reader.entry.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+root:
+  level: DEBUG
+  handlers: [console]
+  propagate: False
