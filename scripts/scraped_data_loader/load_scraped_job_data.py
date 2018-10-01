@@ -15,7 +15,7 @@ from utility.script_boilerplate import ScriptBoilerplate
 
 
 def main():
-    ipdb.set_trace()
+    # ipdb.set_trace()
     sb = ScriptBoilerplate(
         module_name=__name__,
         module_file=__file__,
