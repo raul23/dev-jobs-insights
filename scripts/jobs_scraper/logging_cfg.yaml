@@ -19,27 +19,19 @@ handlers:
     class: logging.StreamHandler
     formatter: console
 loggers:
-  jobs_rss_reader.rss_reader.c:
+  jobs_scraper.jobs_scraper.c:
     level: INFO
     handlers: [console]
     propagate: False
-  jobs_rss_reader.rss_reader.f:
+  jobs_scraper.jobs_scraper.f:
     level: DEBUG
     handlers: [file]
     propagate: False
-  jobs_rss_reader.feed.c:
+  jobs_scraper.job_data.c:
     level: INFO
     handlers: [console]
     propagate: False
-  jobs_rss_reader.feed.f:
-    level: DEBUG
-    handlers: [file]
-    propagate: False
-  jobs_rss_reader.entry.c:
-    level: INFO
-    handlers: [console]
-    propagate: False
-  jobs_rss_reader.entry.f:
+  jobs_scraper.job_data.f:
     level: DEBUG
     handlers: [file]
     propagate: False

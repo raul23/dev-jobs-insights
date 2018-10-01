@@ -1,5 +1,6 @@
 import argparse
 import os
+import sqlite3
 import sys
 # Third-party modules
 import ipdb
@@ -13,17 +14,24 @@ from utility.script_boilerplate import ScriptBoilerplate
 
 
 class RSSReader:
-    def __init__(self, db_filepath, logging_cfg, logger, autocommit=False):
-        self.db_filepath = db_filepath
-        # Create db connection
-        self.conn = connect_db(self.db_filepath)
-        # Current feed's URL being parsed
-        self.feed_url = None
+    def __init__(self, main_cfg, logging_cfg, logger, autocommit=False):
+        self.main_cfg = main_cfg
         self.logging_cfg = logging_cfg
+        # TODO: setup loggers for `Entry` and `Feed` like it is done for
+        # `jobs_scraper`
         self.logger = logger
         self.autocommit = autocommit
+        # Current feed's URL being parsed
+        self.feed_url = None
+        self.db_filepath = self.main_cfg['db_filepath']
+        self.conn = None
 
     def read(self, feed_url):
+        # Create db connection
+        try:
+            self.conn = connect_db(self.db_filepath)
+        except sqlite3.Error as e:
+            raise sqlite3.Error(e)
         self.feed_url = feed_url
         with self.conn:
             # ==============
@@ -184,27 +192,20 @@ if __name__ == '__main__':
         module_name=__name__,
         module_file=__file__,
         cwd=os.getcwd(),
-        parser_desc="Run data analysis of Stackoverflow job posts.",
+        parser_desc="Load RSS feeds along with their content (e.g. entries, tags) "
+                    "into a database.",
         parser_formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     sb.parse_args()
     logger = sb.get_logger()
+    status_code = 1
     try:
         logger.info("Loading the config file '{}'".format(sb.args.main_cfg))
         main_cfg = read_yaml_config(sb.args.main_cfg)
-    except OSError as e:
-        logger.exception(e)
-        logger.error("The config file '{}' couldn't be loaded".format(
-            sb.args.main_cfg))
-        logger.warning("The program will exit")
-        sys.exit(1)
-    else:
         logger.info("Config file loaded!")
-    rss_feeds = main_cfg['rss_feeds']
-    status_code = 0
-    try:
+        rss_feeds = main_cfg['rss_feeds']
         logger.info("Starting the RSS reader")
         rss_reader = RSSReader(
-            db_filepath=os.path.expanduser(main_cfg['db_filepath']),
+            main_cfg=main_cfg,
             logging_cfg=sb.logging_cfg_dict,
             logger=logger)
         for feed_url in rss_feeds:
@@ -216,14 +217,13 @@ if __name__ == '__main__':
                 logger.warning("The feed '{}' will be skipped".format(feed_url))
             else:
                 logger.info("End of processing feed '{}'".format(feed_url))
-    except (AssertionError, KeyboardInterrupt) as e:
-        logger.critical(e)
-        status_code = 1
-    else:
-        logger.info("End of RSS reader")
-    finally:
+    except (AssertionError, KeyboardInterrupt, OSError, sqlite3.Error) as e:
+        logger.exception(e)
         logger.info("Program will exit")
-        sys.exit(status_code)
+    else:
+        status_code = 0
+        logger.info("End of RSS reader")
+    sys.exit(status_code)
 
     # TODO: check case where there is a parse exception
     # e.g. SAXParseException('not well-formed (invalid token)',)

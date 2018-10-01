@@ -50,7 +50,7 @@ class Entry:
                 self.published = get_local_time(published_parsed)
             else:
                 self.logger.warning("No `published_parsed` in the entry "
-                             "'{}'".format(self.id))
+                                    "'{}'".format(self.id))
             # Extract tags
             tags = entry_dict.get('tags')
             if tags is not None:

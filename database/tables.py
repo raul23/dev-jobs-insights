@@ -1,5 +1,5 @@
 # TODO: change filename to 'job_data_tables.py'
-# TODO: is alright to use `None` as value for empty columns or should we use
+# TODO: is it alright to use `None` as value for empty columns or should we use
 # the empty string '' instead? Does using `None` uses less storage space than
 # using the empty string ''? e.g. in the `JobLocation` table, the column `region`
 # (aka US state) might be missing in the job posts, and you need to be careful
@@ -15,7 +15,7 @@ Base = declarative_base()
 
 
 class ValueOverrideError(Exception):
-    """Raised when """
+    """Raised when a non-empty column is being set by another value"""
 
 
 class AbstractTable:
