@@ -136,7 +136,7 @@ class JobsScraper:
         for count, (job_post_id, title, author, url, location, published) in \
                 enumerate(rows, start=1):
             # TODO: debug code
-            if False and job_post_id != 203827:
+            if False and job_post_id != 203004:
                 continue
             try:
                 # TODO: add timing for each important processing parts
@@ -264,7 +264,7 @@ class JobsScraper:
                 # TODO: add similar jobs found within .more-jobs-items
                 self.logger.info("Finished Processing {}".format(url))
                 # TODO: debug code
-                if True and count == 10:
+                if False and count == 10:
                     break
             except exc.WebPageNotFoundError as e:
                 self.logger.exception(e)
@@ -334,7 +334,6 @@ class JobsScraper:
         # =====================================================================
         # see https://stackoverflow.com/a/2135179 for `sys.setrecursionlimit`
         split_size = self.main_cfg['saving_cfg']['split_size']
-        ipdb.set_trace()
         with recursionlimit(15000):
             n_sessions = len(self.all_sessions)
             n_groups = math.ceil(n_sessions / split_size)
@@ -1585,6 +1584,7 @@ class JobsScraper:
         return cur.fetchall()
 
     def standardize_country(self, country):
+        # TODO: automate this part here by using a translator service
         # Converts a country name to the alpha2 code
         invalid_country_log_msg = "The country '{}' is not a valid country. " \
                                   "Instead, '{}' will be used as the " \
@@ -1617,11 +1617,17 @@ class JobsScraper:
             self.logger.debug(invalid_country_log_msg.format(country, 'GB'))
             return 'GB'
         elif country == 'Schweiz':
-            # 'Schweiz' (German for Switzerland) is not recognized
-            # by `pycountry_convert` as a valid country. 'Switzerland' associated
+            # 'Schweiz' (German for Switzerland) is not recognized by
+            # `pycountry_convert` as a valid country. 'Switzerland' associated
             # with the 'CH' alpha2 code are used instead
-            self.logger.debug(invalid_country_log_msg.format(country, 'GB'))
+            self.logger.debug(invalid_country_log_msg.format(country, 'CH'))
             return 'CH'
+        elif country == 'Spanien':
+            # 'Spanien' (German for Spain) is not recognized by
+            # `pycountry_convert` as a valid country. 'Spain' associated with the
+            # 'ES' alpha2 code are used instead
+            self.logger.debug(invalid_country_log_msg.format(country, 'ES'))
+            return 'ES'
         try:
             alpha2 = country_name_to_country_alpha2(country)
         except KeyError as e:
