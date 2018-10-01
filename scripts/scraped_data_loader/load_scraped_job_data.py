@@ -92,7 +92,6 @@ def main():
             else:
                 logger.debug("Successfully added job data for "
                              "job_post_id={}".format(job_post_id))
-    ipdb.set_trace()
 
 
 if __name__ == '__main__':
