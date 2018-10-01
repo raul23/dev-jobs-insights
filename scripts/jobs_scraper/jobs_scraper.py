@@ -136,7 +136,7 @@ class JobsScraper:
         for count, (job_post_id, title, author, url, location, published) in \
                 enumerate(rows, start=1):
             # TODO: debug code
-            if False and job_post_id != 203004:
+            if False and job_post_id != 202842:
                 continue
             try:
                 # TODO: add timing for each important processing parts

@@ -45,25 +45,6 @@ class JobData:
     def get_logging_info():
         return __name__, __file__, os.getcwd()
 
-    def _catch_value_override_error(func):
-        @functools.wraps(func)
-        def wrapper_catch_value_override_error(self, *args, **kwargs):
-            try:
-                func(self, *args, **kwargs)
-            except ValueOverrideError as e:
-                self.logger.warning(e)
-            # TODO:
-            # add a flag (can be named `updated`) that indicates whether
-            # one of the JobData's attributes was successfully updated. Hence,
-            # this flag could be used in `get_json_data()` so you don't have to
-            # do lots of computations to get the JSON job data if the latter was
-            # already computed and `updated` is False. Every time one of
-            # JobData's attributes are updated, the flag `updated` is set to True.
-            # Then when `get_json_data` is called, the JSON job data is
-            # re-generated, and the flag is set to False. This flag might also
-            # by used in other places such as `get_sqlalchemy_job_data()`
-        return wrapper_catch_value_override_error
-
     def _check_kwargs_all_none(func):
         @functools.wraps(func)
         def wrapper_check_kwargs_all_none(self, *args, **kwargs):
@@ -77,7 +58,6 @@ class JobData:
         return wrapper_check_kwargs_all_none
 
     @_check_kwargs_all_none
-    @_catch_value_override_error
     # TODO: change variable names
     #       use `table_instance` instead of `record_object`
     #       use `table_instances` instead of `records_list`
@@ -85,7 +65,11 @@ class JobData:
     # IMPORTANT: this method along with other methods starting with `set_` are
     # called only once per table instance (aka record)
     def _setup_record(self, record_object, records_list, **kwargs):
-        record_object.set_column(**kwargs)
+        for key, value in kwargs.items():
+            try:
+                record_object.set_column(key, value)
+            except ValueOverrideError as e:
+                self.logger.warning(e)
         records_list.append(record_object)
         # IMPORTANT: the table instance's tablename is used to get the
         # job_post's relationship list where the table instance will be added
@@ -93,15 +77,21 @@ class JobData:
             record_object.__tablename__)
         job_post_relationship.append(record_object)
 
-    @_catch_value_override_error
     # IMPORTANT: this method can be called more than once with the same `company`
     def set_company(self, **kwargs):
-        self.company.set_column(**kwargs)
+        for key, value in kwargs.items():
+            try:
+                self.company.set_column(key, value)
+            except ValueOverrideError as e:
+                self.logger.warning(e)
 
-    @_catch_value_override_error
     # IMPORTANT: this method can be called more than once with the same `job_post`
     def set_job_post(self, **kwargs):
-        self.job_post.set_column(**kwargs)
+        for key, value in kwargs.items():
+            try:
+                self.job_post.set_column(key, value)
+            except ValueOverrideError as e:
+                self.logger.warning(e)
         # Setup the `company`'s relationship with `job_post` but only if the
         # said relationship is empty (list)
         if not self.company.job_posts:
@@ -238,3 +228,12 @@ class JobData:
                 sqlalchemy_job_data.append(self.__getattribute__(attr_name))
         return sqlalchemy_job_data
     """
+    # TODO: add a flag (can be named `updated`) that indicates whether
+    # one of the JobData's attributes was successfully updated. Hence,
+    # this flag could be used in `get_json_data()` so you don't have to
+    # do lots of computations to get the JSON job data if the latter was
+    # already computed and `updated` is False. Every time one of
+    # JobData's attributes are updated, the flag `updated` is set to True.
+    # Then when `get_json_data` is called, the JSON job data is
+    # re-generated, and the flag is set to False. This flag might also
+    # by used in other places such as `get_sqlalchemy_job_data()`

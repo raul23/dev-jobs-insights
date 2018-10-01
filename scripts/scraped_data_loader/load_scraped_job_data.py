@@ -10,12 +10,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 # Own modules
 from tables import Base
-from utility.genutil import read_yaml_config
+from utility.genutil import load_pickle, read_yaml_config
 from utility.script_boilerplate import ScriptBoilerplate
 
 
 def main():
-    # ipdb.set_trace()
     sb = ScriptBoilerplate(
         module_name=__name__,
         module_file=__file__,
@@ -27,12 +26,12 @@ def main():
     # Read YAML configuration file
     try:
         logger.info("Loading the YAML configuration file '{}'".format(
-                    sb.args.main_config))
+                    sb.args.main_cfg))
         main_cfg = read_yaml_config(sb.args.main_cfg)
     except OSError as e:
         logger.exception(e)
         logger.error("Configuration file '{}' couldn't be read. Program will "
-                     "exit.".format(sb.args.main_config))
+                     "exit.".format(sb.args.main_cfg))
         sys.exit(1)
     else:
         logger.info("Successfully loaded the YAML configuration file")
@@ -62,7 +61,7 @@ def main():
         try:
             logger.info("#{} Loading the pickle file '{}'".format(
                 i, os.path.basename(job_data_filepath)))
-            scraped_job_data = gu.load_pickle(job_data_filepath)
+            scraped_job_data = load_pickle(job_data_filepath)
         except FileNotFoundError as e:
             logger.exception(e)
             logger.error("Scraped job data from '{}' could not be loaded. "
@@ -93,6 +92,7 @@ def main():
             else:
                 logger.debug("Successfully added job data for "
                              "job_post_id={}".format(job_post_id))
+    ipdb.set_trace()
 
 
 if __name__ == '__main__':

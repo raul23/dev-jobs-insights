@@ -25,18 +25,17 @@ class AbstractTable:
     # TODO: this doesn't work for tables that are associated with a list in
     # `JobPostData` because the table object is created every time some
     # attributes are to be set
-    def set_column(self, **kwargs):
-        for key, value in kwargs.items():
-            # Check if the attribute already has a value set
-            current_value = self.__getattribute__(key)
-            if current_value:
-                # Attribute already has a value set
-                raise ValueOverrideError(
-                    "The attribute '{}' in {} already has a value='{}'.".format(
-                        key, self.__tablename__, current_value))
-            else:
-                # Set the attribute with the provided value
-                self.__setattr__(key, value)
+    def set_column(self, key, value):
+        # Check if the attribute already has a value set
+        current_value = self.__getattribute__(key)
+        if current_value:
+            # Attribute already has a value set
+            raise ValueOverrideError(
+                "The attribute '{}' in {} already has a value='{}'.".format(
+                    key, self.__tablename__, current_value))
+        else:
+            # Set the attribute with the provided value
+            self.__setattr__(key, value)
 
 
 # IMPORTANT: `Company` must first be added to the db, then the `JobPost` can be
