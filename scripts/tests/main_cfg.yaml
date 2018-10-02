@@ -6,10 +6,11 @@ db_url:
   database: ~/databases/job_data.sqlite
 tests:
   companies: False
-  industries: True
+  industries: False
   experience_levels: False
   job_benefits: False
   job_locations: False
   job_posts: False
+  job_salaries: True
   roles: False
   skills: False

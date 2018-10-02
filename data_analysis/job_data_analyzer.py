@@ -14,9 +14,9 @@ from analyzers.job_locations_analyzer import JobLocationsAnalyzer
 from analyzers.job_salaries_analyzer import JobSalariesAnalyzer
 from analyzers.roles_analyzer import RolesAnalyzer
 from analyzers.skills_analyzer import SkillsAnalyzer
+from tables import Base
 from utility.genutil import create_timestamped_directory, read_yaml_config
 from utility.script_boilerplate import LoggingBoilerplate
-from tables import Base
 
 
 class JobDataAnalyzer:

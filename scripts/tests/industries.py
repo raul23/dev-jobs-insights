@@ -1,58 +1,50 @@
-import argparse
 import os
-import sys
 # Third-party modules
 import ipdb
-from sqlalchemy import create_engine
-from sqlalchemy.engine.url import URL
-from sqlalchemy.orm import sessionmaker
-import numpy as np
 # Own modules
-from utility.genutil import read_yaml_config
-from utility.script_boilerplate import ScriptBoilerplate
+from utility.logging_boilerplate import LoggingBoilerplate
+
+logger = None
+db_session = None
 
 
-def get_db_session(self):
-    # SQLAlchemy database setup
-    db_url = self.main_cfg['db_url']
-    db_url['database'] = os.path.expanduser(db_url['database'])
-    self.logger.info("Database setup of {}".format(db_url['database']))
-    engine = create_engine(URL(**db_url))
-    Base.metadata.bind = engine
-    # Setup database session
-    DBSession = sessionmaker(bind=engine)
-    db_session = DBSession()
-    return db_session
+def select_industries():
+    """
+    Returns all records from the `industries` table. A list of tuples is returned
+    where a tuple is of the form (job_post_id, name).
+
+    :return: list of tuples of the form (job_post_id, name)
+    """
+    sql = "SELECT job_post_id, name from industries"
+    return db_session.execute(sql).fetchall()
 
 
-def main():
-    ipdb.set_trace()
-    sb = ScriptBoilerplate(
+def run_tests_on_industries(db_session_, logging_cfg):
+    lb = LoggingBoilerplate(
         module_name=__name__,
         module_file=__file__,
         cwd=os.getcwd(),
-        parser_desc="Run tests on the `industries` table.",
-        parser_formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    sb.parse_args()
-    logger = sb.get_logger()
-    logger.info("Starting the tests")
-    # Read YAML configuration file
-    try:
-        logger.info("Loading the YAML configuration file '{}'".format(
-            sb.args.main_cfg))
-        main_cfg = read_yaml_config(sb.args.main_cfg)
-    except OSError as e:
-        logger.exception(e)
-        logger.error("Configuration file '{}' couldn't be read. Program will "
-                     "exit.".format(sb.args.main_cfg))
-        sys.exit(1)
-    else:
-        logger.info("Successfully loaded the YAML configuration file")
-    ipdb.set_trace()
-
-if __name__ == '__main__':
-    if __name__ == '__main__':
-        try:
-            main()
-        except (KeyboardInterrupt, KeyError) as e:
-            pass
+        logging_cfg=logging_cfg)
+    global logger
+    logger = lb.get_logger()
+    global db_session
+    db_session = db_session_
+    logger.info("Retrieving all records from the `industries` table")
+    industries = select_industries()
+    logger.info("Retrieved {} records".format(len(industries)))
+    industries_dict = {}
+    report = {'duplicate_industries': {}}
+    logger.info("Validating industries ...")
+    for job_post_id, name in industries:
+        industries_dict.setdefault(job_post_id, [])
+        if name in industries_dict[job_post_id]:
+            logger.warning(
+                "Duplicate industry '{}' found for {}".format(name, job_post_id))
+            report['duplicate_industries'].setdefault(job_post_id, [])
+            report['duplicate_industries'][job_post_id].append(name)
+        else:
+            industries_dict[job_post_id].append(name)
+    logger.info("End of tests on the `industries` table")
+    # Group by `job_post_id`
+    # Count industries per `job_post_id`
+    # Count duplicate industries per `job_post_id`

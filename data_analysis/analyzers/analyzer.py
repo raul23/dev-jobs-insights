@@ -26,11 +26,11 @@ class Analyzer:
         self.stats_names = stats_names
         self.stats = {}
         self.reset_stats()
-        sb = LoggingBoilerplate(module_name,
+        lb = LoggingBoilerplate(module_name,
                                 module_file,
                                 cwd,
                                 logging_cfg)
-        self.logger = sb.get_logger()
+        self.logger = lb.get_logger()
 
     # TODO: add decorator to call `reset_stats` at first
     def run_analysis(self):

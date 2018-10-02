@@ -23,7 +23,55 @@ loggers:
     level: INFO
     handlers: [console]
     propagate: False
-  analyzers.industries.f:
+  tests.industries.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  tests.job_benefits.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  tests.job_benefits.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  tests.job_locations.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  tests.job_locations.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  tests.job_salaries.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  tests.job_salaries.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  tests.roles.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  tests.roles.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  tests.run_tests.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  tests.run_tests.f:
+    level: DEBUG
+    handlers: [file]
+    propagate: False
+  tests.skills.c:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  tests.skills.f:
     level: DEBUG
     handlers: [file]
     propagate: False

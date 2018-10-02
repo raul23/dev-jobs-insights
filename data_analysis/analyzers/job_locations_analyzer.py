@@ -478,17 +478,7 @@ class JobLocationsAnalyzer(Analyzer):
         # locations_geo_coords = load_pickle(filepath)
         for i, (job_post_id, city, region, country) in \
                 enumerate(locations, start=1):
-
-            # Build location string from list of strings (city, region, country)
-            def get_location(list_of_str):
-                loc = ""
-                for i, s in enumerate(list_of_str, start=1):
-                    if s is None:
-                        continue
-                    loc += "{}, ".format(s)
-                return loc.strip(", ")
-
-            location = get_location([city, region, country])
+            location = build_location([city, region, country])
             self.logger.info("Location #{}: {} (job_post_id={})".format(
                               i, location, job_post_id))
             if not location:
@@ -672,3 +662,13 @@ class JobLocationsAnalyzer(Analyzer):
                     continue
             list_countries_fullnames.append((country_name, count))
         return list_countries_fullnames
+
+
+# Build location string from list of strings (city, region, country)
+def build_location(list_of_str):
+    loc = ""
+    for i, s in enumerate(list_of_str, start=1):
+        if s is None:
+            continue
+        loc += "{}, ".format(s)
+    return loc.strip(", ")
