@@ -1,0 +1,6 @@
+#=============================
+#      DATABASE CONFIG
+#=============================
+db_url:
+  drivername: sqlite
+  database: ~/databases/job_data.sqlite

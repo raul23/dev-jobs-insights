@@ -1,15 +1,4 @@
-# TODO: place spinner in package's __init__
-from spinner import spinner
-spinner.start()
-import argparse
-import os
-import sys
-# Third-party modules
-import ipdb
-# Own modules
-from data_analysis import job_data_analyzer as ja
-from utility.script_boilerplate import ScriptBoilerplate
-spinner.stop()
+
 
 
 if __name__ == '__main__':
