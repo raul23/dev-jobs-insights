@@ -2,7 +2,7 @@ version: 1
 disable_existing_loggers: False
 formatters:
   console:
-    format: "%(name)-40s: %(levelname)-8s %(message)s"
+    format: "%(name)-30s: %(levelname)-8s %(message)s"
   simple:
     format: "%(levelname)-8s %(message)s"
   verbose:

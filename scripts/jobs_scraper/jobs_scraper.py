@@ -16,7 +16,7 @@ from pycountry_convert import country_name_to_country_alpha2
 import requests
 import ipdb
 # Own modules
-from job_data import JobData
+from job_data import DuplicateRecordError, JobData, NoOfficeLocationFoundError
 import exc
 from scraping_session import ScrapingSession
 from utility.genutil import connect_db, dump_pickle, get_local_datetime, \
@@ -136,7 +136,7 @@ class JobsScraper:
         for count, (job_post_id, title, author, url, location, published) in \
                 enumerate(rows, start=1):
             # TODO: debug code
-            if False and job_post_id != 202842:
+            if False and job_post_id != 203827:
                 continue
             try:
                 # TODO: add timing for each important processing parts
@@ -264,7 +264,7 @@ class JobsScraper:
                 # TODO: add similar jobs found within .more-jobs-items
                 self.logger.info("Finished Processing {}".format(url))
                 # TODO: debug code
-                if False and count == 10:
+                if False and count == 100:
                     break
             except exc.WebPageNotFoundError as e:
                 self.logger.exception(e)
@@ -290,6 +290,7 @@ class JobsScraper:
                         "The current URL '{}' will be skipped".format(url))
                     n_skipped += 1
                 skipped = False
+        ipdb.set_trace()
         self.session = None
         # =====================================================================
         # Directory creation for saving scraped job data
@@ -376,8 +377,15 @@ class JobsScraper:
         self.session.data.set_job_post(title=title,
                                        date_posted=self.str_to_date(published))
         if location is None:
-            self.logger.warning("The location from the RSS feed ({}) is "
-                                "'None'".format(self.session.data.job_post_id))
+            self.logger.warning("No office location found!")
+            self.logger.info(
+                "The location from the RSS feed ({}) is 'None'".format(
+                    self.session.data.job_post_id))
+            location = "No office location"
+            self.logger.info(
+                "'{}' will be used as the name of the location/country".format(
+                 location))
+            self.session.data.set_job_location(country=location)
         elif self.session.data.job_locations:
             # The job location was already extracted. No need to get it if it was
             # extracted from the JSON linked data for example. Hence, we can save
@@ -483,9 +491,9 @@ class JobsScraper:
                 # already been detected previously when checking if the job post
                 # was removed.
                 self.logger.exception(e)
-                self.logger.critical("No title found in the job post. This case "
-                                     "should have already been previously "
-                                     "detected.")
+                self.logger.critical(
+                    "No title found in the job post. This case should have "
+                    "already been previously detected.")
             except exc.EmptyTextError as e:
                 # TODO: create more specific error such as EmptyTitleError
                 # IMPORTANT: the title tag is found but the text is empty, a very
@@ -494,8 +502,9 @@ class JobsScraper:
                 # already been detected previously when checking if the job post
                 # was removed.
                 self.logger.exception(e)
-                self.logger.critical("The title tag should not contain an empty "
-                                     "text. Unusual case!")
+                self.logger.critical(
+                    "The title tag should not contain an empty text. Unusual "
+                    "case!")
             else:
                 self.logger.debug("Job post's title '{}' saved!".format(title))
         # =====================================================================
@@ -507,8 +516,9 @@ class JobsScraper:
             # Company name already extracted
             self.logger.warning(
                 "The company name already has a value='{}'".format(company_name))
-            self.logger.warning("The currently extracted company name '{}' is "
-                                "ignored".format(company_name))
+            self.logger.warning(
+                "The currently extracted company name '{}' is ignored".format(
+                 company_name))
         else:
             # Extract company name
             try:
@@ -525,9 +535,9 @@ class JobsScraper:
                 # already been detected previously when checking if the job post
                 # was removed.
                 self.logger.exception(e)
-                self.logger.critical("No company name found in the job post. This "
-                                     "case should have already been previously "
-                                     "detected.")
+                self.logger.critical(
+                    "No company name found in the job post. This case should have "
+                    "already been previously detected.")
             except exc.EmptyTextError as e:
                 # TODO: create more specific error such as EmptyCompanyNameError
                 # IMPORTANT: the title tag is found but the text is empty, a very
@@ -535,8 +545,9 @@ class JobsScraper:
                 # IMPORTANT: this case should not happen because it should have
                 # already been detected previously.
                 self.logger.exception(e)
-                self.logger.critical("The tag for the company name should not "
-                                     "contain an empty text. Unusual case!")
+                self.logger.critical(
+                    "The tag for the company name should not contain an empty "
+                    "text. Unusual case!")
             else:
                 self.logger.debug("Company name '{}' saved!".format(company_name))
         # =====================================================================
@@ -544,30 +555,41 @@ class JobsScraper:
         # =====================================================================
         # Get the office location which is located on the same line as the
         # company name
+        """
         if self.session.data.job_locations:
             # The job location was already extracted. No need to get it if it was
             # extracted from the JSON linked data for example. Hence, we can save
             # some computations
-            self.logger.warning("The 'job location' was already previously "
-                                "extracted")
-        else:
-            try:
-                pattern = "header.job-details--header > div.grid--cell > " \
-                          "div.fc-black-700 > span.fc-black-500"
-                text = self.get_text_in_tag(pattern)
-                # Process the location text
-                # We want to standardize the country (e.g. Finland --> FI)
-                location = self.process_location_text(text)
-                self.session.data.set_job_location(**location)
-            except exc.TagNotFoundError as e:
-                self.logger.debug(e)
-            except exc.EmptyTextError as e:
-                self.logger.exception(e)
-            except (KeyError, exc.InvalidLocationTextError) as e:
-                self.logger.exception(e)
-            else:
-                self.logger.debug("The location {} was saved.".format(location))
-
+            job_locations = [(l.city, l.region, l.country) for l in
+                             self.session.data.job_locations]
+            self.logger.warning(
+                "The 'job location' was already previously extracted: "
+                "{}".format(job_locations))
+        """
+        try:
+            pattern = "header.job-details--header > div.grid--cell > " \
+                      "div.fc-black-700 > span.fc-black-500"
+            text = self.get_text_in_tag(pattern)
+            # Process the location text
+            # We want to standardize the country (e.g. Finland --> FI)
+            location = self.process_location_text(text)
+            self.session.data.set_job_location(**location)
+            self.logger.debug("The location {} was saved.".format(location))
+        except exc.TagNotFoundError as e:
+            # from `get_text_in_tag()`
+            self.logger.debug(e)
+        except exc.EmptyTextError as e:
+            # from `get_text_in_tag()`
+            self.logger.exception(e)
+        except (KeyError, exc.InvalidLocationTextError) as e:
+            # from `process_location_text()`
+            self.logger.exception(e)
+        except DuplicateRecordError as e:
+            # from `set_job_location()`
+            self.logger.warning(e)
+        except NoOfficeLocationFoundError as e:
+            # from `set_job_location()`
+            self.logger.critical(e)
         # =====================================================================
         # 4. Get the other job data
         # =====================================================================
@@ -598,7 +620,8 @@ class JobsScraper:
                     key_name = child_class[0][1:]
                     text = child.text
                     if text:  # value = text
-                        self.logger.info("The {} is found".format(key_name))
+                        self.logger.info(
+                            "The item '{}' is found".format(key_name))
                         # Removing any whitespace from the `text`
                         text = text.strip()
                         # Apply specific processing if the extracted text refers
@@ -610,10 +633,9 @@ class JobsScraper:
                                 # No need to get salaries if they were extracted
                                 # in the JSON linked data. Hence, we can save
                                 # some computations
-                                self.logger.warning("The job salaries for '{}' "
-                                                    "were already extracted "
-                                                    "previously".format(
-                                                     company_name))
+                                self.logger.warning(
+                                    "The job salaries for '{}' were already "
+                                    "extracted previously".format(company_name))
                                 continue
                             else:
                                 # Case: No job salaries extracted yet
@@ -631,8 +653,9 @@ class JobsScraper:
                                     # Save all the salary-related info in the
                                     # `job_salaries` table
                                     for job_salary in job_salaries:
-                                        self.logger.debug("Updating dict with "
-                                                          "{}".format(job_salary))
+                                        self.logger.debug(
+                                            "Updating dict with {}".format(
+                                             job_salary))
                                         if job_salary.get('equity'):
                                             self.session.data.set_job_post(
                                                 **job_salary)
@@ -642,20 +665,22 @@ class JobsScraper:
                         else:
                             # Case: other job data that is not salary. They are
                             # remote, relocation,and visa
-                            self.logger.debug("Updating dict with "
-                                              "{{{}:{}}})".format(key_name, text))
+                            self.logger.debug(
+                                "Updating dict with {{{}:{}}})".format(
+                                 key_name, text))
                             # Save the other job data in the `job_posts` table
                             self.session.data.set_job_post(**{key_name: text})
                     else:
-                        self.logger.error("No text found for the job data with key "
-                                          "'{}'.".format(key_name))
+                        self.logger.error(
+                            "No text found for the job data with key "
+                            "'{}'.".format(key_name))
                 else:
                     self.logger.error(
                         "The <span>'s class doesn't start with '-'.")
         else:
-            self.logger.info("Couldn't extract the other job data @ '{}'. The "
-                             "other job data should be found in {}".format(
-                              url, pattern))
+            self.logger.info(
+                "Couldn't extract the other job data @ '{}'. The other job data "
+                "should be found in '{}'".format(url, pattern))
 
     def process_linked_data(self):
         # Get linked data from <script type="application/ld+json">:
@@ -704,19 +729,20 @@ class JobsScraper:
                     'hiringOrganization', {}).get('description'))
 
             def process_values(values, set_method_name):
-                # Sanity check on `values`
-                if values is None:
-                    self.logger.debug("`values` is  'None'; "
-                                      "`set_method_name`='{}'".format(
-                                        set_method_name))
-                elif not values:
-                    # `values` is an empty list
-                    self.logger.debug("`values` is an empty list; "
-                                      "`set_method_name`='{}'".format(
-                                        set_method_name))
-                else:
-                    try:
+                try:
+                    # Sanity check on `values`
+                    if values is None:
+                        self.logger.debug(
+                            "`values` is  'None'; `set_method_name`='{}'".format(
+                             set_method_name))
+                    elif not values:
+                        # `values` is an empty list
+                        self.logger.debug(
+                            "`values` is an empty list; "
+                            "`set_method_name`='{}'".format(set_method_name))
+                    else:
                         if isinstance(values, str):
+                            # A long comma-separated string
                             values = self.str_to_list(values)
                         elif isinstance(values, list) and \
                                 isinstance(values[0], str):
@@ -728,24 +754,46 @@ class JobsScraper:
                         set_method \
                             = self.session.data.__getattribute__(set_method_name)
                         for value in values:
-                            if isinstance(value, dict):
-                                set_method(**value)
-                            else:
-                                set_method(name=value)
-                    except AttributeError as e:
-                        self.logger.exception(e)
+                            try:
+                                if isinstance(value, dict):
+                                    set_method(**value)
+                                else:
+                                    set_method(name=value)
+                            except DuplicateRecordError as e:
+                                self.logger.warning(e)
+                            except NoOfficeLocationFoundError as e:
+                                self.logger.debug(e)
+                                location = [v for k, v in value.items()]
+                                self.logger.debug("The location '{}' is skipped".format(location))
+                except AttributeError as e:
+                    self.logger.exception(e)
 
+            """
+            if self.session.data.job_locations:
+                # The job location was already extracted. No need to get it if it
+                # was extracted from the JSON linked data for example. Hence, we
+                # can save some computations
+                job_locations = [(l.city, l.region, l.country) for l in
+                                 self.session.data.job_locations]
+                self.logger.warning(
+                    "The 'job location' was already previously extracted: "
+                    "{}".format(job_locations))
+            """
             # Extract data for populating the `job_locations` table
-            process_values(self.get_loc_in_ld(linked_data), 'set_job_location')
+            process_values(values=self.get_loc_in_ld(linked_data),
+                           set_method_name='set_job_location')
             # Extract data for populating the `experience_levels` table
-            process_values(linked_data.get('experienceRequirements'),
-                           'set_experience_level')
+            process_values(values=linked_data.get('experienceRequirements'),
+                           set_method_name='set_experience_level')
             # Extract data for populating the `industries` table
-            process_values(linked_data.get('industry'), 'set_industry')
+            process_values(values=linked_data.get('industry'),
+                           set_method_name='set_industry')
             # Extract data for populating the `skills` table
-            process_values(linked_data.get('skills'), 'set_skill')
+            process_values(values=linked_data.get('skills'),
+                           set_method_name='set_skill')
             # Extract data for populating the `job_benefits` table
-            process_values(linked_data.get('jobBenefits'), 'set_job_benefit')
+            process_values(values=linked_data.get('jobBenefits'),
+                           set_method_name='set_job_benefit')
             # Convert the minimum and maximum salaries to
             # `dest_currency` (e.g. USD)
             try:
@@ -951,20 +999,23 @@ class JobsScraper:
                     # experience_level, role, industry
                     # e.g. Mid-Level, Senior, Lead  --> [Mid-Level, Senior, Lead]
                     self.logger.debug("{} The value '{}' will be converted to a "
-                                      "list".format(pre, value))
+                                      "list --> [{}]".format(pre, value, value))
                     list_values = self.str_to_list(value)
                     for value in list_values:
                         # Save the key ('name') and its associated value
                         kwarg = {'name': value}
                         self.logger.info("{} The item {{'name' : {}}} will be "
                                          "saved".format(pre, value))
-                        if key_name == 'experience_level':
-                            self.session.data.set_experience_level(**kwarg)
-                        elif key_name == 'role':
-                            self.session.data.set_role(**kwarg)
-                        else:
-                            # Industry
-                            self.session.data.set_industry(**kwarg)
+                        try:
+                            if key_name == 'experience_level':
+                                self.session.data.set_experience_level(**kwarg)
+                            elif key_name == 'role':
+                                self.session.data.set_role(**kwarg)
+                            else:
+                                # Industry
+                                self.session.data.set_industry(**kwarg)
+                        except DuplicateRecordError as e:
+                            self.logger.warning(e)
                 elif key_name == 'company_size':
                     # Replace 'k' with '000' in the company size text
                     # '1k-5k people' --> '1000-5000'
@@ -1046,7 +1097,10 @@ class JobsScraper:
                         kwarg = {'name': skill}
                         self.logger.info("{} The skill '{}' will be saved".format(
                                            pre, skill))
-                        self.session.data.set_skill(**kwarg)
+                        try:
+                            self.session.data.set_skill(**kwarg)
+                        except DuplicateRecordError as e:
+                            self.logger.warning(e)
                 else:
                     self.logger.warning("{} No skills extracted from the "
                                         "Technologies section")
@@ -1430,8 +1484,15 @@ class JobsScraper:
 
     # Get the location data in a linked data JSON object
     def get_loc_in_ld(self, linked_data):
+        # TODO: some job post don't have a location in the RSS feed (i.e. no
+        # office location) but do have lots of job locations in the JSON linked
+        # data. e.g. job_post_id=203827
         job_locations = linked_data.get('jobLocation')
         if job_locations:
+            if len(job_locations) > 1:
+                self.logger.critical(
+                    "There are {} job locations in the JSON linked data!".format(
+                     len(job_locations)))
             processed_locations = []
             for location in job_locations:
                 city = location.get('address', {}).get('addressLocality')
@@ -1443,14 +1504,15 @@ class JobsScraper:
                     region = None
                 if country == '-':
                     country = None
-                processed_locations.append({'city': city,
-                                            'region': region,
-                                            'country': country})
+                location_dict =  {'city': city,
+                                  'region': region,
+                                  'country': country}
+                processed_locations.append(location_dict)
             return processed_locations
         else:
             # TODO: no need to raise error, just return None
             # raise exc.NoJobLocationError("No job locations found in the linked data.")
-            self.logger.error("No job locations found in the linked data")
+            self.logger.warning("No job locations found in the linked data")
             return None
 
     @staticmethod

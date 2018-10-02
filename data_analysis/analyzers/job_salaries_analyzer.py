@@ -2,9 +2,9 @@ import os
 # Third-party modules
 import ipdb
 import numpy as np
-from pycountry_convert import country_alpha2_to_continent_code, map_countries
 # Own modules
 from .analyzer import Analyzer
+from utility.genutil import convert_list_to_str
 
 
 class JobSalariesAnalyzer(Analyzer):
@@ -114,7 +114,7 @@ class JobSalariesAnalyzer(Analyzer):
         job_post_ids = self.stats['job_ids_with_salary']
         # Convert the list of `job_post_id` as a string to be used inside SQL
         # expression
-        str_job_post_ids = convert_list_for_sql(job_post_ids)
+        str_job_post_ids = convert_list_to_str(job_post_ids)
         # Two columns selected: job_post_id and name
         # e.g. name of an industry (telecommunication) or a skill (python)
         results = select_method(str_job_post_ids)
@@ -150,10 +150,6 @@ class JobSalariesAnalyzer(Analyzer):
             dict(zip(self.stats['salaries'][:, 0], mid_range_salaries))
         # Sort the mid range salaries in ascending order
         self.stats['sorted_mid_range_salaries'] = np.sort(mid_range_salaries)
-
-    def _generate_bar_chart(self, sorted_topic_count, bar_chart_cfg):
-        # TODO: remove it since it is not used
-        pass
 
     # `sorted_topic_count` is a numpy array
     def _generate_histogram(self, hist_type, sorted_topic_count, hist_cfg,
@@ -293,7 +289,7 @@ class JobSalariesAnalyzer(Analyzer):
         """
         sql = "SELECT job_post_id, country FROM job_locations WHERE job_post_id " \
               "in ({}) and country in ({})".format(
-                job_post_ids, get_european_countries())
+                job_post_ids, self._get_european_countries_as_str())
         return self.db_session.execute(sql).fetchall()
 
     def _select_industries(self, job_post_ids):
@@ -351,23 +347,3 @@ class JobSalariesAnalyzer(Analyzer):
         sql = "SELECT job_post_id, country FROM job_locations WHERE job_post_id " \
               "in ({})".format(job_post_ids)
         return self.db_session.execute(sql).fetchall()
-
-
-def convert_list_for_sql(list_):
-    str_ = ", ".join(
-        map(lambda a: "'{}'".format(a), list_))
-    return str_
-
-
-def get_european_countries():
-    european_countries = set()
-    for _, values in map_countries().items():
-        try:
-            continent = country_alpha2_to_continent_code(values['alpha_2'])
-            if continent == "EU":
-                european_countries.add(values['alpha_2'])
-        except KeyError:
-            # Possible cause: Invalid alpha_2, e.g. could be Antarctica which
-            # is not associated to a continent code
-            continue
-    return convert_list_for_sql(european_countries)

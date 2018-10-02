@@ -31,7 +31,7 @@ class AbstractTable:
         if current_value:
             # Attribute already has a value set
             raise ValueOverrideError(
-                "The attribute '{}' in {} already has a value='{}'.".format(
+                "The attribute '{}' in `{}` already has a value='{}'.".format(
                     key, self.__tablename__, current_value))
         else:
             # Set the attribute with the provided value
@@ -107,6 +107,9 @@ class ExperienceLevel(Base, AbstractTable):
     job_post_id = Column(Integer, ForeignKey('job_posts.id'))
     name = Column(String(250))  # name of experience level
 
+    def __str__(self):
+        return self.name
+
 
 class Industry(Base, AbstractTable):
     __tablename__ = 'industries'
@@ -114,12 +117,18 @@ class Industry(Base, AbstractTable):
     job_post_id = Column(Integer, ForeignKey('job_posts.id'))
     name = Column(String(250))  # name of industry
 
+    def __str__(self):
+        return self.name
+
 
 class JobBenefit(Base, AbstractTable):
     __tablename__ = 'job_benefits'
     id = Column(Integer, primary_key=True)
     job_post_id = Column(Integer, ForeignKey('job_posts.id'))
     name = Column(String(250))  # name of job benefit
+
+    def __str__(self):
+        return self.name
 
 
 # TODO: JobLocation and JobSalary have the same two columns: `id` and
@@ -132,6 +141,9 @@ class JobLocation(Base, AbstractTable):
     region = Column(String(250))
     country = Column(String(250), nullable=False)
 
+    def __str__(self):
+        return "{}, {}, {}".format(self.city, self.region, self.country)
+
 
 class JobSalary(Base, AbstractTable):
     __tablename__ = 'job_salaries'
@@ -142,10 +154,9 @@ class JobSalary(Base, AbstractTable):
     currency = Column(CHAR)
     conversion_time = Column(DateTime)
 
-    # TODO: remove it if isn't used somewhere
     def __str__(self):
-        return "{}-{} {}".format(self.min_salary, self.max_salary,
-                                 self.currency, )
+        return "{}, {}, {}".format(self.min_salary, self.max_salary,
+                                   self.currency)
 
 
 class Role(Base, AbstractTable):
@@ -154,9 +165,15 @@ class Role(Base, AbstractTable):
     job_post_id = Column(Integer, ForeignKey('job_posts.id'))
     name = Column(String(250))  # name of role
 
+    def __str__(self):
+        return self.name
+
 
 class Skill(Base, AbstractTable):
     __tablename__ = 'skills'
     id = Column(Integer, primary_key=True)
     job_post_id = Column(Integer, ForeignKey('job_posts.id'))
     name = Column(String(250))  # name of skill
+
+    def __str__(self):
+        return self.name

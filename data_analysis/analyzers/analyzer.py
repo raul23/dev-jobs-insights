@@ -3,10 +3,12 @@ import sys
 # Third-party modules
 import ipdb
 import numpy as np
+from pycountry_convert import country_alpha2_to_continent_code, map_countries
+# Own modules
 # Own modules
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from utility.genutil import dump_pickle, load_json, load_pickle
+from utility.genutil import convert_list_to_str, dump_pickle, load_json, load_pickle
 from utility.logging_boilerplate import LoggingBoilerplate
 
 
@@ -84,6 +86,23 @@ class Analyzer:
                                barh_chart_cfg['fname']))
         return 0
 
+    # Useful inside SQL expressions
+    def _get_european_countries_as_str(self):
+        european_countries = set()
+        for _, values in map_countries().items():
+            try:
+                continent = country_alpha2_to_continent_code(values['alpha_2'])
+                if continent == "EU":
+                    european_countries.add(values['alpha_2'])
+            except KeyError as e:
+                # Possible cause: Invalid alpha_2, e.g. could be Antarctica which
+                # is not associated to a continent code
+                # self.logger.exception(e)
+                self.logger.debug(
+                    "No continent code for '{}'".format(values['alpha_2']))
+                continue
+        return convert_list_to_str(european_countries)
+
     def _load_json(self, filepath, encoding='utf8'):
         try:
             self.logger.info("Loading {}".format(filepath))
@@ -97,7 +116,7 @@ class Analyzer:
             return data
 
     # If the data to be loaded is a dictionary
-    def _load_dict(self, filepath, default=None):
+    def _load_dict_from_pickle(self, filepath, default=None):
         if default is None:
             dict_ = {}
         else:

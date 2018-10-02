@@ -71,7 +71,7 @@ industries:
 #        JOB BENEFITS
 #=============================
 job_benefits:
-  run_analysis: True
+  run_analysis: False
   barh_chart_job_benefits:
     display_graph: False
     save_graph: True
@@ -91,7 +91,7 @@ job_benefits:
 #       JOB LOCATIONS
 #=============================
 job_locations:
-  run_analysis: True
+  run_analysis: False
   # Number of seconds to wait between two requests to the geocoding service
   wait_time: 0.001
   # TODO: Add these keys: europe, usa, world
@@ -151,31 +151,16 @@ job_locations:
   #=============================
   #          MAPS
   #=============================
-  # TODO: `map_europe` is disabled
-  map_europe:
-    display_graph: False
-    save_graph: True
-    fname: map_europe.png
-    # The marker to be drawn on a map is scaled by a factor
-    marker_scale: 1.5
-    basemap:
-      projection: lcc
-      llcrnrlon: -119
-      llcrnrlat: 22
-      urcrnrlon: -64
-      urcrnrlat: 49
-      lat_1: 32
-      lat_2: 45
-      lon_0: -95
+  # TODO: implement `map_europe`
   map_usa:
     display_graph: False
-    save_graph: True
+    save_graph: False
     fname: map_usa.png
     draw_parallels: False
     draw_meridians: False
     fig_width: 10
     fig_height: 7
-    title: Distribution of Stackoverflow developer job posts in the USA
+    title: Distribution of Stack Overflow developer job posts in the USA
     # TODO: annotation is disabled
     annotation:
       topk: 5
@@ -203,7 +188,7 @@ job_locations:
       marker_scale: 2
   map_world:
     display_graph: False
-    save_graph: True
+    save_graph:  False
     fname: map_world.png
     # TODO: drawing parallels and meridians disabled
     draw_parallels: True
@@ -215,7 +200,7 @@ job_locations:
     fill_continents: True
     fig_width: 12
     fig_height: 7
-    title: Distribution of Stackoverflow developer job posts in the world
+    title: Distribution of Stack Overflow developer job posts in the world
     # TODO: annotation is disabled
     annotation:
       topk: 5
@@ -261,7 +246,7 @@ job_posts:
 #       JOB SALARIES
 #=============================
 job_salaries:
-  run_analysis: True
+  run_analysis: False
   salary_currency: USD
   salary_thresholds:
     # Thresholds for removing salary outliers, i.e. salaries in the range
@@ -290,7 +275,7 @@ job_salaries:
     size_bins: 10000
     xlabel: Mid-range salaries
     ylabel: Number of job posts
-    title: "Histogram: Mid-range salaries among Stackoverflow developer job posts"
+    title: "Histogram: Mid-range salaries among Stack Overflow developer job posts"
     grid_which: major
     color: b
     xaxis_major_mutiplelocator: 10000
@@ -508,7 +493,7 @@ job_salaries:
 #          ROLES
 #=============================
 roles:
-  run_analysis: True
+  run_analysis: False
   # Horizontal bar chart
   barh_chart_roles:
     display_graph: False
@@ -529,7 +514,7 @@ roles:
 #         SKILLS
 #=============================
 skills:
-  run_analysis: True
+  run_analysis: False
   # Horizontal bar chart
   barh_chart_skills:
     display_graph: False

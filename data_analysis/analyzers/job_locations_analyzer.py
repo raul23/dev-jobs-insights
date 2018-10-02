@@ -6,14 +6,12 @@ import geopy
 from geopy.geocoders import Nominatim
 import ipdb
 import numpy as np
-from pycountry_convert import country_alpha2_to_continent_code, \
-    country_alpha2_to_country_name, map_countries
+from pycountry_convert import country_alpha2_to_country_name
 # Own modules
 from .analyzer import Analyzer
 # TODO: module path insertion is hardcoded
 sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from utility.genutil import add_plural, convert_list_to_str, \
-    get_geo_coords_with_logger
+from utility.genutil import add_plural, convert_list_to_str
 
 
 class JobLocationsAnalyzer(Analyzer):
@@ -34,12 +32,15 @@ class JobLocationsAnalyzer(Analyzer):
                          __name__,
                          __file__,
                          os.getcwd())
-        # TODO: use regular loading functions. Logger should be setup directly
-        # in the `genutil` module (each module should have its own logger).
-        self.addresses_geo_coords = self._load_dict(os.path.expanduser(
+        # Load data from pickle and JSON files
+        # IMPORTANT: if the pickle is not found, an empty dict is used instead
+        self.addresses_geo_coords = self._load_dict_from_pickle(
+            os.path.expanduser(
                 self.main_cfg['data_filepaths']['cache_adr_geo_coords']))
-        self.locations_mappings = self._load_dict(os.path.expanduser(
-            self.main_cfg['data_filepaths']['cache_loc_mappings']))
+        self.locations_mappings = self._load_dict_from_pickle(
+            os.path.expanduser(
+                self.main_cfg['data_filepaths']['cache_loc_mappings']))
+        # If the JSON is not found, an exception is triggered
         self.us_states = self._load_json(os.path.expanduser(
             self.main_cfg['data_filepaths']['us_states']))
 
@@ -143,14 +144,19 @@ class JobLocationsAnalyzer(Analyzer):
 
         :return: list of tuples of the form (country, count)
         """
+        # IMPORTANT: 'No office location' is not ignored if `use_fullnames=False`
         sql = "SELECT country, COUNT(country) as CountOf FROM " \
               "job_locations GROUP BY country ORDER BY CountOf DESC"
         results = self.db_session.execute(sql).fetchall()
         if use_fullnames:
+            # IMPORTANT: 'No office location' will be ignored
             # Convert country names' alpha2 to their full country names
-            list_countries_names = list_country_alpha2_to_country_name(results)
-            assert len(results) == len(list_countries_names), \
-                "Some countries are missing"
+            list_countries_names = \
+                self._list_country_alpha2_to_country_name(results)
+            diff = len(results) - len(list_countries_names)
+            if diff > 0:
+                self.logger.warning("{} countr{} missing".format(
+                                     diff, add_plural(diff, "ies are", "y is")))
             results = list_countries_names
         return results
 
@@ -167,7 +173,7 @@ class JobLocationsAnalyzer(Analyzer):
             # 4th method: SQL using `GROUP BY`
             sql = "SELECT country, COUNT(country) as CountOf FROM " \
                   "job_locations WHERE country in ({}) GROUP BY country ORDER " \
-                  "BY CountOf DESC".format(get_european_countries_as_str())
+                  "BY CountOf DESC".format(self._get_european_countries_as_str())
             results = self.db_session.execute(sql).fetchall()
         elif method == 2:
             # TODO: pure Python using `dict`
@@ -180,11 +186,15 @@ class JobLocationsAnalyzer(Analyzer):
             # TODO: pandas using ...
             raise NotImplementedError("Method 4 (pandas) not implemented!")
         if use_fullnames:
+            self.logger.debug("The resulset '{}' will be processed "
+                              "(use fullnames)".format(results))
             # Convert country names' alpha2 to their full country names
-            list_countries_names = list_country_alpha2_to_country_name(results)
+            list_countries_names = \
+                self._list_country_alpha2_to_country_name(results)
             assert len(results) == len(list_countries_names), \
                 "Some countries are missing"
             results = list_countries_names
+        self.logger.debug("Returned resulset: {}".format(results))
         return results
 
     def _count_us_states(self, use_fullnames=False, ignore_none=False):
@@ -195,17 +205,23 @@ class JobLocationsAnalyzer(Analyzer):
 
         NOTE: in the SQL expression, the column region refers to a state
 
-        :return: list of tuples of the form (us_state, ount)
+        :return: list of tuples of the form (us_state, count)
         """
+        # NOTE: if you use `COUNT(region)`, the 'None' region is not counted,
+        # i.e. you get '(None, 0)' instead of '(None, 22)'
         sql = "SELECT region, COUNT(country) as CountOf FROM job_locations " \
               "WHERE country='US' GROUP BY region ORDER BY CountOf DESC"
         results = self.db_session.execute(sql).fetchall()
         if not use_fullnames and not ignore_none:
+            self.logger.debug("Resultset: {}".format(results))
             return results
         if use_fullnames or ignore_none:
+            self.logger.debug("The resulset '{}' will be processed (use fullnames "
+                              "or ignore 'None') ...".format(results))
             temp = []
             for short_name, count in results:
                 if short_name is None and ignore_none:
+                    self.logger.debug("The 'None' country will be skipped")
                     continue
                 if use_fullnames:
                     if short_name is None:
@@ -216,32 +232,8 @@ class JobLocationsAnalyzer(Analyzer):
                 else:
                     temp.append((short_name, count))
             results = temp
+        self.logger.debug("Returned resultset: {}".format(results))
         return results
-
-    def _get_all_locations(self):
-        """
-        Returns all locations. A list of tuples is returned where a tuple is of
-        the form (city, region, country, count).
-
-        :return: list of tuples of the form (city, region, country, count)
-        """
-        sql = "SELECT city, region, country FROM job_locations"
-        return self.db_session.execute(sql).fetchall()
-
-    def _get_us_states(self):
-        """
-        Returns all US states. A list of tuples is returned where a tuple is of
-        the form (city, region, country, count).
-
-        :return: list of tuples of the form (city, region, country, count)
-        """
-        # TODO: concatenate the three columns (city, region, country) into a
-        # single string, e.g. 'Colorado Springs, CO, US'. You might get also
-        # `None` within the string since not all job locations have a city or a
-        # region. If you find out how to to concatenate the three columns, then
-        # `get_location()` won't be needed within `_get_locations_geo_coords()`
-        sql = "SELECT city, region, country FROM job_locations WHERE country='US'"
-        return self.db_session.execute(sql).fetchall()
 
     def _generate_map_europe(self):
         raise NotImplementedError
@@ -253,7 +245,8 @@ class JobLocationsAnalyzer(Analyzer):
                                 "analysis".format(map_type, self.analysis_type))
             return 1
         addresses_data, _ = self._get_locations_geo_coords(
-            locations=self._get_us_states())
+            locations=self._get_us_states(),
+            fallbacks=['region+country', 'country'])
         # TODO: annotation is disabled because the names overlap
         """ 
         # IMPORTANT: Old code using the old dict structure with locations 
@@ -298,7 +291,8 @@ class JobLocationsAnalyzer(Analyzer):
                                 "analysis".format(map_type, self.analysis_type))
             return 1
         addresses_data, _ = self._get_locations_geo_coords(
-            locations=self._get_all_locations())
+            locations=self._get_all_locations(),
+            fallbacks=['region+country', 'country'])
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
         self.logger.info("loading module 'utility.graphutil' ...")
@@ -326,12 +320,112 @@ class JobLocationsAnalyzer(Analyzer):
             fname=os.path.join(self.main_cfg['saving_dirpath'],
                                map_cfg['fname']))
 
+    # TODO: add `ignore_no_office_location` option in main_cfg.yaml
+    def _get_all_locations(self, ignore_no_office_location=True):
+        """
+        Returns all locations. A list of tuples is returned where a tuple is of
+        the form (job_post_id, city, region, country).
+
+        :return: list of tuples of the form
+                 (job_post_id, city, region, country)
+        """
+        if ignore_no_office_location:
+            where = " WHERE country!='No office location'"
+        else:
+            where = ""
+        sql = "SELECT job_post_id, city, region, country FROM " \
+              "job_locations{}".format(where)
+        return self.db_session.execute(sql).fetchall()
+
+    def _get_us_states(self):
+        """
+        Returns all US states. A list of tuples is returned where a tuple is of
+        the form (job_post_id, city, region, country, count).
+
+        :return: list of tuples of the form
+                 (job_post_id, city, region, country, count)
+        """
+        # TODO: concatenate the three columns (city, region, country) into a
+        # single string, e.g. 'Colorado Springs, CO, US'. You might get also
+        # `None` within the string since not all job locations have a city or a
+        # region. If you find out how to to concatenate the three columns, then
+        # `get_location()` won't be needed within `_get_locations_geo_coords()`
+        sql = "SELECT job_post_id, city, region, country FROM job_locations " \
+              "WHERE country='US'"
+        return self.db_session.execute(sql).fetchall()
+
+    def _get_geo_coords(self, geolocator, location):
+        try:
+            self.logger.debug("Sending request to the geocoding service for "
+                              "location '{}'".format(location))
+            geo_coords = geolocator.geocode(location)
+        except (geopy.exc.GeocoderTimedOut,
+                geopy.exc.GeocoderServiceError) as exception:
+            self.logger.exception(exception)
+            self.logger.critical(
+                "The location '{}' will be skipped".format(location))
+            raise exception
+        else:
+            if geo_coords is None:
+                self.logger.warning(
+                    "The geo coordinates for '{}' are 'None'".format(location))
+            else:
+                self.logger.debug(
+                    "Geo coordinates received from the geocoding service")
+                self.logger.debug("Address: {}".format(geo_coords.address))
+                self.logger.debug("Geo coordinates: {} lat, {} long [{}]".format(
+                    geo_coords.latitude, geo_coords.longitude, geo_coords.point))
+            return geo_coords
+
+    def _get_location_from_fallback(self, city, region, country, location,
+                                    fallback):
+        self.logger.warning("The fallback is '{}'".format(fallback))
+        if fallback == 'country':
+            # Use the country only
+            if city is None and region is None:
+                self.logger.warning(
+                    "The city and region are 'None'. Thus, this fallback will be "
+                    "skipped since it corresponds to the first attempt "
+                    "('{}')".format(location))
+                return None
+            self.logger.warning(
+                "The geocoding service could not provide the geo coordinates for "
+                "the location '{}'. We will use only the country '{}' in the next "
+                "request to geopy".format(location, country))
+            return country
+        elif fallback == 'region+country':
+            # Use the region and country
+            if city is None and region is not None:
+                self.logger.warning(
+                    "The city is 'None' and the region is '{}'. Thus, this "
+                    "fallback will be skipped since it corresponds to the first "
+                    "attempt ('{}').".format(region, location))
+                return None
+            if region is None:
+                self.logger.warning(
+                    "The region is 'None'. Thus, this fallback will be skipped.")
+                return None
+            new_location = "{}, {}".format(region, country)
+            self.logger.warning(
+                "The geocoding service could not provide the geo coordinates for "
+                "the location '{}'. We will use the region and country '{}' in "
+                "the next request to geopy".format(location, new_location))
+            return new_location
+        else:
+            self.logger.warning(
+                "The fallback is 'None'. Thus, it will be skipped")
+            return None
+
     # `locations` is a list of tuples where each tuple is of the form
     # (city, region, country)
     # e.g. [('Colorado Springs', 'CO', 'US'), ('New York', 'NY', 'US')]
     # NOTE: city or region can be `None`
     # TODO: check country is always present
-    def _get_locations_geo_coords(self, locations, use_country_fallback=False):
+    # `fallbacks` is a list with choices: 'region+country', 'country', None
+    # e.g. fallbacks=['region+country', 'country']
+    def _get_locations_geo_coords(self, locations, fallbacks=None):
+        if fallbacks is None:
+            fallbacks = []
         new_geo_coords = False
         # `cur_adrs_data`: current addresses' geographic coordinates. By current
         # we mean the actual session. Thus, this dictionary (and other similar
@@ -358,9 +452,10 @@ class JobLocationsAnalyzer(Analyzer):
         report = {'empty_locations': 0,
                   'already_added': [],
                   'similar_locations': {},
-                  'first_try_geocoder_error': [],
-                  'second_try_geocoder_error': [],
-                  'second_try_geocoder_none': []}
+                  'first_try_geocoder_error': set(),
+                  'first_try_geocoder_none': set(),
+                  'next_try_geocoder_error': set(),
+                  'next_try_geocoder_none': set()}
         # Waiting time in seconds between requests to geocoding service
         wait_time = self.main_cfg['job_locations']['wait_time']
         # Get the location's longitude and latitude
@@ -381,7 +476,8 @@ class JobLocationsAnalyzer(Analyzer):
         # TODO: testing code to be removed
         # filepath = os.path.expanduser("~/data/dev_jobs_insights/cache/locations_geo_coords.pkl")
         # locations_geo_coords = load_pickle(filepath)
-        for i, (city, region, country) in enumerate(locations, start=1):
+        for i, (job_post_id, city, region, country) in \
+                enumerate(locations, start=1):
 
             # Build location string from list of strings (city, region, country)
             def get_location(list_of_str):
@@ -393,7 +489,8 @@ class JobLocationsAnalyzer(Analyzer):
                 return loc.strip(", ")
 
             location = get_location([city, region, country])
-            self.logger.info("Location #{}: {}".format(i, location))
+            self.logger.info("Location #{}: {} (job_post_id={})".format(
+                              i, location, job_post_id))
             if not location:
                 # We ignore the case where the location is empty
                 # NOTE: This case shouldn't happen because all job locations
@@ -422,54 +519,56 @@ class JobLocationsAnalyzer(Analyzer):
                 self.logger.debug("Address '{}'".format(address))
             else:
                 try:
-                    geo_coords = get_geo_coords_with_logger(
-                        geolocator, location, self.logger)
+                    geo_coords = self._get_geo_coords(geolocator, location)
                 except (geopy.exc.GeocoderTimedOut,
                         geopy.exc.GeocoderServiceError):
-                    report['first_try_geocoder_error'].append(location)
+                    report['first_try_geocoder_error'].add(location)
                     # TODO: test this part
                     ipdb.set_trace()
                     continue
-                if geo_coords is None and use_country_fallback:
-                    # TODO: test this part
+                if geo_coords is None:
+                    report['first_try_geocoder_none'].add(location)
                     ipdb.set_trace()
-                    # The geocoding service could not provide the geo coordinates.
-                    # Use the country instead of the region
-                    # IMPORTANT: we assume that `location` is a region
-                    self.logger.warning(
-                        "The geocoding service could not provide the geo "
-                        "coordinates for the location '{}'. We will use only "
-                        "the country '{}' in the second request to geopy".format(
-                            location, country))
-                    self.logger.debug(
-                        "Waiting {} second{} for the next geoco request "
-                        "...".format(wait_time, add_plural(wait_time)))
-                    time.sleep(wait_time)
-                    try:
-                        geo_coords = get_geo_coords_with_logger(
-                            geolocator, country, self.logger)
-                    except (geopy.exc.GeocoderTimedOut,
-                            geopy.exc.GeocoderServiceError) as e:
-                        report['second_try_geocoder_error'].append(location)
-                        continue
+                    for fallback in fallbacks:
+                        # The geocoding service could not provide the geo
+                        # coordinates
+                        new_location = self._get_location_from_fallback(
+                            city, region, country, location, fallback)
+                        if new_location is None:
+                            continue
+                        self.logger.debug(
+                            "Waiting {} second{} before the next geocoding "
+                            "request ...".format(
+                             wait_time, add_plural(wait_time)))
+                        time.sleep(wait_time)
+                        try:
+                            geo_coords = self._get_geo_coords(geolocator,
+                                                              new_location)
+                        except (geopy.exc.GeocoderTimedOut,
+                                geopy.exc.GeocoderServiceError):
+                            report['next_try_geocoder_error'].add(location)
+                            # TODO: test this part
+                            ipdb.set_trace()
+                            continue
+                        if geo_coords is None:
+                            # TODO: test this part
+                            ipdb.set_trace()
+                            self.logger.error(
+                                "The geocoding service could not provide the geo "
+                                "coordinates this time using '{}'".format(
+                                 new_location))
+                            report['next_try_geocoder_none'].add(location)
+                            continue
+                        else:
+                            break
                     if geo_coords is None:
-                        self.logger.error(
-                            "The geocoding service could not for a second try "
-                            "provide the geo coordinates this time using only "
-                            "the country '{}'".format(country))
+                        # TODO: test this part
+                        self.logger.critical("The geo coordinates for '{}' are "
+                                             "'None'".format(location))
                         self.logger.critical(
-                            "The location '{}' will be skipped".format(location))
-                        report['second_try_geocoder_none'].append(location)
+                            "The location '{}' will be skipped".format(
+                                location))
                         continue
-                    else:
-                        self.logger.debug(
-                            "Geo coordinates received from the geocoding service")
-                        self.logger.debug(
-                            "Address: {}".format(geo_coords.address))
-                        self.logger.debug(
-                            "Geo coordinates: {} lat, {} long [{}]".format(
-                                geo_coords.latitude, geo_coords.longitude,
-                                geo_coords.point))
                 self.logger.debug(
                     "Waiting {} second{} for the next geocoding request "
                     "...".format(wait_time, add_plural(wait_time)))
@@ -521,11 +620,14 @@ class JobLocationsAnalyzer(Analyzer):
             "# of skipped locations with first-try-geocoder-error: {}".format(
                 len(report['first_try_geocoder_error'])))
         self.logger.info(
-            "# of skipped locations with second-try-geocoder-error: {}".format(
-                len(report['second_try_geocoder_error'])))
+            "# of skipped locations with first-try-geocoder-none: {}".format(
+                len(report['first_try_geocoder_none'])))
         self.logger.info(
-            "# of skipped locations with second-try-geocoder-none: {}".format(
-                len(report['second_try_geocoder_none'])))
+            "# of skipped locations with next-try-geocoder-error: {}".format(
+                len(report['next_try_geocoder_error'])))
+        self.logger.info(
+            "# of skipped locations with next-try-geocoder-none: {}".format(
+                len(report['next_try_geocoder_none'])))
         self.logger.info("********************")
         self.logger.info(
             "These are all the addresses with more than one location:")
@@ -550,33 +652,23 @@ class JobLocationsAnalyzer(Analyzer):
         # TODO: is `cur_loc_mappings` necessary to return?
         return cur_adrs_data, cur_loc_mappings
 
-
-# Useful inside SQL expressions
-def get_european_countries_as_str():
-    european_countries = set()
-    for _, values in map_countries().items():
-        try:
-            continent = country_alpha2_to_continent_code(values['alpha_2'])
-            if continent == "EU":
-                european_countries.add(values['alpha_2'])
-        except KeyError:
-            # Possible cause: Invalid alpha_2, e.g. could be Antarctica which
-            # is not associated to a continent code
-            continue
-    return convert_list_to_str(european_countries)
-
-
-def list_country_alpha2_to_country_name(list_countries_alpha2):
-    # Convert country names' alpha2 to their full country names
-    # TODO: is it better to have another column with the full country
-    # names? or will it take more storage?
-    list_countries_fullnames = []
-    # TODO: catch errors with `country_alpha2_to_country_name()`
-    for country_alpha2, count in list_countries_alpha2:
-        if country_alpha2 is None:
-            # Shouldn't happen but in any case ...
-            country_name = None
-        else:
-            country_name = country_alpha2_to_country_name(country_alpha2)
-        list_countries_fullnames.append((country_name, count))
-    return list_countries_fullnames
+    def _list_country_alpha2_to_country_name(self, list_countries_alpha2):
+        # Convert country names' alpha2 to their full country names
+        # TODO: is it better to have another column with the full country
+        # names? or will it take more storage?
+        list_countries_fullnames = []
+        # TODO: catch errors with `country_alpha2_to_country_name()`
+        for country_alpha2, count in list_countries_alpha2:
+            if country_alpha2 is None:
+                # Shouldn't happen but in any case ...
+                country_name = None
+            else:
+                try:
+                    country_name = country_alpha2_to_country_name(country_alpha2)
+                except KeyError as e:
+                    # self.logger.exception(e)
+                    self.logger.critical(
+                        "No country name for '{}'".format(country_alpha2))
+                    continue
+            list_countries_fullnames.append((country_name, count))
+        return list_countries_fullnames
