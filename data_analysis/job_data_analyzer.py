@@ -6,9 +6,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker
 # Own modules
-# TODO: module path insertion is hardcoded
-sys.path.insert(0, os.path.expanduser(
-    "~/PycharmProjects/github_projects/dev_jobs_insights/data_analysis"))
 # from analyzers.companies_analyzer import CompaniesAnalyzer
 from analyzers.industries_analyzer import IndustriesAnalyzer
 from analyzers.job_benefits_analyzer import JobBenefitsAnalyzer
@@ -17,13 +14,8 @@ from analyzers.job_locations_analyzer import JobLocationsAnalyzer
 from analyzers.job_salaries_analyzer import JobSalariesAnalyzer
 from analyzers.roles_analyzer import RolesAnalyzer
 from analyzers.skills_analyzer import SkillsAnalyzer
-# TODO: module path insertion is hardcoded
-sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 from utility.genutil import create_timestamped_directory, read_yaml_config
 from utility.script_boilerplate import LoggingBoilerplate
-# TODO: module path insertion is hardcoded
-sys.path.insert(0, os.path.expanduser(
-    "~/PycharmProjects/github_projects/dev_jobs_insights/database"))
 from tables import Base
 
 

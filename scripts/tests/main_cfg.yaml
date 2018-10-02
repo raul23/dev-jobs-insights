@@ -4,3 +4,12 @@
 db_url:
   drivername: sqlite
   database: ~/databases/job_data.sqlite
+tests:
+  companies: False
+  industries: True
+  experience_levels: False
+  job_benefits: False
+  job_locations: False
+  job_posts: False
+  roles: False
+  skills: False
