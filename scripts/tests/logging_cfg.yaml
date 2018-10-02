@@ -19,83 +19,11 @@ handlers:
     class: logging.StreamHandler
     formatter: console
 loggers:
-  analyzers.companies_analyzer.c:
+  tests.industries.c:
     level: INFO
     handlers: [console]
     propagate: False
-  analyzers.companies_analyzer.f:
-    level: DEBUG
-    handlers: [file]
-    propagate: False
-  analyzers.industries_analyzer.c:
-    level: INFO
-    handlers: [console]
-    propagate: False
-  analyzers.industries_analyzer.f:
-    level: DEBUG
-    handlers: [file]
-    propagate: False
-  analyzers.job_benefits_analyzer.c:
-    level: INFO
-    handlers: [console]
-    propagate: False
-  analyzers.job_benefits_analyzer.f:
-    level: DEBUG
-    handlers: [file]
-    propagate: False
-  analyzers.job_locations_analyzer.c:
-    level: INFO
-    handlers: [console]
-    propagate: False
-  analyzers.job_locations_analyzer.f:
-    level: DEBUG
-    handlers: [file]
-    propagate: False
-  analyzers.job_posts_analyzer.c:
-    level: INFO
-    handlers: [console]
-    propagate: False
-  analyzers.job_posts_analyzer.f:
-    level: DEBUG
-    handlers: [file]
-    propagate: False
-  analyzers.job_salaries_analyzer.c:
-    level: INFO
-    handlers: [console]
-    propagate: False
-  analyzers.job_salaries_analyzer.f:
-    level: DEBUG
-    handlers: [file]
-    propagate: False
-  analyzers.roles_analyzer.c:
-    level: INFO
-    handlers: [console]
-    propagate: False
-  analyzers.roles_analyzer.f:
-    level: DEBUG
-    handlers: [file]
-    propagate: False
-  analyzers.skills_analyzer.c:
-    level: INFO
-    handlers: [console]
-    propagate: False
-  analyzers.skills_analyzer.f:
-    level: DEBUG
-    handlers: [file]
-    propagate: False
-  data_analysis.job_data_analyzer.c:
-    level: INFO
-    handlers: [console]
-    propagate: False
-  data_analysis.job_data_analyzer.f:
-    level: DEBUG
-    handlers: [file]
-    propagate: False
-  generate_insights.run_data_analysis.c:
-    level: INFO
-    handlers: [console]
-    propagate: False
-  generate_insights.run_data_analysis.f:
+  analyzers.industries.f:
     level: DEBUG
     handlers: [file]
     propagate: False
