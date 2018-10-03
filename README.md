@@ -178,6 +178,8 @@ The next table shows stats about the data used for generating the previous histo
     </tr>
 </table>
 
+<br/>
+
 The job salaries provided by ...
 
 ## TODOs
