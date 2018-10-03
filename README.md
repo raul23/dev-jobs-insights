@@ -12,7 +12,6 @@
 
 <!-- /TOC -->
 
-
 ## Introduction
 **dev-jobs-insights** is a data mining project written in **Python3** with the
 main objective of **extracting meaningful insights** from developer job posts.
@@ -132,7 +131,7 @@ chart **"Top 20 most popular industries"**:
 <br/>
 
 <p align="center"><img src="https://bit.ly/2QsCMRL"/></p>
-<p align="center"></p>
+<p align="center"><b>Go Python!</b></p>
 
 The next table shows stats about the data used for generating the previous bar
 chart **"Top 20 most popular technologies"**:  
