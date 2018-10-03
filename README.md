@@ -176,6 +176,8 @@ The next table shows stats about the data used for generating the previous histo
     </tr>
 </table>
 
+The job salaries provided by ...
+
 ## TODOs
 - Integrate more job data from Stack Overflow and other sites
 - Fully automate the whole pipeline of generating the graphs, maps, and reports
