@@ -1,14 +1,13 @@
 # Data analysis of developer job posts from Stack Overflow
 
-<!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
+<!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
-- [Data analysis of developer job posts from Stack Overflow](#data-analysis-of-developer-job-posts-from-stack-overflow)
-	- [Introduction](#introduction)
-	- [Map of the distribution of job posts around the world](#map-of-the-distribution-of-job-posts-around-the-world)
-	- [Map of the distribution of job posts in the USA](#map-of-the-distribution-of-job-posts-in-the-usa)
-	- [Top 20 most popular industries and technologies](#top-20-most-popular-industries-and-technologies)
-	- [Average mid-range salaries across technologies](#average-mid-range-salaries-across-technologies)
-	- [TODOs](#todos)
+- [Introduction](#introduction)
+- [Map of the distribution of job posts around the world](#map-of-the-distribution-of-job-posts-around-the-world)
+- [Map of the distribution of job posts in the USA](#map-of-the-distribution-of-job-posts-in-the-usa)
+- [Top 20 most popular industries and technologies](#top-20-most-popular-industries-and-technologies)
+- [Histogram: Mid-range salaries among Stack Overflow developer job posts](#histogram-mid-range-salaries-among-stack-overflow-developer-job-posts)
+- [TODOs](#todos)
 
 <!-- /TOC -->
 
