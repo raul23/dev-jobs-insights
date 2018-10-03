@@ -9,9 +9,7 @@ import numpy as np
 from pycountry_convert import country_alpha2_to_country_name
 # Own modules
 from .analyzer import Analyzer
-# TODO: module path insertion is hardcoded
-sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
-from utility.genutil import add_plural, convert_list_to_str
+from utility.genutil import add_plural
 
 
 class JobLocationsAnalyzer(Analyzer):

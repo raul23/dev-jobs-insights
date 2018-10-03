@@ -224,13 +224,3 @@ if __name__ == '__main__':
         status_code = 0
         logger.info("End of RSS reader")
     sys.exit(status_code)
-
-    # TODO: check case where there is a parse exception
-    # e.g. SAXParseException('not well-formed (invalid token)',)
-    # feed and entries will both be empty in that case. Check by removing
-    # the file extension of the feed file
-    # TODO: another case you should check is when there is a
-    # sqlite3.ProgrammingError
-    # e.g. Incorrect number of bindings supplied. The current statement
-    # uses 2, and there are 1 supplied.
-    # Check by removing a field from a table

@@ -1,5 +1,4 @@
 import os
-import sys
 # Third-party modules
 import ipdb
 from sqlalchemy import create_engine
@@ -193,10 +192,4 @@ class JobDataAnalyzer:
         sa.run_analysis()
 
     def generate_report(self):
-        # TODO: complete method
         raise NotImplementedError
-
-
-if __name__ == '__main__':
-    # JobDataAnalyzer(config_path="config.yaml").run_analysis()
-    pass

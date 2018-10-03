@@ -1,11 +1,3 @@
-# TODO: change filename to 'job_data_tables.py'
-# TODO: is it alright to use `None` as value for empty columns or should we use
-# the empty string '' instead? Does using `None` uses less storage space than
-# using the empty string ''? e.g. in the `JobLocation` table, the column `region`
-# (aka US state) might be missing in the job posts, and you need to be careful
-# manipulating strings because if you do len(None) you will an error, `None`
-# should be changed to its string equivalent `str(None)` before manipulating
-# string columns, see `_shrink_labels()` in `analyzer.py`
 from sqlalchemy import Boolean, CHAR, Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -22,9 +14,6 @@ class AbstractTable:
     def __init__(self):
         pass
 
-    # TODO: this doesn't work for tables that are associated with a list in
-    # `JobPostData` because the table object is created every time some
-    # attributes are to be set
     def set_column(self, key, value):
         # Check if the attribute already has a value set
         current_value = self.__getattribute__(key)
@@ -97,10 +86,6 @@ class JobPost(Base, AbstractTable):
     skills = relationship('Skill')
 
 
-# TODO: ExperienceLevel, Industry, JobBenefit, Role, and Skill have the same
-# two columns: `job_post_id` and `name`. Create a separate table with these
-# two columns, and use it as a base table for the other tables.
-# ref.: https://bit.ly/2xd3bM3
 class ExperienceLevel(Base, AbstractTable):
     __tablename__ = 'experience_levels'
     id = Column(Integer, primary_key=True)
@@ -131,8 +116,6 @@ class JobBenefit(Base, AbstractTable):
         return self.name
 
 
-# TODO: JobLocation and JobSalary have the same two columns: `id` and
-# `job_post_id`. See remark above for ExperienceLevel.
 class JobLocation(Base, AbstractTable):
     __tablename__ = 'job_locations'
     id = Column(Integer, primary_key=True)

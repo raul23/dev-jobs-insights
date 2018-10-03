@@ -1,13 +1,9 @@
 import os
-import sys
 # Third-party modules
 import ipdb
 import numpy as np
 from pycountry_convert import country_alpha2_to_continent_code, map_countries
 # Own modules
-# Own modules
-# TODO: module path insertion is hardcoded
-sys.path.insert(0, os.path.expanduser("~/PycharmProjects/github_projects"))
 from utility.genutil import convert_list_to_str, dump_pickle, load_json, load_pickle
 from utility.logging_boilerplate import LoggingBoilerplate
 

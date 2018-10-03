@@ -1,5 +1,4 @@
 import os
-import sys
 # Third-party modules
 import ipdb
 import numpy as np

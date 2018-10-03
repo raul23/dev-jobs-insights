@@ -1,5 +1,7 @@
 db_url:
   drivername: sqlite
-  database: ~/databases/job_data.sqlite
-
+  database: ~/databases/job_data_no_data_cleanup.sqlite
 scraped_job_data_dirpath: ~/data/dev_jobs_insights/scraped_job_data/20181002-035011-scraped_job_data
+data_cleanup_options:
+  industries: False
+  job_locations: False

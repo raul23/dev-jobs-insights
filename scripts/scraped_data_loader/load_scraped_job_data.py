@@ -15,17 +15,57 @@ from utility.script_boilerplate import ScriptBoilerplate
 
 
 logger = None
+db_session = None
 
 
-# Data cleanup: choose the most informative location between
-# similar locations
-# Case 1: a location only has a country and this country is
-# already found in another location
+def cleanup_industries(industries):
+    # Standardize the names of the industries
+    # NOTE: only the most obvious industries names are standardized. The other
+    # less obvious ones are left intact, e.g. 'IT Consulting' could be renamed to
+    # 'Consulting' but 'Consulting' is a too broad category and you might lose
+    # information doing so. Same for 'Advertising Technology' and 'Advertising'.
+    # NOTE: Typos are also fixed
+    # NOTE: Some industries should not even be considered as industries
+    # e.g. JavaScript, functional programming, facebook, iOS
+    # 'and Compliance' seems to be an incomplete name for an industry
+    industry_names_conversion = {
+        'Software Development / Engineering': 'Software Development',
+        'eCommerce': 'E-Commerce',
+        'Retail - eCommerce': 'E-Commerce',
+        'Health Care': 'Healthcare',
+        'Fasion': 'Fashion',
+        'fintech': 'Financial Technology',
+        'blockchain': 'Blockchain',
+        'higher': 'Higher Education'
+    }
+    new_industries = []
+    set_industry_names = set([i.name for i in industries])
+    for industry in industries:
+        new_name = industry_names_conversion.get(industry.name)
+        if new_name:
+            logger.warning(
+                "The industry name '{}' will be converted to '{}'".format(
+                 industry.name, new_name))
+            if new_name in set_industry_names:
+                logger.critical(
+                    "The industry '{}' will be skipped because there is already "
+                    "an industry with the right name '{}'".format(
+                     industry.name, new_name))
+                continue
+            else:
+                industry.name = industry_names_conversion.get(industry.name)
+                logger.debug("Conversion done!")
+        new_industries.append(industry)
+    return new_industries
+
+
+# Data cleanup: choose the most informative location between similar locations
+# Case 1: a location only has a country and this country is already found in
+# another location
 # e.g. 'None, None, US' and 'San Franciso, CA, US'
 # Case 2: two very similar cities
 # e.g. 'Hlavní msto Praha', 'Hlavní město Praha'
-# Case 3: two locations have the same city and country but one has
-# a region too
+# Case 3: two locations have the same city and country but one has a region too
 # e.g. 'Toronto, ON, CA' and 'Toronto, CA'
 def cleanup_job_locations(job_locations):
     logger.debug("Job locations to be checked: {}".format(
@@ -55,28 +95,40 @@ def cleanup_job_locations(job_locations):
                     len_interstion = len(prev_set.intersection(cur_set))
                     cur_loc_count_none = loc.__str__().count("None")
                     prev_loc_count_none = case3_locs_dict[key][1]
-                    if cur_loc_count_none == prev_loc_count_none and \
-                            len_interstion / len(cur_set) > 0.9:
-                        if len(cur_set) > len(prev_set):
-                            logger.warning(
-                                "CASE 2: The current location '{}' is VERY "
-                                "similar to another location '{}' and the "
-                                "current one has more letters. Therefore, the "
-                                "current location '{}' will be kept and the "
-                                "previous one will be skipped.".format(
-                                 loc, prev_loc, loc))
-                            case2_locs_list.remove(prev_loc)
-                            prev_key = prev_loc.city + prev_loc.country
-                            del case3_locs_dict[prev_key]
+                    if cur_loc_count_none == prev_loc_count_none:
+                        similarity_rate = len_interstion / len(cur_set)
+                        if similarity_rate > 0.9:
+                            if len(cur_set) > len(prev_set):
+                                logger.warning(
+                                    "CASE 2: The current location '{}' is VERY "
+                                    "similar to another location '{}' and the "
+                                    "current one has more letters. Therefore, "
+                                    "the current location '{}' will be kept and "
+                                    "the previous one will be skipped.".format(
+                                     loc, prev_loc, loc))
+                                case2_locs_list.remove(prev_loc)
+                                prev_key = prev_loc.city + prev_loc.country
+                                del case3_locs_dict[prev_key]
+                            else:
+                                logger.warning(
+                                    "CASE 2: The current location '{}' is VERY "
+                                    "similar to another location '{}' but the "
+                                    "current one has less letters. Therefore, "
+                                    "the current location '{}' will be "
+                                    "skipped.".format(loc, prev_loc, loc))
+                                ignore = True
+                            break
                         else:
                             logger.warning(
-                                "CASE 2: The current location '{}' is VERY "
-                                "similar to another location '{}' but the "
-                                "current one has less letters. Therefore, the "
-                                "current location '{}' will be skipped.".format(
-                                 loc, prev_loc, loc))
-                            ignore = True
-                        break
+                                "The current location '{}' is similar to a "
+                                "previous location '{}'. However, they are not "
+                                "considered that similar with a similarity rate "
+                                "of {}.".format(loc, prev_loc, similarity_rate))
+                    else:
+                        logger.debug(
+                            "Current location '{}' is not similar to the "
+                            "previously saved Location '{}'.".format(
+                             loc, prev_loc))
             if ignore:
                 continue
             else:
@@ -87,14 +139,21 @@ def cleanup_job_locations(job_locations):
                 # Case 3
                 cur_loc_count_none = loc.__str__().count("None")
                 prev_loc_count_none = case3_locs_dict[key][1]
+                prev_loc_str = case3_locs_dict[key][0].__str__()
                 if cur_loc_count_none < prev_loc_count_none:
+                    ipdb.set_trace()
                     case3_locs_dict[key] = \
                         (loc, loc.__str__().count("None"))
                     logger.warning(
-                        "CASE 3: The location '{}' will be replaced with the "
-                        "location '{}' because the latter gives more information "
-                        "than the former.".format(
-                         loc.__str_(), case3_locs_dict[key][0].__str__()))
+                        "CASE 3: The previous location '{}' will be replaced "
+                        "with the current location '{}' because the latter gives "
+                        "more information than the former.".format(
+                         loc.__str__(), prev_loc_str))
+                else:
+                    logger.warning(
+                        "CASE 3: The current location '{}' will be skipped "
+                        "because it gives less information than the previously "
+                        "saved location '{}'".format(loc.__str__(), prev_loc_str))
             else:
                 case3_locs_dict[key] = (loc, loc.__str__().count("None"))
         return [v[0] for v in case3_locs_dict.values()]
@@ -135,13 +194,12 @@ def main():
     Base.metadata.create_all(engine)
 
     # Setup database session
+    global db_session
     Base.metadata.bind = engine
     DBSession = sessionmaker(bind=engine)
     db_session = DBSession()
 
     # Load the scraped job data as pickle files
-    # TODO: add a progress bar with the tqdm library which is part of anaconda
-    # ref.: https://stackoverflow.com/a/29703127
     logger.info("Loading the scraped job data as pickle files")
     data_dirpath = os.path.expanduser(main_cfg['scraped_job_data_dirpath'])
     list_job_data_filepaths = glob.glob(os.path.join(data_dirpath, "*.pkl"))
@@ -169,22 +227,37 @@ def main():
             try:
                 logger.info("#{} Adding job data for job_post_id={}".format(
                             j, job_post_id))
-                # IMPORTANT: if I only update
-                # `scraping_session.data.job_locations`, the cleanup job locations
-                # are not reflected in the database. I need to also update
-                # `scraping_session.data.job_post.job_locations`.
-                # TODO: check proper way of updating a record before inserting it
-                scraping_session.data.job_locations = cleanup_job_locations(
-                    scraping_session.data.job_locations)
-                scraping_session.data.job_post.job_locations = \
-                    scraping_session.data.job_locations
-                logger.debug("Job locations to be added: {}".format(
-                    [l.__str__() for l in scraping_session.data.job_locations]))
-                if len(scraping_session.data.job_locations) > 1:
-                    logger.warning("There are {} locations".format(
-                        len(scraping_session.data.job_locations)))
-                db_session.add(scraping_session.data.company)
-                db_session.commit()
+                if main_cfg['data_cleanup_options']['job_locations']:
+                    logger.debug("Clean up of industries")
+                    scraping_session.data.industries = cleanup_industries(
+                        scraping_session.data.industries)
+                    scraping_session.data.job_post.industries = \
+                        scraping_session.data.industries
+                    logger.debug(
+                        "Industries to be added: {}".format(
+                         [i.__str__() for i in
+                          scraping_session.data.industries]))
+                if main_cfg['data_cleanup_options']['job_locations']:
+                    logger.debug("Clean up of job locations")
+                    # IMPORTANT: if I only update
+                    # `scraping_session.data.job_locations`, the cleanup job
+                    # locations are not reflected in the database. I need to also
+                    # update `scraping_session.data.job_post.job_locations`.
+                    scraping_session.data.job_locations = cleanup_job_locations(
+                        scraping_session.data.job_locations)
+                    scraping_session.data.job_post.job_locations = \
+                        scraping_session.data.job_locations
+                    logger.debug(
+                        "Job locations to be added: {}".format(
+                         [l.__str__() for l in
+                          scraping_session.data.job_locations]))
+                    if len(scraping_session.data.job_locations) > 1:
+                        logger.warning(
+                            "[MoreThanOneLocationWarning] There are {} "
+                            "locations".format(
+                             len(scraping_session.data.job_locations)))
+                # db_session.add(scraping_session.data.company)
+                # db_session.commit()
             except IntegrityError as e:
                 # Possible cause #1: UNIQUE constraint failed
                 # Example: adding a `job_post` with a `job_posts.id` already taken

@@ -56,7 +56,6 @@ class JobsScraper:
         # =====================================================================
         self.session = None
         self.all_sessions = []
-        # self.json_job_data = {}
         # =====================================================================
         # Save all data paths from the main config
         # =====================================================================
@@ -132,14 +131,11 @@ class JobsScraper:
         n_skipped = 0
         skipped = False
         self.logger.info("Total URLs to process: {}".format(len(rows)))
-        # TODO: add a progress bar
         for count, (job_post_id, title, author, url, location, published) in \
                 enumerate(rows, start=1):
-            # TODO: debug code
             if False and job_post_id != 203827:
                 continue
             try:
-                # TODO: add timing for each important processing parts
                 # Initialize the current scraping session
                 self.session = ScrapingSession(
                     job_post_id,
@@ -175,11 +171,6 @@ class JobsScraper:
                 # no title in the job post.
                 pattern = "header.job-details--header > div.grid--cell > " \
                           "h1.fs-headline1 > a"
-                # TODO: make a separate method that processes the title tag to
-                # determine if the job post was removed. At the same time set
-                # the job post's title if it is to be found. The method could
-                # return a boolean that tells if the job post was removed or not.
-                # Hence, you can know if the job post should be skipped.
                 try:
                     self.logger.debug("Checking if job post is removed")
                     _ = self.get_text_in_tag(pattern=pattern)
@@ -194,8 +185,6 @@ class JobsScraper:
                     skipped = True
                     continue
                 except exc.TagNotFoundError as e:
-                    # TODO: create more specific error such as
-                    # TitleTagNotFoundError
                     # No title tag found, thus it means that the job post was
                     # removed
                     self.logger.exception(e)
@@ -217,14 +206,10 @@ class JobsScraper:
                 # NOTE: Usually when this notice is present in a job post, the
                 # JSON linked data is not found anymore within the html of the job
                 # post
-                # TODO: once the specific errors are created, the errors catching
-                # should be done within `process_notice()` and the errors should
-                # be caught further below
                 try:
                     self.logger.debug("Processing job notice")
                     self.process_notice()
                 except exc.EmptyTextError as e:
-                    # TODO: create more specific error such as EmptyNoticeError
                     self.logger.exception(e)
                     self.logger.critical("The notice tag should not contain an "
                                          "empty text. Unusual case!")
@@ -248,22 +233,7 @@ class JobsScraper:
                 # Process job data from the Overview section
                 self.logger.info("Processing the overview items")
                 self.process_overview_items()
-                # TODO: process sections within .company-items.
-                # These sections are "Life at [company_name]" and
-                # "About [company_name]"
-                # e.g. https://bit.ly/2xiFthz (example01.html)
-                # TODO: add data from .developer-culture-items
-                # TODO: follow the link pointed by the button
-                # "Learn more about [company_name]" to extract more data about
-                # the company. The link points to the company profile hosted
-                # under stackoverflow.com
-                # e.g. https://bit.ly/2xiFthz (example01.html)
-                # The company profile is located @
-                # https://stackoverflow.com/jobs/companies/[company_name]
-                # e.g. https://stackoverflow.com/jobs/companies/discover
-                # TODO: add similar jobs found within .more-jobs-items
                 self.logger.info("Finished Processing {}".format(url))
-                # TODO: debug code
                 if False and count == 100:
                     break
             except exc.WebPageNotFoundError as e:
@@ -272,17 +242,10 @@ class JobsScraper:
                                      "skipped.".format(url))
                 skipped = True
             except (AttributeError, KeyError) as e:
-                # TODO: catch AttributeError every time we set a column to a record?
-                # Or it should be caught in `job_data.py` as a decorator.
-                # Maybe, it should be merge with the other exception getting
-                # caught so the AttributeError is more specific to where it
-                # comes from.
                 self.logger.exception(e)
                 skipped = True
             finally:
                 # Save the current session
-                # json_data = self.session.data.get_json_data()
-                # self.json_job_data.setdefault(job_post_id, json_data)
                 self.all_sessions.append((job_post_id, self.session))
                 self.logger.info("Session ended")
                 if skipped:
@@ -304,32 +267,6 @@ class JobsScraper:
         pathlib.Path(scraped_job_data_dirpath).mkdir(parents=True, exist_ok=True)
         self.logger.warning(
             "Directory for job data created: {}".format(scraped_job_data_dirpath))
-        # IMPORTANT: saving JSON job data disabled
-        """
-        # Save scraped data into json file
-        # ref.: https://stackoverflow.com/a/31343739 (presence of unicode
-        # strings, e.g. EURO currency symbol)
-        # TODO: code factorization, saving data (scraped and sessions data) in
-        # similar ways
-        self.logger.info("Saving JSON scraped job data ({} job posts)".format(
-                          len(self.json_job_data)))
-        try:
-            filename = 'scraped_job_data.json'
-            scraped_job_data_filepath = os.path.join(
-                scraped_job_data_dirpath, filename)
-            # IMPORTANT: JSON data saving disabled because datetime and date are
-            # present in the table instances
-            # TODO: re-enable saving of JSON data
-            # replace the date and datetime objects from the table instances'
-            # columns with their corresponding string representations
-            # g_util.dump_json_with_codecs(scraped_job_data_filepath,
-            #                              self.json_job_data)
-        except (OSError, TypeError) as e:
-            self.logger.error("JSON scraped job data couldn't be saved")
-        else:
-            self.logger.info("JSON scraped job data saved in {}".format(
-                             scraped_job_data_filepath))
-        """
         # =====================================================================
         # Session saving as pickle files
         # =====================================================================
@@ -483,9 +420,7 @@ class JobsScraper:
                           "h1.fs-headline1 > a"
                 title = self.get_text_in_tag(pattern)
                 self.session.data.set_job_post(title=title)
-                # TODO: once the specific errors are created, some
             except exc.TagNotFoundError as e:
-                # TODO: create more specific error such as TitleTagNotFoundError
                 # No title tag found, thus it means that the job post was removed
                 # IMPORTANT: this case should not happen because it should have
                 # already been detected previously when checking if the job post
@@ -495,7 +430,6 @@ class JobsScraper:
                     "No title found in the job post. This case should have "
                     "already been previously detected.")
             except exc.EmptyTextError as e:
-                # TODO: create more specific error such as EmptyTitleError
                 # IMPORTANT: the title tag is found but the text is empty, a very
                 # unusual case! To be further investigated if it happens.
                 # IMPORTANT: this case should not happen because it should have
@@ -528,7 +462,6 @@ class JobsScraper:
                 company_name = self.get_text_in_tag(pattern)
                 self.session.data.set_company(name=company_name)
             except exc.TagNotFoundError as e:
-                # TODO: create more specific error such as
                 # CompanyNameTagNotFoundError
                 # No tag containing the company name was found
                 # IMPORTANT: this case should not happen because it should have
@@ -539,7 +472,6 @@ class JobsScraper:
                     "No company name found in the job post. This case should have "
                     "already been previously detected.")
             except exc.EmptyTextError as e:
-                # TODO: create more specific error such as EmptyCompanyNameError
                 # IMPORTANT: the title tag is found but the text is empty, a very
                 # unusual case! To be further investigated if it happens.
                 # IMPORTANT: this case should not happen because it should have
@@ -555,17 +487,6 @@ class JobsScraper:
         # =====================================================================
         # Get the office location which is located on the same line as the
         # company name
-        """
-        if self.session.data.job_locations:
-            # The job location was already extracted. No need to get it if it was
-            # extracted from the JSON linked data for example. Hence, we can save
-            # some computations
-            job_locations = [(l.city, l.region, l.country) for l in
-                             self.session.data.job_locations]
-            self.logger.warning(
-                "The 'job location' was already previously extracted: "
-                "{}".format(job_locations))
-        """
         try:
             pattern = "header.job-details--header > div.grid--cell > " \
                       "div.fc-black-700 > span.fc-black-500"
@@ -768,17 +689,6 @@ class JobsScraper:
                 except AttributeError as e:
                     self.logger.exception(e)
 
-            """
-            if self.session.data.job_locations:
-                # The job location was already extracted. No need to get it if it
-                # was extracted from the JSON linked data for example. Hence, we
-                # can save some computations
-                job_locations = [(l.city, l.region, l.country) for l in
-                                 self.session.data.job_locations]
-                self.logger.warning(
-                    "The 'job location' was already previously extracted: "
-                    "{}".format(job_locations))
-            """
             # Extract data for populating the `job_locations` table
             process_values(values=self.get_loc_in_ld(linked_data),
                            set_method_name='set_job_location')
@@ -892,8 +802,6 @@ class JobsScraper:
         except exc.EmptyTextError as e:
             raise exc.EmptyTextError(e)
         except exc.TagNotFoundError as e:
-            # TODO: create more specific error such as
-            # NoticeTagNotFoundError
             self.logger.debug("Job notice not found")
             self.logger.debug("Job still accepting job applications!")
         else:
@@ -909,8 +817,6 @@ class JobsScraper:
         # 2. in the "About this job" sub-section of Overview
         # 3. in the "Technologies" sub-section of Overview
         # NOTE: these sub-sections are located within <div id=""overview-items>
-        # TODO: add also the job description (it is also available from the linked
-        # data), e.g. https://bit.ly/2xiFthz (example01.html)
         bs_obj = self.session.bs_obj
         url = self.session.url
         # =====================================================================
@@ -919,20 +825,13 @@ class JobsScraper:
         # The high response rate might not be present (it isn't often we get
         # to see this notice on job posts)
         # Prefix to add at the beginning of the log messages
-        # TODO: add the prefix to the log messages when parsing the high
-        # response rate section
-        # TODO: is the high response rate section part of the overview items?
-        # If it isn't, then it should not be processed here with the overview items
         try:
             self.get_text_in_tag(".-high-response > .-text > .-title")
             self.session.data.set_company(high_response_rate=True)
         except exc.TagNotFoundError as e:
             # Raised by `get_text_in_tag()`
-            # TODO: create more specific error such as
-            # HighResponseRateTagNotFoundError
             self.logger.debug("The tag for `high_response_rate` wasn't found")
         except exc.EmptyTextError as e:
-            # TODO: create more specific error such as EmptyHighResponseRateError
             # IMPORTANT: the tag for `high_response_rate` is found but the text
             # is empty, a very unusual case! To be further investigated if it
             # happens.
@@ -978,9 +877,6 @@ class JobsScraper:
                 # The key names should all be lowercase and spaces be replaced
                 # with underscores e.g. Employment type ---> employment_type
                 key_name = key_name.replace(" ", "_").lower()
-                # TODO: do we avoid extracting experience levels and
-                # industries if they were already extracted from the JSON
-                # linked data?
                 if (key_name == 'experience_level' and
                     self.session.data.experience_levels) or \
                         (key_name == 'industry' and self.session.data.industries):
@@ -1065,8 +961,6 @@ class JobsScraper:
         # are returned as a list
         # Prefix to add at the beginning of the log messages
         pre = "[Technologies]"
-        # TODO: do we avoid extracting the skills if they were already extracted
-        # from the JSON linked data?
         if self.session.data.skills:
             # Case: the skills were already extracted. No need to get them if
             # they were extracted from the JSON linked data. Hence, we can save
@@ -1484,9 +1378,6 @@ class JobsScraper:
 
     # Get the location data in a linked data JSON object
     def get_loc_in_ld(self, linked_data):
-        # TODO: some job post don't have a location in the RSS feed (i.e. no
-        # office location) but do have lots of job locations in the JSON linked
-        # data. e.g. job_post_id=203827
         job_locations = linked_data.get('jobLocation')
         if job_locations:
             if len(job_locations) > 1:
@@ -1510,8 +1401,6 @@ class JobsScraper:
                 processed_locations.append(location_dict)
             return processed_locations
         else:
-            # TODO: no need to raise error, just return None
-            # raise exc.NoJobLocationError("No job locations found in the linked data.")
             self.logger.warning("No job locations found in the linked data")
             return None
 
@@ -1594,7 +1483,6 @@ class JobsScraper:
         # =====================================================================
         # 2nd try: get the webpage HTML with an HTTP request
         # =====================================================================
-        # TODO: the 2nd try should be done in a separate method
         webpage_accessed = None
         try:
             html = self.get_webpage(url)
