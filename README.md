@@ -34,11 +34,10 @@ job data from other sites will also be integrated.
 
 Here is a summary of the sources of data used for generating the figures:  
 
-|---------------------|---------------------------------------------------------------------------------------------------------------------|
-| Sources of data | Stack Overflow's [RSS feed](https://stackoverflow.com/jobs/feed) and [jobs website](https://stackoverflow.com/jobs) |
-| Number of job posts | 1000 |
-| Number of companies | 561 |
-| Published dates | 2018-09-18 to 2018-09-28 |
+|Regular | text | in header | turns bold |
+|-|-|-|-|
+| __So__ | __bold__ | __all__ | __table entries__ |
+| __and__ | __it looks__ | __like a__ | __"headerless table"__ |
 
 ## Map of the distribution of job posts around the world
 <p align="center"><img src="https://bit.ly/2OvqmLG"/></p>
