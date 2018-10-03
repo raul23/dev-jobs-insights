@@ -34,10 +34,18 @@ job data from other sites will also be integrated.
 
 Here is a summary of the sources of data used for generating the figures:  
 
-|Regular | text | in header | turns bold |
-|-|-|-|-|
-| __So__ | __bold__ | __all__ | __table entries__ |
-| __and__ | __it looks__ | __like a__ | __"headerless table"__ |
+<table align="center">
+    <tr>
+        <td align="center"><img src="docs/img1.png?raw=true" alt="some text"></td>
+        <td align="center">Some other text</td>
+        <td align="center">More text</td>
+    </tr>
+    <tr>
+        <td align="center"><img src="docs/img2.png?raw=true" alt="some text"></td>
+        <td align="center">Some other text 2</td>
+        <td align="center">More text 2</td>
+    </tr>
+</table>
 
 ## Map of the distribution of job posts around the world
 <p align="center"><img src="https://bit.ly/2OvqmLG"/></p>
