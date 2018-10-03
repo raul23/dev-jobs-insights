@@ -36,14 +36,20 @@ Here is a summary of the sources of data used for generating the figures:
 
 <table align="center">
     <tr>
-        <td align="center"><img src="docs/img1.png?raw=true" alt="some text"></td>
+        <td align="center">Sources of data</td>
         <td align="center">Some other text</td>
-        <td align="center">More text</td>
     </tr>
     <tr>
-        <td align="center"><img src="docs/img2.png?raw=true" alt="some text"></td>
-        <td align="center">Some other text 2</td>
-        <td align="center">More text 2</td>
+        <td align="center">Number of job posts</td>
+        <td align="center">1000</td>
+    </tr>
+    <tr>
+        <td align="center">Number of companies</td>
+        <td align="center">561</td>
+    </tr>
+    <tr>
+        <td align="center">Published dates</td>
+        <td align="center">2018-09-18 to 2018-09-28</td>
     </tr>
 </table>
 
