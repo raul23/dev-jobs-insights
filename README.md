@@ -11,17 +11,29 @@
 <!-- /TOC -->
 
 ## Introduction
-**dev-jobs-insights** is a data mining project written in **Python** with the main
-objective of **extracting meaningful insights** from developer job posts. These
-insights can help us in getting a more accurate picture of what the developer
-job market looks like so we can make better decisions (e.g. what technologies to
-focus on to increase our chance of finding a job).
+**dev-jobs-insights** is a data mining project written in **Python** with the
+main objective of **extracting meaningful insights** from developer job posts.
+These insights can help us in getting a more accurate picture of what the
+developer job market looks like so we can make better decisions (e.g. what
+technologies to focus on to increase our chance of finding a job).
 
-I will show some of the important graphs and maps that are generated so you can have an idea what the project is all about.
+I will show some of the important graphs and maps that are generated so you can
+have an idea what the project is all about.
 
-More detailed information can be found from the project's website @ https://raul23.github.io/projects/dev-jobs-insights.html
+More detailed information can be found from the project's website @
+https://raul23.github.io/projects/dev-jobs-insights.html
 
 ## Maps of the distribution of job posts around the world
+<p align="center"><img src="https://bit.ly/2RnjVcg"/></p>
+<p align="center">Distribution of job posts @ Stack Overflow from around the
+world</p>
+
+<br/>
+<br/>
+
+<p align="center"><img src="https://bit.ly/2OwoYbx"/></p>
+<p align="center">Distribution of job posts @ Stack Overflow from around the
+world</p>
 
 ## Top 20 most popular industries and technologies
 
