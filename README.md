@@ -3,7 +3,7 @@
 <!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
 - [Introduction](#introduction)
-- [Data sources](#data-sources)
+- [Sources of data](#sources-of-data)
 - [Map of the distribution of job posts around the world](#map-of-the-distribution-of-job-posts-around-the-world)
 - [Map of the distribution of job posts in the USA](#map-of-the-distribution-of-job-posts-in-the-usa)
 - [Top 20 most popular industries and technologies](#top-20-most-popular-industries-and-technologies)
@@ -26,13 +26,11 @@ have an idea what the project is all about.
 More detailed information can be found from the project's website @
 https://raul23.github.io/projects/dev-jobs-insights.html
 
-## Data sources
-The data used for generating the different graphs and maps come from **Stack
-Overflow**'s developer jobs [website](https://stackoverflow.com/jobs) and
-[RSS feed](https://stackoverflow.com/jobs/feed). Eventually, other sources of
-job data from other sites will also be integrated.
+## Sources of data
+The job data comes from **Stack Overflow**'s developer jobs [website](https://stackoverflow.com/jobs) and
+[RSS feed](https://stackoverflow.com/jobs/feed). Eventually, other sources of job data from other sites will also be integrated.
 
-Here is a summary of the sources of data used for generating the figures:  
+Here is a summary of the job data:  
 <table>
     <tr>
         <td align="center"><b>Sources of data</b></td>
