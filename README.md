@@ -106,6 +106,20 @@ The next table shows stats about the data used for generating the USA map:
 
 The next table shows stats about the data used for generating the previous bar
 chart **"Top 20 most popular industries"**:  
+<table>
+    <tr>
+        <td align="center"><b>Number of job posts</b></td>
+        <td align="center">----</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Total number of industries</b></td>
+        <td align="center">----</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Published dates</b></td>
+        <td align="center">2018-09-18 to 2018-09-28</td>
+    </tr>
+</table>
 
 <br/>
 <br/>
@@ -115,11 +129,35 @@ chart **"Top 20 most popular industries"**:
 
 The next table shows stats about the data used for generating the previous bar
 chart **"Top 20 most popular technologies"**:  
+<table>
+    <tr>
+        <td align="center"><b>Number of job posts</b></td>
+        <td align="center">----</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Total number of technologies</b></td>
+        <td align="center">----</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Published dates</b></td>
+        <td align="center">2018-09-18 to 2018-09-28</td>
+    </tr>
+</table>
 
 ## Histogram: Mid-range salaries among Stack Overflow developer job posts
 <p align="center"><img src="https://bit.ly/2xYAbs2"/></p>
 <p align="center"></p>
 
-The next table shows stats about the data used for generating the previous histogram:  
+The next table shows stats about the data used for generating the previous histogram:
+<table>
+    <tr>
+        <td align="center"><b>Number of job posts</b></td>
+        <td align="center">----</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Published dates</b></td>
+        <td align="center">2018-09-18 to 2018-09-28</td>
+    </tr>
+</table>
 
 ## TODOs
