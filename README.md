@@ -127,6 +127,8 @@ chart **"Top 20 most popular industries"**:
     </tr>
 </table>
 
+<br/>
+
 Some names of industries were almost identical that they were renamed to a
 standard name:  
 
