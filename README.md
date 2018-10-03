@@ -25,14 +25,13 @@ https://raul23.github.io/projects/dev-jobs-insights.html
 
 ## Maps of the distribution of job posts around the world
 <p align="center"><img src="https://bit.ly/2xVkUbu"/></p>
-<p align="center">Distribution of job posts @ Stack Overflow from around the
-world</p>
+<p align="center"></p>
 
 <br/>
 <br/>
 
 <p align="center"><img src="https://bit.ly/2QtSEDM"/></p>
-<p align="center">Distribution of job posts @ Stack Overflow from the USA</p>
+<p align="center"></p>
 
 ## Top 20 most popular industries and technologies
 
