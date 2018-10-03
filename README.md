@@ -57,6 +57,11 @@ Here is a summary of the job data:
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the world map:   
+| Number of job posts                    | --- |
+|----------------------------------------|-----|
+| Number of countries                    | --- |
+| Published dates                        | --- |
+| Top 10 countries (number of job posts) | --- |
 
 ## Map of the distribution of job posts in the USA
 <p align="center"><img src="https://bit.ly/2yeqN2W"/></p>
@@ -84,7 +89,6 @@ chart **"Top 20 most popular technologies"**:
 <p align="center"><img src="https://bit.ly/2xYAbs2"/></p>
 <p align="center"></p>
 
-The next table shows stats about the data used for generating the histogram
-about the mid-range salaries:  
+The next table shows stats about the data used for generating the previous histogram:  
 
 ## TODOs
