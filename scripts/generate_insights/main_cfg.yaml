@@ -270,6 +270,7 @@ job_salaries:
   #=============================
   #         HISTOGRAM
   #=============================
+  # TODO: add fontweight, fontsize options to title
   histogram_job_salaries:
     display_graph: False
     save_graph: True

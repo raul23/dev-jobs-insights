@@ -43,5 +43,8 @@ https://raul23.github.io/projects/dev-jobs-insights.html
 <p align="center"><img src="https://bit.ly/2QsCMRL"/></p>
 <p align="center"></p>
 
-## Average mid-range salaries across technologies
+## Histogram: Mid-range salaries among Stack Overflow developer job posts
+<p align="center"><img src="https://bit.ly/2xYAbs2"/></p>
+<p align="center"></p>
+
 ## TODOs
