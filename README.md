@@ -1,8 +1,8 @@
-# dev-jobs-insights
+# Data analysis of developer job posts from Stack Overflow
 
 <!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
-- [Data analysis of developer job posts from Stack Overflow](#data-analysis-of-developer-job-posts-from-stack-overflow)
+- [Introduction](#introduction)
 - [Maps of the distribution of job posts around the world](#maps-of-the-distribution-of-job-posts-around-the-world)
 - [Top 20 most popular industries and technologies](#top-20-most-popular-industries-and-technologies)
 - [Average mid-range salaries across technologies](#average-mid-range-salaries-across-technologies)
@@ -10,7 +10,7 @@
 
 <!-- /TOC -->
 
-## Data analysis of developer job posts from Stack Overflow
+## Introduction
 **dev-jobs-insights** is a data mining project written in **Python** with the main
 objective of **extracting meaningful insights** from developer job posts. These
 insights can help us in getting a more accurate picture of what the developer
