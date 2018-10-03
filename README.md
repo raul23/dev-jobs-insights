@@ -133,7 +133,7 @@ Some names of industries were almost identical that they were renamed to a
 standard name:  
 
 |                              Names                              |  Standard name chosen  |
-|:---------------------------------------------------------------:|:----------------------:|
+|-----------------------------------------------------------------|------------------------|
 | "Software Development / Engineering" and "Software Development" | "Software Development" |
 | "eCommerce", "Retail - eCommerce" and "E-Commerce"              | "E-Commerce"           |
 | "Fashion" and "Fasion" [typo]                                   | "Fashion"              |
