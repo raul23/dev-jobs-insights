@@ -12,7 +12,7 @@
 <!-- /TOC -->
 
 ## Introduction
-**dev-jobs-insights** is a data mining project written in **Python** with the
+**dev-jobs-insights** is a data mining project written in **Python3** with the
 main objective of **extracting meaningful insights** from developer job posts.
 These insights can help us in getting a more accurate picture of what the
 developer job market looks like so we can make better decisions (e.g. what
