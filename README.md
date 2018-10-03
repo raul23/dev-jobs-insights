@@ -57,18 +57,48 @@ Here is a summary of the job data:
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the world map:   
-
-| Number of job posts                    | --- |
-|----------------------------------------|-----|
-| Number of countries                    | --- |
-| Published dates                        | --- |
-| Top 10 countries (number of job posts) | --- |
+<table>
+    <tr>
+        <td align="center"><b>Number of job posts</b></td>
+        <td align="center">----</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Number of countries</b></td>
+        <td align="center">----</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Published dates</b></td>
+        <td align="center">2018-09-18 to 2018-09-28</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Top 10 countries (number of job posts)</b></td>
+        <td align="center">----</td>
+    </tr>
+</table>
 
 ## Map of the distribution of job posts in the USA
 <p align="center"><img src="https://bit.ly/2yeqN2W"/></p>
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the USA map:   
+<table>
+    <tr>
+        <td align="center"><b>Number of job posts</b></td>
+        <td align="center">----</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Number of US states</b></td>
+        <td align="center">----</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Published dates</b></td>
+        <td align="center">2018-09-18 to 2018-09-28</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Top 10 US states (number of job posts)</b></td>
+        <td align="center">----</td>
+    </tr>
+</table>
 
 ## Top 20 most popular industries and technologies
 <p align="center"><img src="https://bit.ly/2P87UG2"/></p>
