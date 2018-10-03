@@ -57,7 +57,7 @@ Here is a summary of the job data:
 **NOTE:** 1000 is a small sample for extracting solid insights about the
 developer job market but eventually more job data will get integrated. For now
 I am using this small set for testing the whole pipeline for generating the
-graphs and maps.
+graphs, maps and reports.
 
 ## Map of the distribution of job posts around the world
 <p align="center"><img src="https://bit.ly/2OvqmLG"/></p>
