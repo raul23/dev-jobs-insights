@@ -33,26 +33,24 @@ Overflow**'s developer jobs [website](https://stackoverflow.com/jobs) and
 job data from other sites will also be integrated.
 
 Here is a summary of the sources of data used for generating the figures:  
-<p align="center">
 <table>
     <tr>
-        <td align="center">Sources of data</td>
+        <td align="center"><b>Sources of data</b></td>
         <td align="center">Stack Overflow's <a href="https://stackoverflow.com/jobs/feed">RSS feed</a> and <a href="https://stackoverflow.com/jobs">jobs website</a></td>
     </tr>
     <tr>
-        <td align="center">Number of job posts</td>
+        <td align="center"><b>Number of job posts</b></td>
         <td align="center">1000</td>
     </tr>
     <tr>
-        <td align="center">Number of companies</td>
+        <td align="center"><b>Number of companies</b></td>
         <td align="center">561</td>
     </tr>
     <tr>
-        <td align="center">Published dates</td>
+        <td align="center"><b>Published dates</b></td>
         <td align="center">2018-09-18 to 2018-09-28</td>
     </tr>
 </table>
-</p>
 
 ## Map of the distribution of job posts around the world
 <p align="center"><img src="https://bit.ly/2OvqmLG"/></p>
