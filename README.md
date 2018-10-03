@@ -33,6 +33,7 @@ Overflow**'s developer jobs [website](https://stackoverflow.com/jobs) and
 job data from other sites will also be integrated.
 
 Here is a summary of the sources of data used for generating the figures:  
+
 |   Sources of data   	| Stack Overflow           	|
 |:-------------------:	|--------------------------	|
 | Number of job posts 	| 1000                     	|
