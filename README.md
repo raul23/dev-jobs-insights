@@ -57,6 +57,7 @@ Here is a summary of the job data:
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the world map:   
+
 | Number of job posts                    | --- |
 |----------------------------------------|-----|
 | Number of countries                    | --- |
