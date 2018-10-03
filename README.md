@@ -33,7 +33,7 @@ Overflow**'s developer jobs [website](https://stackoverflow.com/jobs) and
 job data from other sites will also be integrated.
 
 Here is a summary of the sources of data used for generating the figures:  
-<div align="center">
+<p align="center">
 <table>
     <tr>
         <td align="center">Sources of data</td>
@@ -52,7 +52,7 @@ Here is a summary of the sources of data used for generating the figures:
         <td align="center">2018-09-18 to 2018-09-28</td>
     </tr>
 </table>
-</div>
+</p>
 
 ## Map of the distribution of job posts around the world
 <p align="center"><img src="https://bit.ly/2OvqmLG"/></p>
