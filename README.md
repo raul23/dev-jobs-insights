@@ -34,7 +34,7 @@ job data from other sites will also be integrated.
 
 Here is a summary of the sources of data used for generating the figures:  
 <div align="center">
-<table align="center">
+<table>
     <tr>
         <td align="center">Sources of data</td>
         <td align="center">Stack Overflow's <a href="https://stackoverflow.com/jobs/feed">RSS feed</a> and <a href="https://stackoverflow.com/jobs">jobs website</a></td>
