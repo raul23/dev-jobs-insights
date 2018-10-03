@@ -250,7 +250,7 @@ job_posts:
 #       JOB SALARIES
 #=============================
 job_salaries:
-  run_analysis: False
+  run_analysis: True
   salary_currency: USD
   salary_thresholds:
     # Thresholds for removing salary outliers, i.e. salaries in the range
@@ -261,12 +261,12 @@ job_salaries:
   # TODO: remove the `topics` key and add the list as the new keys
   # Then within each key, add the scatter plots
   topics: # Dimensions of analysis
-    europe: True
-    industries: True
-    roles: True
+    europe: False
+    industries: False
+    roles: False
     skills: True
-    usa: True
-    world: True
+    usa: False
+    world: False
   #=============================
   #         HISTOGRAM
   #=============================
@@ -400,17 +400,17 @@ job_salaries:
       filename: scatter_salary_skills.html
       image_width: 800
       image_height: 600
-      include_plotlyjs: True
+      include_plotlyjs: False
       link_text: Export to plot.ly
       # 'file' | 'div' | 'None'
-      output_type: file
+      output_type: div
       show_link: True
       validate: True
     plotly:
       scatter:
         mode: markers
       layout:
-        title: Average mid-range salaries across Technologies (aka skills) @ stackoverflow.com/jobs
+        title: Average mid-range salaries across Technologies @ stackoverflow.com/jobs
         hovermode: closest
         yaxis:
           title: Number of job posts
@@ -518,7 +518,7 @@ roles:
 #         SKILLS
 #=============================
 skills:
-  run_analysis: True
+  run_analysis: False
   # Horizontal bar chart
   barh_chart_skills:
     display_graph: False
