@@ -158,7 +158,7 @@ job_locations:
     fname: map_usa.png
     draw_parallels: False
     draw_meridians: False
-    fig_width: 12
+    fig_width: 10
     fig_height: 7
     title: Distribution of Stack Overflow developer job posts in the USA
     # TODO: annotation is disabled
@@ -198,7 +198,7 @@ job_locations:
     draw_map_boundary: True
     draw_states: True
     fill_continents: True
-    fig_width: 12
+    fig_width: 10
     fig_height: 7
     title: Distribution of Stack Overflow developer job posts in the world
     # TODO: annotation is disabled
