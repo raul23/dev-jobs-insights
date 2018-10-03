@@ -256,8 +256,8 @@ def main():
                             "[MoreThanOneLocationWarning] There are {} "
                             "locations".format(
                              len(scraping_session.data.job_locations)))
-                # db_session.add(scraping_session.data.company)
-                # db_session.commit()
+                db_session.add(scraping_session.data.company)
+                db_session.commit()
             except IntegrityError as e:
                 # Possible cause #1: UNIQUE constraint failed
                 # Example: adding a `job_post` with a `job_posts.id` already taken
@@ -275,4 +275,4 @@ if __name__ == '__main__':
     try:
         main()
     except (KeyboardInterrupt, KeyError) as e:
-        pass
+        logger.error(e)

@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 # Third-party modules
 import geopy
@@ -242,9 +241,6 @@ class JobLocationsAnalyzer(Analyzer):
             self.logger.warning("The map '{}' is disabled for the '{}' "
                                 "analysis".format(map_type, self.analysis_type))
             return 1
-        addresses_data, _ = self._get_locations_geo_coords(
-            locations=self._get_us_states(),
-            fallbacks=['region+country', 'country'])
         # TODO: annotation is disabled because the names overlap
         """ 
         # IMPORTANT: Old code using the old dict structure with locations 
@@ -260,6 +256,9 @@ class JobLocationsAnalyzer(Analyzer):
         from utility.graphutil import draw_usa_map
         self.logger.debug("finished loading module 'utility.graphutil'")
         self.logger.info("Generating map '{}' ...".format(map_type))
+        addresses_data, _ = self._get_locations_geo_coords(
+            locations=self._get_us_states(),
+            fallbacks=['region+country', 'country'])
         shape_filepath = os.path.expanduser(
             self.main_cfg['data_filepaths']['shape'])
         # TODO: explain why reversed US states is used
@@ -288,15 +287,15 @@ class JobLocationsAnalyzer(Analyzer):
             self.logger.warning("The map '{}' is disabled for the '{}' "
                                 "analysis".format(map_type, self.analysis_type))
             return 1
-        addresses_data, _ = self._get_locations_geo_coords(
-            locations=self._get_all_locations(),
-            fallbacks=['region+country', 'country'])
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
         self.logger.info("loading module 'utility.graphutil' ...")
         from utility.graphutil import draw_world_map
         self.logger.debug("finished loading module 'utility.graphutil'")
         self.logger.info("Generating map '{}' ...".format(map_type))
+        addresses_data, _ = self._get_locations_geo_coords(
+            locations=self._get_all_locations(),
+            fallbacks=['region+country', 'country'])
         draw_world_map(
             addresses_data=addresses_data,
             title=map_cfg['title'],
@@ -596,7 +595,7 @@ class JobLocationsAnalyzer(Analyzer):
                 len(cur_adrs_data)))
         self.logger.info("# of empty locations: {}".format(
             report['empty_locations']))
-        self.logger.info("# of duplicated locations: {}".format(
+        self.logger.info("# of duplicate locations: {}".format(
                 len(report['already_added'])))
         self.logger.info("# of distinct locations: {}".format(
             len(cur_loc_mappings)))
