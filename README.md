@@ -127,6 +127,16 @@ chart **"Top 20 most popular industries"**:
     </tr>
 </table>
 
+Some names of industries were almost identical that they were renamed to a
+standard name:  
+
+|                              Names                              |  Standard name chosen  |
+|-----------------------------------------------------------------|------------------------|
+| "Software Development / Engineering" and "Software Development" | "Software Development" |
+| "eCommerce", "Retail - eCommerce" and "E-Commerce"              | "E-Commerce"           |
+| "Fasion"                                                        | "Fashion"              |
+| "Health Care" and "Healthcare"                                  | "Healthcare"           |
+
 <br/>
 <br/>
 
