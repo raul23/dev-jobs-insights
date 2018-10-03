@@ -34,13 +34,13 @@ https://raul23.github.io/projects/dev-jobs-insights.html
 <p align="center"></p>
 
 ## Top 20 most popular industries and technologies
-<p align="center"><img src=""/></p>
+<p align="center"><img src="https://bit.ly/2P87UG2"/></p>
 <p align="center"></p>
 
 <br/>
 <br/>
 
-<p align="center"><img src=""/></p>
+<p align="center"><img src="https://bit.ly/2QsCMRL"/></p>
 <p align="center"></p>
 
 ## Average mid-range salaries across technologies
