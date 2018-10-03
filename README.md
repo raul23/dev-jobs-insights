@@ -24,7 +24,9 @@ I will show some of the important graphs and maps that are generated so you can
 have an idea what the project is all about.
 
 More detailed information can be found from the project's website @
-https://raul23.github.io/projects/dev-jobs-insights.html
+https://raul23.github.io/projects/dev-jobs-insights.html. There you will find
+more graphs and explanations about how the various scripts work for ultimately
+generating the graphs and maps.
 
 ## Sources of data
 The job data comes from **Stack Overflow**'s developer jobs
