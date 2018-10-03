@@ -25,8 +25,8 @@ have an idea what the project is all about.
 
 More detailed information can be found from the project's website @
 https://raul23.github.io/projects/dev-jobs-insights.html. There you will find
-more graphs and explanations about how the various scripts work for ultimately
-generating the graphs and maps.
+more graphs (interactive scatter plots) and explanations about how the various
+scripts work for ultimately generating the graphs and maps.
 
 ## Sources of data
 The job data comes from **Stack Overflow**'s developer jobs
