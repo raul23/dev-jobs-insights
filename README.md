@@ -24,7 +24,7 @@ More detailed information can be found from the project's website @
 https://raul23.github.io/projects/dev-jobs-insights.html
 
 ## Maps of the distribution of job posts around the world
-<p align="center"><img src="https://bit.ly/2NZtO1A"/></p>
+<p align="center"><img src="https://bit.ly/2OvqmLG"/></p>
 <p align="center"></p>
 
 <br/>
