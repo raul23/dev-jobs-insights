@@ -54,6 +54,9 @@ Here is a summary of the job data:
     </tr>
 </table>
 
+**NOTE:** 1000 is a small sample for extracting solid insights about the
+developer job market but for now I am using them as 
+
 ## Map of the distribution of job posts around the world
 <p align="center"><img src="https://bit.ly/2OvqmLG"/></p>
 <p align="center"></p>
@@ -163,3 +166,5 @@ The next table shows stats about the data used for generating the previous histo
 </table>
 
 ## TODOs
+-
+- test
