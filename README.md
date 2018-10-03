@@ -1,12 +1,14 @@
 # Data analysis of developer job posts from Stack Overflow
 
-<!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
+<!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
-- [Introduction](#introduction)
-- [Maps of the distribution of job posts around the world](#maps-of-the-distribution-of-job-posts-around-the-world)
-- [Top 20 most popular industries and technologies](#top-20-most-popular-industries-and-technologies)
-- [Average mid-range salaries across technologies](#average-mid-range-salaries-across-technologies)
-- [TODOs](#todos)
+- [Data analysis of developer job posts from Stack Overflow](#data-analysis-of-developer-job-posts-from-stack-overflow)
+	- [Introduction](#introduction)
+	- [Map of the distribution of job posts around the world](#map-of-the-distribution-of-job-posts-around-the-world)
+	- [Map of the distribution of job posts in the USA](#map-of-the-distribution-of-job-posts-in-the-usa)
+	- [Top 20 most popular industries and technologies](#top-20-most-popular-industries-and-technologies)
+	- [Average mid-range salaries across technologies](#average-mid-range-salaries-across-technologies)
+	- [TODOs](#todos)
 
 <!-- /TOC -->
 
@@ -23,13 +25,11 @@ have an idea what the project is all about.
 More detailed information can be found from the project's website @
 https://raul23.github.io/projects/dev-jobs-insights.html
 
-## Maps of the distribution of job posts around the world
+## Map of the distribution of job posts around the world
 <p align="center"><img src="https://bit.ly/2OvqmLG"/></p>
 <p align="center"></p>
 
-<br/>
-<br/>
-
+## Map of the distribution of job posts in the USA
 <p align="center"><img src="https://bit.ly/2yeqN2W"/></p>
 <p align="center"></p>
 
