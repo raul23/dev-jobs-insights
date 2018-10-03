@@ -37,7 +37,7 @@ Here is a summary of the sources of data used for generating the figures:
 <table align="center">
     <tr>
         <td align="center">Sources of data</td>
-        <td align="center">Some other text</td>
+        <td align="center">Stack Overflow's <a href="https://stackoverflow.com/jobs/feed">RSS feed</a> and <a href="https://stackoverflow.com/jobs">jobs website</a></td>
     </tr>
     <tr>
         <td align="center">Number of job posts</td>
