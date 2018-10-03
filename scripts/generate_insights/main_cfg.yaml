@@ -52,6 +52,7 @@ companies:
 industries:
   run_analysis: False
   # Horizontal bar chart
+  # TODO: add fontweight='bold' option
   barh_chart_industries:
     display_graph: False
     save_graph: True
@@ -91,7 +92,7 @@ job_benefits:
 #       JOB LOCATIONS
 #=============================
 job_locations:
-  run_analysis: True
+  run_analysis: False
   # Number of seconds to wait between two requests to the geocoding service
   wait_time: 0.001
   # TODO: Add these keys: europe, usa, world
@@ -152,6 +153,9 @@ job_locations:
   #          MAPS
   #=============================
   # TODO: implement `map_europe`
+  # TODO: add fontweight, fontsize options to title
+  # TODO: add bbox_inches='tight' to map_world
+  # TODO: add plt.tight_layout() to map_usa
   map_usa:
     display_graph: False
     save_graph: True
@@ -514,7 +518,7 @@ roles:
 #         SKILLS
 #=============================
 skills:
-  run_analysis: False
+  run_analysis: True
   # Horizontal bar chart
   barh_chart_skills:
     display_graph: False
