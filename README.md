@@ -90,7 +90,7 @@ Each dot on the map represents a particular job location (or address) from a job
 post and the size of the dot gives the relative importance of the job location
 compared to other job locations. Thus, a bigger dot for a particular location
 means that more job posts are associated with this location compared to other
-location having smaller dots.
+locations having smaller dots.
 
 Each job post can be associated with more than one job location and a job
 location consists of three components: city, region (aka state or province), and
