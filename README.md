@@ -182,7 +182,7 @@ The next table shows stats about the data used for generating the previous histo
 
 The job salaries provided by the companies consist in a minimum and maximum
 values, e.g. €50k - 65k. Thus, in order to have one salary number per job post,
-I converted the range of salaries into the mid-range, e.g. €50k - 65k --> €57.5
+I converted the range of salaries into a mid-range, e.g. €50k - 65k --> €57.5
 
 Also, all salaries were converted to USD for better comparisons among salaries
 but you must be careful when doing these kinds of comparisons since some places
@@ -190,15 +190,16 @@ but you must be careful when doing these kinds of comparisons since some places
 will expect that these places will offer higher paying wages.
 
 I used thresholds for ignoring suspicious values: everything outside the range
-[8000, 400000] (USD) were ignored. Some reasons might explain why these
+[8000, 400000] (USD) was ignored. Some reasons might explain why these
 anomalous salaries appear such as forgetting putting 3 extra 0's (e.g. 10
 instead of 10000), using originally the wrong currency, or simply the pay is not
 that good. I haven't implemented yet an automated method to decide which case
 each suspicious salary range falls into but I will do it eventually. For the
 moment there are very few ranges that get thrown away.
 
-These are all the salaries that were ignored for falling outside the range
-[80k, 400k] (USD):
+These are all the min and max salaries that were ignored for falling outside the
+range [80k, 400k] (USD) where each row represents a job post with the associated
+[min, max] salaries:
 
 <table>
     <tr>
