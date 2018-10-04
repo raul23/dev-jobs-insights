@@ -182,7 +182,8 @@ The next table shows stats about the data used for generating the previous histo
 
 The job salaries provided by the companies consist in a minimum and maximum
 values, e.g. €50k - 65k. Thus, in order to have one salary number per job post,
-I converted the range of salaries into a mid-range, e.g. €50k - 65k --> €57.5
+I converted the range of salaries into a mid-range salary, e.g. €50k - 65k -->
+€57.5
 
 Also, all salaries were converted to USD for better comparisons among salaries
 but you must be careful when doing these kinds of comparisons since some places
