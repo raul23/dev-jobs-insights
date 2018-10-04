@@ -115,7 +115,11 @@ The next table shows stats about the data used for generating the USA map:
         <td align="center">2018-09-18 to 2018-09-28</td>
     </tr>
     <tr>
-        <td align="center"><b>Top 10 US states (number of job posts)</b></td>
+        <td align="center"><b>Top 10 US states (based on number of job posts)</b></td>
+        <td align="center">----</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Top 10 addresses (based on number of job posts)</b></td>
         <td align="center">----</td>
     </tr>
 </table>
