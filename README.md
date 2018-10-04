@@ -77,10 +77,24 @@ The next table shows stats about the data used for generating the world map:
         <td align="center">2018-09-18 to 2018-09-28</td>
     </tr>
     <tr>
-        <td align="center"><b>Top 10 countries (number of job posts)</b></td>
+        <td align="center"><b>Top 10 countries (based on number of job posts)</b></td>
+        <td align="center">----</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Top 10 addresses (based on number of job posts)</b></td>
         <td align="center">----</td>
     </tr>
 </table>
+
+Each dot on the map represents a particular job location (or address) from a job
+post and the size of the dot gives the relative importance of the job location
+compared to other job locations. Thus, a bigger dot for a particular location
+means that more job posts are associated with this location compared to other
+location having smaller dots.
+
+Each job post can be associated with more than one job location and a job
+location consists of three components: city, region (aka state or province), and
+country.
 
 ## Map of the distribution of job posts in the USA
 <p align="center"><img src="https://bit.ly/2yeqN2W"/></p>
@@ -185,46 +199,7 @@ values, e.g. €50k - 65k. Thus, in order to have one salary number per job post
 I converted the range of salaries into a mid-range salary, e.g. €50k - 65k -->
 €57.5
 
-Also, all salaries were converted to USD for better comparisons among salaries
-but you must be careful when doing these kinds of comparisons since some places
-(e.g. San Francisco or New York City) have high living costs than others so you
-will expect that these places will offer higher paying wages.
-
-I used thresholds for ignoring suspicious values: everything outside the range
-[8000, 400000] (USD) was ignored. Some reasons might explain why these
-anomalous salaries appear such as forgetting putting 3 extra 0's (e.g. 10
-instead of 10000), using originally the wrong currency, or simply the pay is not
-that good. I haven't implemented yet an automated method to decide which case
-each suspicious salary range falls into but I will do it eventually. For the
-moment there are very few ranges that get thrown away.
-
-These are all the min and max salaries that were ignored for falling outside the
-range [80k, 400k] (USD) where each row represents a job post with the associated
-[min, max] salaries:
-
-<table>
-    <tr>
-        <td align="center"><b>1.</b></td>
-        <td align="center">[15, 17]</td>
-    </tr>
-    <tr>
-        <td align="center"><b>2.</b></td>
-        <td align="center">[70, 110000]</td>
-    </tr>
-    <tr>
-        <td align="center"><b>3.</b></td>
-        <td align="center">[87, 128]</td>
-    </tr>
-    <tr>
-        <td align="center"><b>4.</b></td>
-        <td align="center">[2700, 3600]</td>
-    </tr>
-    <tr>
-        <td align="center"><b>5.</b></td>
-        <td align="center">[4496, 5620]</td>
-    </tr>
-</table>
-
 ## TODOs
 - Integrate more job data from Stack Overflow and other sites
 - Fully automate the whole pipeline of generating the graphs, maps, and reports
+- Display job data summary directly on each graph or map
