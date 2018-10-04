@@ -97,7 +97,7 @@ location consists of three components: city, region (aka state or province), and
 country.
 
 ## Map of the distribution of job posts in the USA
-<p align="center"><img src="https://bit.ly/2yeqN2W"/></p>
+<p align="center"><img src="https://bit.ly/2OEA7Y2"/></p>
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the USA map:   
