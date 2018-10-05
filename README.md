@@ -153,7 +153,7 @@ chart **"Top 20 most popular industries"**:
 <table>
     <tr>
         <td align="center"><b>Total number of industries</b></td>
-        <td align="center">820</td>
+        <td align="center">248</td>
     </tr>
     <tr>
         <td align="center"><b>Published dates</b></td>
