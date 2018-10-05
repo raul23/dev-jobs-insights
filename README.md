@@ -66,23 +66,30 @@ The next table shows stats about the data used for generating the world map:
 <table>
     <tr>
         <td align="center"><b>Number of job posts</b></td>
-        <td align="center">----</td>
+        <td align="center">999</td>
     </tr>
     <tr>
         <td align="center"><b>Number of countries</b></td>
-        <td align="center">----</td>
+        <td align="center">41</td>
     </tr>
     <tr>
         <td align="center"><b>Published dates</b></td>
         <td align="center">2018-09-18 to 2018-09-28</td>
     </tr>
     <tr>
-        <td align="center"><b>Top 10 countries (based on number of job posts)</b></td>
-        <td align="center">----</td>
+        <td align="center"><b>Top 5 countries (based on number of job posts)</b></td>
+        <td align="center">
+          United States (377) <br/>Germany (241) <br/>United Kingdom (84) <br/>
+          Netherlands (43) <br/> Switzerland, (34)</td>
     </tr>
     <tr>
-        <td align="center"><b>Top 10 addresses (based on number of job posts)</b></td>
-        <td align="center">----</td>
+        <td align="center"><b>Top 5 addresses (based on number of job posts)</b></td>
+        <td align="center">
+        Berlin, 10117, Deutschland (58) <br/>
+        London, Greater London, England, SW1A 2DU, UK (46) <br/>
+        NYC, New York, USA (33) <br/>
+        Hamburg, 20095, Deutschland (31) <br/>
+        SF, California, USA (26)</td>
     </tr>
 </table>
 
@@ -104,23 +111,29 @@ The next table shows stats about the data used for generating the USA map:
 <table>
     <tr>
         <td align="center"><b>Number of job posts</b></td>
-        <td align="center">----</td>
+        <td align="center">377</td>
     </tr>
     <tr>
         <td align="center"><b>Number of US states</b></td>
-        <td align="center">----</td>
+        <td align="center">31</td>
     </tr>
     <tr>
         <td align="center"><b>Published dates</b></td>
         <td align="center">2018-09-18 to 2018-09-28</td>
     </tr>
     <tr>
-        <td align="center"><b>Top 10 US states (based on number of job posts)</b></td>
-        <td align="center">----</td>
+        <td align="center"><b>Top 5 US states (based on number of job posts)</b></td>
+        <td align="center">
+        California (73) <br/> New York (40) <br/> Pennsylvania (32) <br/> Massachusetts (25) <br/> New Jersey (23)</td>
     </tr>
     <tr>
-        <td align="center"><b>Top 10 addresses (based on number of job posts)</b></td>
-        <td align="center">----</td>
+        <td align="center"><b>Top 5 addresses (based on number of job posts)</b></td>
+        <td align="center">
+        NYC, New York, USA (33) <br/>
+        SF, California, USA (26) <br/>
+        Philadelphia, Philadelphia County, Pennsylvania, USA (22) <br>
+        Jersey City, Hudson County, New Jersey, USA (13) <br/>
+        Columbus, Franklin County, Ohio, USA (12)</td>
     </tr>
 </table>
 
