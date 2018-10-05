@@ -8,7 +8,7 @@ import numpy as np
 from pycountry_convert import country_alpha2_to_country_name
 # Own modules
 from .analyzer import Analyzer
-from utility.genutil import add_plural
+from utility.genutil import add_plural, convert_list_to_str, dump_json
 
 
 class JobLocationsAnalyzer(Analyzer):
@@ -20,12 +20,72 @@ class JobLocationsAnalyzer(Analyzer):
         self.stats_names = [
             "sorted_all_countries_count", "sorted_eu_countries_count",
             "sorted_us_states_count"]
+        self.report = {
+            'europe': {
+                'barh': {
+                    'number_of_job_posts': None,
+                    'number_of_countries': None,
+                    'published_dates': [],
+                    'top_10_countries': [],
+                    'job_posts_ids': [],
+                    'duplicates': [],
+                },
+                'map': {
+                    'number_of_job_posts': None,
+                    'number_of_countries': None,
+                    'published_dates': [],
+                    'top_10_countries': [],
+                    'top_10_addresses': [],
+                    'job_posts_ids': [],
+                    'duplicates': [],
+                },
+            },
+            'usa': {
+                'barh': {
+                    'number_of_job_posts': None,
+                    'number_of_us_states': None,
+                    'published_dates': [],
+                    'top_10_us_states': [],
+                    'job_posts_ids': [],
+                    'duplicates': [],
+                },
+                'map': {
+                    'number_of_job_posts': None,
+                    'number_of_us_states': None,
+                    'published_dates': [],
+                    'top_10_us_states': [],
+                    'top_10_addresses': [],
+                    'job_posts_ids': [],
+                    'duplicates': [],
+                },
+            },
+            'world': {
+                'barh': {
+                    'number_of_job_posts': None,
+                    'number_of_countries': None,
+                    'published_dates': [],
+                    'top_10_countries': [],
+                    'job_posts_ids': [],
+                    'duplicates': [],
+                },
+                'map': {
+                    'number_of_job_posts': None,
+                    'number_of_countries': None,
+                    'published_dates': [],
+                    'top_10_countries': [],
+                    'top_10_addresses': [],
+                    'job_posts_ids': [],
+                    'duplicates': [],
+                },
+            }
+        }
         super().__init__(analysis_type,
                          conn,
                          db_session,
                          main_cfg,
                          logging_cfg,
                          self.stats_names,
+                         self.report,
                          __name__,
                          __file__,
                          os.getcwd())
@@ -44,16 +104,14 @@ class JobLocationsAnalyzer(Analyzer):
     def run_analysis(self):
         # Reset all locations stats to be computed
         self.reset_stats()
-        ###############################
-        #       European analysis
-        ###############################
+        # =====================================================================
+        #                       European analysis
+        # =====================================================================
         # Get counts of european countries, i.e. for each country we want to
         # know its number of occurrences in job posts
         # NOTE: These are all the european countries and they are sorted in
         # order of decreasing number of occurrences (i.e. most popular european
         # country at first)
-        # TODO: even if `display_graph` and `save_graph` are set to False,
-        # `_count_european_countries()` gets called
         barh_cfg = self.main_cfg['job_locations']['barh_chart_europe']
         eu_countries_count = self._count_european_countries(
             use_fullnames=barh_cfg['use_fullnames'])
@@ -64,13 +122,18 @@ class JobLocationsAnalyzer(Analyzer):
         self.logger.debug(
             "There are {} occurrences of european countries in the job "
             "posts".format(sum(j for i, j in eu_countries_count)))
+        # Update report for Europe
+        self.report['europe']['barh']['number_of_countries'] = \
+            len(eu_countries_count)
+        self.report['europe']['barh']['top_10_countries'] = \
+            eu_countries_count[:10]
         self._generate_barh_chart(
             barh_type='barh_chart_europe',
             sorted_topic_count=np.array(self.stats['sorted_eu_countries_count']),
             barh_chart_cfg=barh_cfg)
-        ###############################
-        #      US states analysis
-        ###############################
+        # =====================================================================
+        #                       US states analysis
+        # =====================================================================
         # Get counts of US states, i.e. for each US state we want to know its
         # number of occurrences in job posts
         # NOTE: These are all the US states and they are sorted in order of
@@ -92,13 +155,16 @@ class JobLocationsAnalyzer(Analyzer):
             assert len(indices) == 2, "There should be 2 indices"
             self.logger.debug("There are {} 'None' US state".format(
                 np.array(us_states_count)[indices[0]][0][1]))
+        # Update report for USA
+        self.report['usa']['barh']['number_of_us_states'] = len(us_states_count)
+        self.report['usa']['barh']['top_10_us_states'] = us_states_count[:10]
         self._generate_barh_chart(
             barh_type='barh_chart_usa',
             sorted_topic_count=np.array(self.stats['sorted_us_states_count']),
             barh_chart_cfg=barh_cfg)
-        ###############################
-        #       World analysis
-        ###############################
+        # =====================================================================
+        #                           World analysis
+        # =====================================================================
         # Get counts of countries, i.e. for each country we want to know its
         # number of occurrences in job posts
         # NOTE: these are all the countries and they are sorted in order of
@@ -113,13 +179,16 @@ class JobLocationsAnalyzer(Analyzer):
         self.logger.debug(
             "There are {} occurrences of countries in the job posts".format(
                 sum(j for i, j in countries_count)))
+        # Update report for the World
+        self.report['world']['barh']['number_of_countries'] = len(countries_count)
+        self.report['world']['barh']['top_10_countries'] = countries_count[:10]
         self._generate_barh_chart(
             barh_type='barh_chart_world',
             sorted_topic_count=np.array(self.stats["sorted_all_countries_count"]),
             barh_chart_cfg=barh_cfg)
-        ###############################
-        #           Maps
-        ###############################
+        # =====================================================================
+        #                           Maps
+        # =====================================================================
         # Generate map with markers added on US states that have job posts
         self._generate_map_usa(
             map_type='map_usa',
@@ -132,8 +201,57 @@ class JobLocationsAnalyzer(Analyzer):
         # posts
         # TODO: implement `_generate_map_europe()`
         # self._generate_map_europe()
+        # =====================================================================
+        #                               Report
+        # =====================================================================
+        self._complete_report()
+        if self.main_cfg['job_locations']['save_report']:
+            self._save_report(self.main_cfg['job_locations']['report_filename'])
 
-    def _count_all_countries(self, use_fullnames=False):
+    # `locations_list` is a list of tuples where tuple[0] is the `job_post_id` and
+    # tuple[1] is the location's short name
+    # `converter` is a method that converts the location's short name to its full
+    # name
+    def _count_locations(self, locations_list, converter=None, ignore_none=False):
+        locations_count = {}
+        set_ids = set()
+        duplicates = []
+        for job_post_id, loc in locations_list:
+            if loc is None and ignore_none:
+                self.logger.debug("The 'None' location will be skipped")
+                continue
+            if converter and loc is not None:
+                    try:
+                        self.logger.debug(
+                            "Converting '{}' to its fullname".format(loc))
+                        loc_fullname = converter(loc)
+                    except KeyError as e:
+                        self.logger.exception(e)
+                        self.logger.critical("No fullname found for '{}'".format(loc))
+                        self.logger.warning(
+                            "The location '{}' will be skipped".format(loc))
+                        continue
+                    else:
+                        if loc_fullname is None:
+                            self.logger.critical("No fullname found for '{}'".format(loc))
+                            self.logger.warning(
+                                "The location '{}' will be skipped".format(loc))
+                            continue
+                        self.logger.debug(
+                            "Converted '{}' to '{}'".format(loc, loc_fullname))
+                        loc = loc_fullname
+            locations_count.setdefault(loc, 0)
+            if job_post_id not in set_ids:
+                locations_count[loc] += 1
+                set_ids.add(job_post_id)
+            else:
+                self.logger.warning("Duplicate job_post_id '{}'".format(job_post_id))
+                duplicates.append(job_post_id)
+        results = list(locations_count.items())
+        results.sort(key=lambda tup: tup[1], reverse=True)
+        return results, list(set_ids), duplicates
+
+    def _count_all_countries(self, ignore_none=False, use_fullnames=False):
         """
         Returns countries sorted in decreasing order of their occurrences in
         job posts. A list of tuples is returned where a tuple is of the form
@@ -142,22 +260,26 @@ class JobLocationsAnalyzer(Analyzer):
         :return: list of tuples of the form (country, count)
         """
         # IMPORTANT: 'No office location' is not ignored if `use_fullnames=False`
-        sql = "SELECT country, COUNT(country) as CountOf FROM " \
-              "job_locations GROUP BY country ORDER BY CountOf DESC"
+        self.logger.debug("Counting all countries")
+        sql = "SELECT job_post_id, country FROM job_locations"
         results = self.db_session.execute(sql).fetchall()
         if use_fullnames:
-            # IMPORTANT: 'No office location' will be ignored
-            # Convert country names' alpha2 to their full country names
-            list_countries_names = \
-                self._list_country_alpha2_to_country_name(results)
-            diff = len(results) - len(list_countries_names)
-            if diff > 0:
-                self.logger.warning("{} countr{} missing".format(
-                                     diff, add_plural(diff, "ies are", "y is")))
-            results = list_countries_names
+            converter = self._get_country_name
+            self.logger.debug("Converter used: {}".format(converter))
+        else:
+            converter = None
+        results, list_ids, duplicates = self._count_locations(
+            locations_list=results,
+            converter=converter,
+            ignore_none=ignore_none)
+        # Update report for World
+        self.report['world']['barh']['number_of_job_posts'] = len(list_ids)
+        self.report['world']['barh']['job_post_ids'] = list_ids
+        self.report['world']['barh']['duplicates'] = duplicates
         return results
 
-    def _count_european_countries(self, method=1, use_fullnames=False):
+    # A country is counted only once for each job post
+    def _count_european_countries(self, ignore_none=False, use_fullnames=False):
         """
         Returns european countries sorted in decreasing order of their
         occurrences in job posts. A list of tuples is returned where a tuple is
@@ -165,36 +287,27 @@ class JobLocationsAnalyzer(Analyzer):
 
         :return: list of tuples of the form (country, count)
         """
-        # TODO: use timeit to time each method and choose the quickest
-        if method == 1:
-            # 4th method: SQL using `GROUP BY`
-            sql = "SELECT country, COUNT(country) as CountOf FROM " \
-                  "job_locations WHERE country in ({}) GROUP BY country ORDER " \
-                  "BY CountOf DESC".format(self._get_european_countries_as_str())
-            results = self.db_session.execute(sql).fetchall()
-        elif method == 2:
-            # TODO: pure Python using `dict`
-            raise NotImplementedError("Method 2 (pure python using dict) not "
-                                      "implemented!")
-        elif method == 3:
-            # TODO: numpy using ...
-            raise NotImplementedError("Method 3 (numpy) not implemented!")
-        else:
-            # TODO: pandas using ...
-            raise NotImplementedError("Method 4 (pandas) not implemented!")
+        self.logger.debug("Counting european countries")
+        sql = "SELECT job_post_id, country FROM job_locations WHERE country in " \
+              "({})".format(self._get_european_countries_as_str())
+        results = self.db_session.execute(sql).fetchall()
         if use_fullnames:
-            self.logger.debug("The resulset '{}' will be processed "
-                              "(use fullnames)".format(results))
-            # Convert country names' alpha2 to their full country names
-            list_countries_names = \
-                self._list_country_alpha2_to_country_name(results)
-            assert len(results) == len(list_countries_names), \
-                "Some countries are missing"
-            results = list_countries_names
-        self.logger.debug("Returned resulset: {}".format(results))
+            converter = self._get_country_name
+            self.logger.debug("Converter used: {}".format(converter))
+        else:
+            converter = None
+        results, list_ids, duplicates = self._count_locations(
+            locations_list=results,
+            converter=converter,
+            ignore_none=ignore_none)
+        # Update report for Europe
+        self.report['europe']['barh']['number_of_job_posts'] = len(list_ids)
+        self.report['europe']['barh']['job_post_ids'] = list_ids
+        self.report['europe']['barh']['duplicates'] = duplicates
         return results
 
-    def _count_us_states(self, use_fullnames=False, ignore_none=False):
+    # A US state is counted only once for each job post
+    def _count_us_states(self, ignore_none=False, use_fullnames=False):
         """
         Returns US states sorted in decreasing order of their occurrences in
         job posts. A list of tuples is returned where a tuple is of the form
@@ -204,32 +317,22 @@ class JobLocationsAnalyzer(Analyzer):
 
         :return: list of tuples of the form (us_state, count)
         """
-        # NOTE: if you use `COUNT(region)`, the 'None' region is not counted,
-        # i.e. you get '(None, 0)' instead of '(None, 22)'
-        sql = "SELECT region, COUNT(country) as CountOf FROM job_locations " \
-              "WHERE country='US' GROUP BY region ORDER BY CountOf DESC"
+        self.logger.debug("Counting US states")
+        sql = "SELECT job_post_id, region FROM job_locations WHERE country='US'"
         results = self.db_session.execute(sql).fetchall()
-        if not use_fullnames and not ignore_none:
-            self.logger.debug("Resultset: {}".format(results))
-            return results
-        if use_fullnames or ignore_none:
-            self.logger.debug("The resulset '{}' will be processed (use fullnames "
-                              "or ignore 'None') ...".format(results))
-            temp = []
-            for short_name, count in results:
-                if short_name is None and ignore_none:
-                    self.logger.debug("The 'None' country will be skipped")
-                    continue
-                if use_fullnames:
-                    if short_name is None:
-                        full_name = None
-                    else:
-                        full_name = self.us_states[short_name]
-                    temp.append((full_name, count))
-                else:
-                    temp.append((short_name, count))
-            results = temp
-        self.logger.debug("Returned resultset: {}".format(results))
+        if use_fullnames:
+            converter = self.us_states.get
+            self.logger.debug("Converter used: {}".format(converter))
+        else:
+            converter = None
+        results, list_ids, duplicates = self._count_locations(
+            locations_list=results,
+            converter=converter,
+            ignore_none=ignore_none)
+        # Update report for USA
+        self.report['usa']['barh']['number_of_job_posts'] = len(list_ids)
+        self.report['usa']['barh']['job_post_ids'] = list_ids
+        self.report['usa']['barh']['duplicates'] = duplicates
         return results
 
     def _generate_map_europe(self):
@@ -259,6 +362,9 @@ class JobLocationsAnalyzer(Analyzer):
         addresses_data, _ = self._get_locations_geo_coords(
             locations=self._get_us_states(),
             fallbacks=['region+country', 'country'])
+        # Update report on USA
+        self.report['usa']['map']['top_10_addresses'] = \
+            self._get_topk_addresses(addresses_data)
         shape_filepath = os.path.expanduser(
             self.main_cfg['data_filepaths']['shape'])
         # TODO: explain why reversed US states is used
@@ -296,6 +402,11 @@ class JobLocationsAnalyzer(Analyzer):
         addresses_data, _ = self._get_locations_geo_coords(
             locations=self._get_all_locations(),
             fallbacks=['region+country', 'country'])
+        ipdb.set_trace()
+        # TODO: add number of addresses
+        # Update report on World
+        self.report['world']['map']['top_10_addresses'] = \
+            self._get_topk_addresses(addresses_data)
         draw_world_map(
             addresses_data=addresses_data,
             title=map_cfg['title'],
@@ -328,28 +439,45 @@ class JobLocationsAnalyzer(Analyzer):
         """
         if ignore_no_office_location:
             where = " WHERE country!='No office location'"
+            self.logger.debug(
+                "All locations with 'No office location' will be ignored")
         else:
             where = ""
         sql = "SELECT job_post_id, city, region, country FROM " \
               "job_locations{}".format(where)
         return self.db_session.execute(sql).fetchall()
 
-    def _get_us_states(self):
+    def _get_us_states(self, ignore_no_office_location=True):
         """
         Returns all US states. A list of tuples is returned where a tuple is of
-        the form (job_post_id, city, region, country, count).
+        the form (job_post_id, city, region, country).
 
         :return: list of tuples of the form
-                 (job_post_id, city, region, country, count)
+                 (job_post_id, city, region, country)
         """
         # TODO: concatenate the three columns (city, region, country) into a
         # single string, e.g. 'Colorado Springs, CO, US'. You might get also
         # `None` within the string since not all job locations have a city or a
         # region. If you find out how to to concatenate the three columns, then
         # `get_location()` won't be needed within `_get_locations_geo_coords()`
+        if ignore_no_office_location:
+            where = " and country!='No office location'"
+            self.logger.debug(
+                "All locations with 'No office location' will be ignored")
+        else:
+            where = ""
         sql = "SELECT job_post_id, city, region, country FROM job_locations " \
-              "WHERE country='US'"
-        return self.db_session.execute(sql).fetchall()
+              "WHERE country='US'{}".format(where)
+        results = self.db_session.execute(sql).fetchall()
+        return results
+
+    @staticmethod
+    def _get_country_name(country_alpha2):
+        try:
+            country_name = country_alpha2_to_country_name(country_alpha2)
+        except KeyError as e:
+            raise KeyError(e)
+        return country_name
 
     def _get_geo_coords(self, geolocator, location):
         try:
@@ -424,10 +552,8 @@ class JobLocationsAnalyzer(Analyzer):
         if fallbacks is None:
             fallbacks = []
         new_geo_coords = False
-        # `cur_adrs_data`: current addresses' geographic coordinates. By current
-        # we mean the actual session. Thus, this dictionary (and other similar
-        # dictionaries) records anything that is needed as data for the current
-        # session computations.
+        # `addresses_data`: addresses' geographic coordinates for the current
+        # session
         # keys: addresses as given by the geocode service
         # values: dict
         #           key1: 'geo_coords'
@@ -438,21 +564,21 @@ class JobLocationsAnalyzer(Analyzer):
         #           key3: 'locations'
         #           val3: set, set of the location names having the given geo
         #                 coordinates
-        cur_adrs_data = {}
-        # Current locations mappings to addresses
+        addresses_data = {}
+        # Locations mappings to addresses for the current session
         # keys: location name
         # values: addresses as given by the geocode service
-        cur_loc_mappings = {}
-        counts = 0
+        loc_mappings = {}
+        valid_locations = []
         # Skipped locations stats
         # TODO: explain fields of dict
-        report = {'empty_locations': 0,
-                  'already_added': [],
-                  'similar_locations': {},
-                  'first_try_geocoder_error': set(),
-                  'first_try_geocoder_none': set(),
-                  'next_try_geocoder_error': set(),
-                  'next_try_geocoder_none': set()}
+        unsual_report = {'empty_locations': 0,
+                         'already_added': [],
+                         'similar_locations': {},
+                         'first_try_geocoder_error': set(),
+                         'first_try_geocoder_none': set(),
+                         'next_try_geocoder_error': set(),
+                         'next_try_geocoder_none': set()}
         # Waiting time in seconds between requests to geocoding service
         wait_time = self.main_cfg['job_locations']['wait_time']
         # Get the location's longitude and latitude
@@ -470,11 +596,10 @@ class JobLocationsAnalyzer(Analyzer):
             "Requesting geographic coordinates for {} locations ...".format(
                 len(locations)))
         # TODO: add a progress bar
-        # TODO: testing code to be removed
-        # filepath = os.path.expanduser("~/data/dev_jobs_insights/cache/locations_geo_coords.pkl")
-        # locations_geo_coords = load_pickle(filepath)
         for i, (job_post_id, city, region, country) in \
                 enumerate(locations, start=1):
+            # Get location from three components of city, region, and country
+            # e.g. [Montreal, Quebec, Canada] --> "Montreal, Quebec, Canada"
             location = build_location([city, region, country])
             self.logger.info("Location #{}: {} (job_post_id={})".format(
                               i, location, job_post_id))
@@ -483,21 +608,24 @@ class JobLocationsAnalyzer(Analyzer):
                 # NOTE: This case shouldn't happen because all job locations
                 # have at least a country
                 self.logger.warning("The location is empty")
-                report['empty_locations'] += 1
+                unsual_report['empty_locations'] += 1
                 continue
-            elif location in cur_loc_mappings:
+            elif location in loc_mappings:
                 # Location already added
-                report['already_added'].append(location)
+                unsual_report['already_added'].append(location)
+                # Update count of this locations's address
                 address = self.locations_mappings.get(location)
-                cur_adrs_data[address]['count'] += 1
-                counts += 1
+                addresses_data[address]['count'] += 1
+                valid_locations.append((job_post_id, city, region, country))
                 self.logger.debug(
                     "Location '{}' was already added!".format(location))
                 self.logger.debug("Address '{}'".format(address))
+                # Location skipped!
                 continue
             elif location in self.locations_mappings:
-                # We already computed the location's latitude and longitude with
-                # the geocoding service
+                # We previously computed the location's latitude and longitude
+                # with the geocoding service
+                # Get the location's geo coordinates from its address
                 address = self.locations_mappings.get(location)
                 geo_coords = self.addresses_geo_coords[address]
                 self.logger.debug(
@@ -505,20 +633,23 @@ class JobLocationsAnalyzer(Analyzer):
                 self.logger.debug("Geo coordinates: {}".format(geo_coords.point))
                 self.logger.debug("Address '{}'".format(address))
             else:
+                # New location!
+                # Retrieve the location's geo coordinates with the geocoding
+                # service
                 try:
                     geo_coords = self._get_geo_coords(geolocator, location)
                 except (geopy.exc.GeocoderTimedOut,
                         geopy.exc.GeocoderServiceError):
-                    report['first_try_geocoder_error'].add(location)
+                    unsual_report['first_try_geocoder_error'].add(location)
                     # TODO: test this part
                     ipdb.set_trace()
                     continue
                 if geo_coords is None:
-                    report['first_try_geocoder_none'].add(location)
+                    # No geo coordinates could be retrieved the first time
+                    # Retry with fallbacks
+                    unsual_report['first_try_geocoder_none'].add(location)
                     ipdb.set_trace()
                     for fallback in fallbacks:
-                        # The geocoding service could not provide the geo
-                        # coordinates
                         new_location = self._get_location_from_fallback(
                             city, region, country, location, fallback)
                         if new_location is None:
@@ -533,93 +664,103 @@ class JobLocationsAnalyzer(Analyzer):
                                                               new_location)
                         except (geopy.exc.GeocoderTimedOut,
                                 geopy.exc.GeocoderServiceError):
-                            report['next_try_geocoder_error'].add(location)
+                            unsual_report['next_try_geocoder_error'].add(location)
                             # TODO: test this part
                             ipdb.set_trace()
                             continue
                         if geo_coords is None:
+                            # Again, the geo coordinates couldn't be retrieved
+                            # with the selected fallback. Try again with another
+                            # fallback
                             # TODO: test this part
                             ipdb.set_trace()
                             self.logger.error(
                                 "The geocoding service could not provide the geo "
                                 "coordinates this time using '{}'".format(
                                  new_location))
-                            report['next_try_geocoder_none'].add(location)
+                            unsual_report['next_try_geocoder_none'].add(location)
                             continue
                         else:
                             break
                     if geo_coords is None:
                         # TODO: test this part
+                        # After all fallbacks tried, still no geo coordinates
+                        # found for the location. Location will be skipped!
                         self.logger.critical("The geo coordinates for '{}' are "
                                              "'None'".format(location))
                         self.logger.critical(
-                            "The location '{}' will be skipped".format(
+                            "The location '{}' will be skipped!".format(
                                 location))
                         continue
+                # Geo coordinates were found for the location
                 self.logger.debug(
                     "Waiting {} second{} for the next geocoding request "
                     "...".format(wait_time, add_plural(wait_time)))
                 time.sleep(wait_time)
                 new_geo_coords = True
-                # Update the cached dict with the geo coords
+                # Update the cached `dict`s with the geo coordinates
                 self.addresses_geo_coords.setdefault(
                     geo_coords.address, geo_coords)
                 self.locations_mappings.setdefault(location, geo_coords.address)
                 self.logger.debug("Dictionaries updated!")
-            cur_adrs_data.setdefault(geo_coords.address, {})
-            cur_adrs_data[geo_coords.address].setdefault('geo_coords',
-                                                               geo_coords)
-            cur_adrs_data[geo_coords.address].setdefault('count', 0)
-            cur_adrs_data[geo_coords.address]['count'] += 1
-            cur_adrs_data[geo_coords.address].setdefault('locations', set())
-            cur_adrs_data[geo_coords.address]['locations'].add(location)
-            cur_loc_mappings.setdefault(location, geo_coords.address)
-            if len(cur_adrs_data[geo_coords.address]['locations']) > 1:
-                # Simlar locations: same locations but different spellings
-                sim_locs = cur_adrs_data[geo_coords.address]['locations']
-                report['similar_locations'].setdefault(geo_coords.address, set())
-                report['similar_locations'][geo_coords.address].update(sim_locs)
-            self.logger.debug(
-                "Location '{}' added!".format(location))
-            counts += 1
+            # Save the addresses and extra data for the current session
+            addresses_data.setdefault(geo_coords.address, {})
+            addresses_data[geo_coords.address].setdefault('geo_coords',
+                                                          geo_coords)
+            addresses_data[geo_coords.address].setdefault('count', 0)
+            addresses_data[geo_coords.address]['count'] += 1
+            addresses_data[geo_coords.address].setdefault('locations', set())
+            addresses_data[geo_coords.address]['locations'].add(location)
+            loc_mappings.setdefault(location, geo_coords.address)
+            if len(addresses_data[geo_coords.address]['locations']) > 1:
+                # Similar locations: same locations but different spellings
+                sim_locs = addresses_data[geo_coords.address]['locations']
+                unsual_report['similar_locations'].setdefault(
+                    geo_coords.address, set())
+                unsual_report['similar_locations'][geo_coords.address].update(
+                    sim_locs)
+            self.logger.debug("Location '{}' added!".format(location))
+            valid_locations.append((job_post_id, city, region, country))
         # Sanity check
-        n_valid_locs = len(report['already_added']) + len(cur_loc_mappings)
-        assert n_valid_locs == counts, \
-            "Inconsistency in the number of valid locations and the number of " \
-            "times geo coordinates were computed"
+        n_valid_locs = len(unsual_report['already_added']) + len(loc_mappings)
+        assert n_valid_locs == len(valid_locations), \
+            "Inconsistency between the two methods of computing the number of " \
+            "valid locations: {} != {}".format(n_valid_locs, len(valid_locations))
         self.logger.info("Finished collecting all geo coordinates")
-        self.logger.info("***** Report *****")
-        self.logger.info("# of total locations: {}".format(len(locations)))
-        self.logger.info("# of valid locations: {}".format(counts))
-        self.logger.info("# of successfully added addresses: {}".format(
-                len(cur_adrs_data)))
-        self.logger.info("# of empty locations: {}".format(
-            report['empty_locations']))
-        self.logger.info("# of duplicate locations: {}".format(
-                len(report['already_added'])))
-        self.logger.info("# of distinct locations: {}".format(
-            len(cur_loc_mappings)))
-        self.logger.info("# of addresses with more than one location: {}".format(
-            len(report['similar_locations'])))
-        self.logger.info("# of similar locations: {}".format(
-            sum(len(v) for k, v in report['similar_locations'].items())))
-        self.logger.info(
-            "# of skipped locations with first-try-geocoder-error: {}".format(
-                len(report['first_try_geocoder_error'])))
-        self.logger.info(
-            "# of skipped locations with first-try-geocoder-none: {}".format(
-                len(report['first_try_geocoder_none'])))
-        self.logger.info(
-            "# of skipped locations with next-try-geocoder-error: {}".format(
-                len(report['next_try_geocoder_error'])))
-        self.logger.info(
-            "# of skipped locations with next-try-geocoder-none: {}".format(
-                len(report['next_try_geocoder_none'])))
-        self.logger.info("********************")
+        report_str = """
+***** Report *****
+# of total locations: {}
+# of valid locations: {}
+# of successfully added addresses: {}
+# of empty locations: {}
+# of duplicate locations: {}
+# of distinct locations: {}
+# of addresses with more than one location: {}
+# of similar locations: {}
+# of skipped locations with first-try-geocoder-error: {}
+# of skipped locations with first-try-geocoder-none: {}
+# of skipped locations with next-try-geocoder-error: {}
+# of skipped locations with next-try-geocoder-none: {}
+********************
+""".format(
+            len(locations),  # total locations
+            len(valid_locations),  # valid locations
+            len(addresses_data),  # successfully added addresses
+            unsual_report['empty_locations'],
+            len(unsual_report['already_added']),  # duplicate locations
+            len(loc_mappings),  # distinct locations
+            len(unsual_report['similar_locations']),
+            sum(len(v) for k, v in unsual_report['similar_locations'].items()),
+            len(unsual_report['first_try_geocoder_error']),
+            len(unsual_report['first_try_geocoder_none']),
+            len(unsual_report['next_try_geocoder_error']),
+            len(unsual_report['next_try_geocoder_none']),
+        )
+        self.logger.info(report_str)
         self.logger.info(
             "These are all the addresses with more than one location:")
         for i, (address, locations) in \
-                enumerate(report['similar_locations'].items(), start=1):
+                enumerate(unsual_report['similar_locations'].items(), start=1):
             self.logger.info(
                 "#{}. Address '{}' --> {} locations {}".format(
                     i, address, len(locations), locations))
@@ -636,9 +777,17 @@ class JobLocationsAnalyzer(Analyzer):
                 os.path.expanduser(
                     self.main_cfg['data_filepaths']['cache_loc_mappings']),
                 self.locations_mappings)
-        # TODO: is `cur_loc_mappings` necessary to return?
-        return cur_adrs_data, cur_loc_mappings
+        return addresses_data, valid_locations
 
+    @staticmethod
+    def _get_topk_addresses(addresses_data, topk=10):
+        top_addresses = sorted(addresses_data.items(),
+                               key=lambda x: x[1]['count'],
+                               reverse=True)[:topk]
+        return [(addr[0], addr[1]['count']) for addr in top_addresses]
+
+    # `list_countries_alpha2` is a list of tuple where tuple[0] is the country
+    # name and tuple[1] is the count of the country
     def _list_country_alpha2_to_country_name(self, list_countries_alpha2):
         # Convert country names' alpha2 to their full country names
         # TODO: is it better to have another column with the full country
@@ -659,6 +808,50 @@ class JobLocationsAnalyzer(Analyzer):
                     continue
             list_countries_fullnames.append((country_name, count))
         return list_countries_fullnames
+
+    # `job_post_ids` is a list of ids
+    def _get_min_max_published_dates(self, job_post_ids):
+        job_post_ids = convert_list_to_str(job_post_ids)
+        sql = "SELECT date_posted FROM job_posts WHERE id in ({}) ORDER BY " \
+              "date_posted ASC".format(job_post_ids)
+        results = self.db_session.execute(sql).fetchall()
+        return results[0][0], results[-1][0]
+
+    def _complete_report(self):
+        # Update report for all
+        keys_and_funcs = [
+         ('europe', 'countries', 3, None, None),
+         ('usa', 'us_states', 2, self._get_us_states, self.us_states.get),
+         ('world', 'countries', 3, self._get_all_locations, self._get_country_name)]
+        for k1, k2, k3, fnc1, fnc2 in keys_and_funcs:
+            # Add the publishing dates for barh
+            min_date, max_date = self._get_min_max_published_dates(
+                self.report[k1]['barh']['job_post_ids'])
+            self.report[k1]['barh']['published_dates'] = [min_date, max_date]
+            # Update the `map` field
+            if k1 != 'europe' and not self.report[k1]['map']['top_10_addresses']:
+                addresses_data, valid_locations = \
+                    self._get_locations_geo_coords(
+                        locations=fnc1(),
+                        fallbacks=['region+country', 'country'])
+                valid_locations = np.array(valid_locations)
+                unique_job_post_ids = np.unique(
+                    valid_locations[:, 0]).tolist()
+                self.report[k1]['map']['top_10_addresses'] = \
+                    self._get_topk_addresses(addresses_data)
+                self.report[k1]['map']['number_of_job_posts'] = \
+                    len(unique_job_post_ids)
+                self.report[k1]['map']['job_posts_ids'] = unique_job_post_ids
+                locations_list = [(i[0], i[k3]) for i in valid_locations]
+                results, list_ids, duplicates = self._count_locations(
+                    locations_list=locations_list,
+                    converter=fnc2)
+                self.report[k1]['map']['number_of_{}'.format(k2)] = len(results)
+                self.report[k1]['map']['top_10_{}'.format(k2)] = results[:10]
+                min_date, max_date = self._get_min_max_published_dates(
+                    unique_job_post_ids)
+                self.report[k1]['map']['published_dates'] = [min_date, max_date]
+                self.report[k1]['map']['duplicates'] = duplicates
 
 
 # Build location string from list of strings (city, region, country)

@@ -282,13 +282,13 @@ class JobSalariesAnalyzer(Analyzer):
 
     def _select_europe(self, job_post_ids):
         """
-        Returns all European countries with the specified `job_post_id`s. A list
-        of tuples is returned where a tuple is of the form (job_post_id, name).
+        Returns all European countries with the specified `job_post_ids`. A list
+        of tuples is returned where a tuple is of the form (job_post_id, country).
 
         :return: list of tuples of the form (job_post_id, country)
         """
-        sql = "SELECT job_post_id, country FROM job_locations WHERE job_post_id " \
-              "in ({}) and country in ({})".format(
+        sql = "SELECT job_post_id, country FROM job_locations WHERE" \
+              " job_post_id in ({}) and country in ({})".format(
                 job_post_ids, self._get_european_countries_as_str())
         return self.db_session.execute(sql).fetchall()
 

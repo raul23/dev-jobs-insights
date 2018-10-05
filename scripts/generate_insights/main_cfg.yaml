@@ -55,7 +55,7 @@ industries:
   # TODO: add fontweight='bold' option
   barh_chart_industries:
     display_graph: False
-    save_graph: True
+    save_graph: False
     fname: barh_industries.png
     # Add text (number of job posts) to the right of each bar
     add_text_right_bar: True
@@ -92,9 +92,11 @@ job_benefits:
 #       JOB LOCATIONS
 #=============================
 job_locations:
-  run_analysis: False
+  run_analysis: True
   # Number of seconds to wait between two requests to the geocoding service
   wait_time: 0.001
+  save_report: True
+  report_filename: job_locations_report.json
   # TODO: Add these keys: europe, usa, world
   # Then within each key, add the corresponding bar/pie chart+map
   #=============================
@@ -158,7 +160,7 @@ job_locations:
   # TODO: add plt.tight_layout() to map_usa
   map_usa:
     display_graph: False
-    save_graph: True
+    save_graph: False
     fname: map_usa.png
     draw_parallels: False
     draw_meridians: False
@@ -192,7 +194,7 @@ job_locations:
       marker_scale: 2
   map_world:
     display_graph: False
-    save_graph:  True
+    save_graph:  False
     fname: map_world.png
     # TODO: drawing parallels and meridians disabled
     draw_parallels: True
@@ -250,7 +252,7 @@ job_posts:
 #       JOB SALARIES
 #=============================
 job_salaries:
-  run_analysis: True
+  run_analysis: False
   salary_currency: USD
   salary_thresholds:
     # Thresholds for removing salary outliers, i.e. salaries in the range

@@ -10,12 +10,23 @@ class IndustriesAnalyzer(Analyzer):
     def __init__(self, analysis_type, conn, db_session, main_cfg, logging_cfg):
         # Industries stats to compute
         self.stats_names = ["sorted_industries_count"]
+        self.report = {
+            'barh': {
+                'number_of_job_posts': None,
+                'number_of_countries': None,
+                'published_dates': [],
+                'top_10_countries': [],
+                'job_posts_ids': [],
+                'duplicates': [],
+            }
+        }
         super().__init__(analysis_type,
                          conn,
                          db_session,
                          main_cfg,
                          logging_cfg,
                          self.stats_names,
+                         self.report,
                          __name__,
                          __file__,
                          os.getcwd())

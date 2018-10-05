@@ -4,14 +4,15 @@ import ipdb
 import numpy as np
 from pycountry_convert import country_alpha2_to_continent_code, map_countries
 # Own modules
-from utility.genutil import convert_list_to_str, dump_pickle, load_json, load_pickle
+from utility.genutil import convert_list_to_str, dump_json, dump_pickle, \
+    load_json, load_pickle
 from utility.logging_boilerplate import LoggingBoilerplate
 
 
 class Analyzer:
     # `stats_names` must be a list of names of stats to compute
     def __init__(self, analysis_type, conn, db_session, main_cfg, logging_cfg,
-                 stats_names, module_name, module_file, cwd):
+                 stats_names, report, module_name, module_file, cwd):
         self.analysis_type = analysis_type
         # Connection to SQLite db
         self.conn = conn
@@ -20,6 +21,7 @@ class Analyzer:
         self.logging_cfg = logging_cfg
         # Stats to compute
         self.stats_names = stats_names
+        self.report = report
         self.stats = {}
         self.reset_stats()
         lb = LoggingBoilerplate(module_name,
@@ -118,14 +120,14 @@ class Analyzer:
         else:
             dict_ = default
         try:
-            self.logger.info("Loading the dictionary from '{}'".format(filepath))
+            self.logger.info("Loading the dictionary '{}'".format(filepath))
             dict_ = load_pickle(filepath)
         except FileNotFoundError as e:
             self.logger.exception(e)
-            self.logger.warning("The dictionary '{}' will be initialized to {}".format(
+            self.logger.warning("The dictionary will be initialized to {}".format(
                 filepath, dict_))
         else:
-            self.logger.debug("Dictionary '{}' loaded!".format(filepath))
+            self.logger.debug("Dictionary loaded!".format(filepath))
         finally:
             return dict_
 
@@ -139,6 +141,17 @@ class Analyzer:
     def _generate_scatter_plot(self, x, y, text, scatter_config):
         raise NotImplementedError
     """
+
+    def _save_report(self, filename):
+        filepath = os.path.join(self.main_cfg['saving_dirpath'], filename)
+        try:
+            self.logger.info("The report will be saved in '{}'".format(filepath))
+            dump_json(filepath, self.report, sort_keys=False)
+        except OSError as e:
+            self.logger.exception(e)
+            self.logger.error("The report couldn't be saved")
+        else:
+            self.logger.info("Report saved!")
 
     @staticmethod
     # `labels` is the input list of labels and a list is returned with shorter
