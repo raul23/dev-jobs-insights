@@ -156,7 +156,7 @@ chart **"Top 20 most popular industries"**:
         <td align="center">248</td>
     </tr>
     <tr>
-        <td align="center"><b>Number of jobs posts with at least an industry</b></td>
+        <td align="center"><b>Number of jobs posts with at least one industry</b></td>
         <td align="center">820</td>
     </tr>
     <tr>
