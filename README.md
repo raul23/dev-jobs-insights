@@ -152,10 +152,6 @@ The next table shows stats about the data used for generating the previous bar
 chart **"Top 20 most popular industries"**:  
 <table>
     <tr>
-        <td align="center"><b>Number of job posts</b></td>
-        <td align="center">----</td>
-    </tr>
-    <tr>
         <td align="center"><b>Total number of industries</b></td>
         <td align="center">----</td>
     </tr>
@@ -173,10 +169,6 @@ chart **"Top 20 most popular industries"**:
 The next table shows stats about the data used for generating the previous bar
 chart **"Top 20 most popular technologies"**:  
 <table>
-    <tr>
-        <td align="center"><b>Number of job posts</b></td>
-        <td align="center">----</td>
-    </tr>
     <tr>
         <td align="center"><b>Total number of technologies</b></td>
         <td align="center">----</td>
