@@ -152,11 +152,11 @@ The next table shows stats about the data used for generating the previous bar
 chart **"Top 20 most popular industries"**:  
 <table>
     <tr>
-        <td align="center"><b>Total number of industries</b></td>
+        <td align="center"><b>Total number of different industries</b></td>
         <td align="center">248</td>
     </tr>
     <tr>
-        <td align="center"><b>Number of jobs posts with at least one industry</b></td>
+        <td align="center"><b>Number of jobs posts with at least one industry tag</b></td>
         <td align="center">820</td>
     </tr>
     <tr>
@@ -174,8 +174,12 @@ The next table shows stats about the data used for generating the previous bar
 chart **"Top 20 most popular technologies"**:  
 <table>
     <tr>
-        <td align="center"><b>Total number of technologies</b></td>
-        <td align="center">----</td>
+        <td align="center"><b>Total number of different technologies</b></td>
+        <td align="center">568</td>
+    </tr>
+    <tr>
+        <td align="center"><b>Number of jobs posts with at least one technology tag</b></td>
+        <td align="center">999</td>
     </tr>
     <tr>
         <td align="center"><b>Published dates</b></td>
