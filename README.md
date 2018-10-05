@@ -79,17 +79,20 @@ The next table shows stats about the data used for generating the world map:
     <tr>
         <td align="center"><b>Top 5 countries (based on number of job posts)</b></td>
         <td align="center">
-          United States (377) <br/>Germany (241) <br/>United Kingdom (84) <br/>
-          Netherlands (43) <br/> Switzerland, (34)</td>
+          United States <b>(377)</b> <br/>
+          Germany <b>(241)</b> <br/>
+          United Kingdom <b>(84)</b> <br/>
+          Netherlands <b>(43)</b> <br/>
+          Switzerland <b>(34)</b></td>
     </tr>
     <tr>
         <td align="center"><b>Top 5 job locations (based on number of job posts)</b></td>
         <td align="center">
-        Berlin, 10117, Deutschland (58) <br/>
-        London, Greater London, England, SW1A 2DU, UK (46) <br/>
-        NYC, New York, USA (33) <br/>
-        Hamburg, 20095, Deutschland (31) <br/>
-        SF, California, USA (26)</td>
+        Berlin, 10117, Deutschland <b>(58)</b> <br/>
+        London, Greater London, England, SW1A 2DU, UK <b>(46)</b> <br/>
+        NYC, New York, USA <b>(33)</b> <br/>
+        Hamburg, 20095, Deutschland <b>(31)</b> <br/>
+        SF, California, USA <b>(26)</td>
     </tr>
 </table>
 
@@ -124,16 +127,20 @@ The next table shows stats about the data used for generating the USA map:
     <tr>
         <td align="center"><b>Top 5 US states (based on number of job posts)</b></td>
         <td align="center">
-        California (73) <br/> New York (40) <br/> Pennsylvania (32) <br/> Massachusetts (25) <br/> New Jersey (23)</td>
+        California <b>(73)</b> <br/>
+        New York <b>(40)</b> <br/>
+        Pennsylvania <b>(32)</b> <br/>
+        Massachusetts <b>(25)</b> <br/>
+        New Jersey <b>(23)</b></td>
     </tr>
     <tr>
         <td align="center"><b>Top 5 job locations (based on number of job posts)</b></td>
         <td align="center">
-        NYC, New York, USA (33) <br/>
-        SF, California, USA (26) <br/>
-        Philadelphia, Philadelphia County, Pennsylvania, USA (22) <br>
-        Jersey City, Hudson County, New Jersey, USA (13) <br/>
-        Columbus, Franklin County, Ohio, USA (12)</td>
+        NYC, New York, USA <b>(33)</b> <br/>
+        SF, California, USA <b>(26)</b> <br/>
+        Philadelphia, Philadelphia County, Pennsylvania, USA <b>(22)</b> <br>
+        Jersey City, Hudson County, New Jersey, USA <b>(13)</b> <br/>
+        Columbus, Franklin County, Ohio, USA <b>(12)</b></td>
     </tr>
 </table>
 
