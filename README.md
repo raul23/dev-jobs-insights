@@ -195,7 +195,7 @@ The next table shows stats about the data used for generating the previous histo
 <table>
     <tr>
         <td align="center"><b>Number of job posts</b></td>
-        <td align="center">----</td>
+        <td align="center">195</td>
     </tr>
     <tr>
         <td align="center"><b>Published dates</b></td>
