@@ -167,7 +167,7 @@ chart **"Top 20 most popular industries"**:
 
 <br/>
 
-<p align="center"><img src="https://github.com/raul23/images/blob/master/barh_skills.pngRL"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/barh_skills.png"></p>
 <p align="center"><b>Go Python!</b></p>
 
 The next table shows stats about the data used for generating the previous bar
