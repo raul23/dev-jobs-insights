@@ -59,7 +59,7 @@ I am using this small set for testing the whole pipeline for generating the
 graphs, maps and reports.
 
 ## Map of the distribution of job posts around the world
-<p align="center"><img src="https://bit.ly/2OvqmLG"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/map_world.png"/></p>
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the world map:   
@@ -107,7 +107,7 @@ location consists of three components: city, region (aka state or province), and
 country.
 
 ## Map of the distribution of job posts in the USA
-<p align="center"><img src="https://bit.ly/2OEA7Y2"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/map_usa.png"/></p>
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the USA map:   
@@ -145,7 +145,7 @@ The next table shows stats about the data used for generating the USA map:
 </table>
 
 ## Top 20 most popular industries and technologies
-<p align="center"><img src="https://bit.ly/2P87UG2"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/barh_industries.png"/></p>
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the previous bar
@@ -167,7 +167,7 @@ chart **"Top 20 most popular industries"**:
 
 <br/>
 
-<p align="center"><img src="https://bit.ly/2QsCMRL"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/barh_skills.pngRL"/></p>
 <p align="center"><b>Go Python!</b></p>
 
 The next table shows stats about the data used for generating the previous bar
@@ -188,7 +188,7 @@ chart **"Top 20 most popular technologies"**:
 </table>
 
 ## Histogram: Mid-range salaries among Stack Overflow developer job posts
-<p align="center"><img src="https://bit.ly/2xYAbs2"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/hist_salaries.png"/></p>
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the previous histogram:
