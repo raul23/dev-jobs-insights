@@ -28,12 +28,12 @@ more graphs (interactive scatter plots) and explanations about how the various
 scripts work for ultimately generating the graphs and maps.
 
 ## Sources of data
-The job data comes from **Stack Overflow**'s developer jobs
+The jobs data comes from **Stack Overflow**'s developer jobs
 [website](https://stackoverflow.com/jobs) and
 [RSS feed](https://stackoverflow.com/jobs/feed). Eventually, other sources of
-job data from other sites will also be integrated.
+jobs data from other sites will also be integrated.
 
-Here is a summary of the job data:  
+Here is a summary of the jobs data:  
 <table>
     <tr>
         <td align="center"><b>Sources of data</b></td>
@@ -54,7 +54,7 @@ Here is a summary of the job data:
 </table>
 
 **NOTE:** 1000 is a small sample for extracting solid insights about the
-developer job market but eventually more job data will get integrated. For now
+developer job market but eventually more jobs data will get integrated. For now
 I am using this small set for testing the whole pipeline for generating the
 graphs, maps and reports.
 
@@ -211,8 +211,8 @@ I converted the range of salaries into a mid-range salary, e.g. €50k - 65k -->
 €57.5
 
 ## TODOs
-- Display job data summary directly on each graph or map
-- Integrate more job data from Stack Overflow
+- Display jobs data summary directly on each graph or map
+- Integrate more jobs data from Stack Overflow
 - Generate map plots with plot.ly graphing library so the dots can be clicked on and be shown information such
 as the number of job posts and the min and max salaries for a particular job location
 - Generate bar charts as subplots to group them in the same figure
@@ -220,6 +220,6 @@ as the number of job posts and the min and max salaries for a particular job loc
 
 ## Roadmap
 - Fully automate the whole pipeline of generating the graphs, maps, and reports
-- Integrate more job data from other job sites
+- Integrate more jobs data from other jobs sites
 - Package the pipeline (except the Web scraper component) as a Docker container
 - Use the whole pipeline for analyzing other kind of sites such as news and social network sites
