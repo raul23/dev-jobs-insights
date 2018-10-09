@@ -1,4 +1,4 @@
-# Data analysis of developer job posts from Stack Overflow [WORK-IN-PROGRESS]
+# Data analysis of developer job posts from Stack Overflow
 
 <!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
