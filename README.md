@@ -211,6 +211,15 @@ I converted the range of salaries into a mid-range salary, e.g. €50k - 65k -->
 €57.5
 
 ## TODOs
-- Integrate more job data from Stack Overflow and other sites
-- Fully automate the whole pipeline of generating the graphs, maps, and reports
 - Display job data summary directly on each graph or map
+- Integrate more job data from Stack Overflow
+- Generate map plots with plot.ly graphing library so the dots can be clicked on and be shown information such
+as the number of job posts and the min and max salaries for a particular job location
+- Generate bar charts as subplots to group them in the same figure
+- Enable interactive graphs for mobile devices; right now they don't show correctly at all
+
+## Roadmap
+- Fully automate the whole pipeline of generating the graphs, maps, and reports
+- Integrate more job data from other job sites
+- Package the pipeline (except the Web scraper component) as a Docker container
+- Use the whole pipeline for analyzing other kind of sites such as news and social network sites
