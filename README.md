@@ -77,16 +77,16 @@ The next table shows stats about the data used for generating the world map:
         <td align="center">2018-09-18 to 2018-09-28</td>
     </tr>
     <tr>
-        <td align="center"><b>Top 5 countries (based on number of job posts)</b></td>
+        <td align="center"><b>Top 5 countries (based on number of occurrences in job posts)</b></td>
         <td align="center">
-          United States <b>(377)</b> <br/>
+          United States <b>(378)</b> <br/>
           Germany <b>(241)</b> <br/>
           United Kingdom <b>(84)</b> <br/>
           Netherlands <b>(43)</b> <br/>
           Switzerland <b>(34)</b></td>
     </tr>
     <tr>
-        <td align="center"><b>Top 5 job locations (based on number of job posts)</b></td>
+        <td align="center"><b>Top 5 job locations (based on number of occurrences in job posts)</b></td>
         <td align="center">
         Berlin, 10117, Deutschland <b>(58)</b> <br/>
         London, Greater London, England, SW1A 2DU, UK <b>(46)</b> <br/>
@@ -125,7 +125,7 @@ The next table shows stats about the data used for generating the USA map:
         <td align="center">2018-09-18 to 2018-09-28</td>
     </tr>
     <tr>
-        <td align="center"><b>Top 5 US states (based on number of job posts)</b></td>
+        <td align="center"><b>Top 5 US states (based on number of occurrences in job posts)</b></td>
         <td align="center">
         California <b>(73)</b> <br/>
         New York <b>(40)</b> <br/>
@@ -134,7 +134,7 @@ The next table shows stats about the data used for generating the USA map:
         New Jersey <b>(23)</b></td>
     </tr>
     <tr>
-        <td align="center"><b>Top 5 US job locations (based on number of job posts)</b></td>
+        <td align="center"><b>Top 5 US job locations (based on number of occurrences in job posts)</b></td>
         <td align="center">
         NYC, New York, USA <b>(33)</b> <br/>
         SF, California, USA <b>(26)</b> <br/>
