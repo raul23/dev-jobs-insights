@@ -59,7 +59,7 @@ I am using this small set for testing the whole pipeline for generating the
 graphs, maps and reports.
 
 ## Map of the distribution of job posts around the world
-<p align="center"><img src="https://github.com/raul23/images/blob/master/map_world.png"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/dev-jobs-insights/map_world.png"/></p>
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the world map:   
