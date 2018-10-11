@@ -210,7 +210,7 @@ job_locations:
     fill_continents: True
     fig_width: 12.7
     fig_height: 8
-    title: Distribution of Stack Overflow developer job posts in the world
+    title: Distribution of Stack Overflow developer job posts around the world
     # TODO: annotation is disabled
     annotation:
       topk: 5
@@ -488,7 +488,7 @@ job_salaries:
       scatter:
         mode: markers
       layout:
-        title: Average mid-range salaries in the World @ stackoverflow.com/jobs
+        title: Average mid-range salaries around the World @ stackoverflow.com/jobs
         hovermode: closest
         yaxis:
           title: Number of job posts
