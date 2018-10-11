@@ -1,4 +1,4 @@
-# Data analysis of developer job posts from Stack Overflow [WORK-IN-PROGRESS]
+# Data analysis of developer job posts from Stack Overflow
 
 <!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
@@ -28,12 +28,12 @@ more graphs (interactive scatter plots) and explanations about how the various
 scripts work for ultimately generating the graphs and maps.
 
 ## Sources of data
-The job data comes from **Stack Overflow**'s developer jobs
+The jobs data comes from **Stack Overflow**'s developer jobs
 [website](https://stackoverflow.com/jobs) and
 [RSS feed](https://stackoverflow.com/jobs/feed). Eventually, other sources of
-job data from other sites will also be integrated.
+jobs data from other sites will also be integrated.
 
-Here is a summary of the job data:  
+Here is a summary of the jobs data:  
 <table>
     <tr>
         <td align="center"><b>Sources of data</b></td>
@@ -54,12 +54,12 @@ Here is a summary of the job data:
 </table>
 
 **NOTE:** 1000 is a small sample for extracting solid insights about the
-developer job market but eventually more job data will get integrated. For now
+developer job market but eventually more jobs data will get integrated. For now
 I am using this small set for testing the whole pipeline for generating the
 graphs, maps and reports.
 
 ## Map of the distribution of job posts around the world
-<p align="center"><img src="https://bit.ly/2OvqmLG"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/dev-jobs-insights/map_world.png"/></p>
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the world map:   
@@ -77,16 +77,16 @@ The next table shows stats about the data used for generating the world map:
         <td align="center">2018-09-18 to 2018-09-28</td>
     </tr>
     <tr>
-        <td align="center"><b>Top 5 countries (based on number of job posts)</b></td>
+        <td align="center"><b>Top 5 countries (based on number of occurrences in job posts)</b></td>
         <td align="center">
-          United States <b>(377)</b> <br/>
+          United States <b>(378)</b> <br/>
           Germany <b>(241)</b> <br/>
           United Kingdom <b>(84)</b> <br/>
           Netherlands <b>(43)</b> <br/>
           Switzerland <b>(34)</b></td>
     </tr>
     <tr>
-        <td align="center"><b>Top 5 job locations (based on number of job posts)</b></td>
+        <td align="center"><b>Top 5 job locations (based on number of occurrences in job posts)</b></td>
         <td align="center">
         Berlin, 10117, Deutschland <b>(58)</b> <br/>
         London, Greater London, England, SW1A 2DU, UK <b>(46)</b> <br/>
@@ -107,7 +107,7 @@ location consists of three components: city, region (aka state or province), and
 country.
 
 ## Map of the distribution of job posts in the USA
-<p align="center"><img src="https://bit.ly/2OEA7Y2"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/dev-jobs-insights/map_usa.png"/></p>
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the USA map:   
@@ -125,7 +125,7 @@ The next table shows stats about the data used for generating the USA map:
         <td align="center">2018-09-18 to 2018-09-28</td>
     </tr>
     <tr>
-        <td align="center"><b>Top 5 US states (based on number of job posts)</b></td>
+        <td align="center"><b>Top 5 US states (based on number of occurrences in job posts)</b></td>
         <td align="center">
         California <b>(73)</b> <br/>
         New York <b>(40)</b> <br/>
@@ -134,7 +134,7 @@ The next table shows stats about the data used for generating the USA map:
         New Jersey <b>(23)</b></td>
     </tr>
     <tr>
-        <td align="center"><b>Top 5 US job locations (based on number of job posts)</b></td>
+        <td align="center"><b>Top 5 US job locations (based on number of occurrences in job posts)</b></td>
         <td align="center">
         NYC, New York, USA <b>(33)</b> <br/>
         SF, California, USA <b>(26)</b> <br/>
@@ -145,7 +145,7 @@ The next table shows stats about the data used for generating the USA map:
 </table>
 
 ## Top 20 most popular industries and technologies
-<p align="center"><img src="https://bit.ly/2P87UG2"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/dev-jobs-insights/barh_industries.png"/></p>
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the previous bar
@@ -167,7 +167,7 @@ chart **"Top 20 most popular industries"**:
 
 <br/>
 
-<p align="center"><img src="https://bit.ly/2QsCMRL"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/dev-jobs-insights/barh_skills.png"></p>
 <p align="center"><b>Go Python!</b></p>
 
 The next table shows stats about the data used for generating the previous bar
@@ -188,7 +188,7 @@ chart **"Top 20 most popular technologies"**:
 </table>
 
 ## Histogram: Mid-range salaries among Stack Overflow developer job posts
-<p align="center"><img src="https://bit.ly/2xYAbs2"/></p>
+<p align="center"><img src="https://github.com/raul23/images/blob/master/dev-jobs-insights/hist_salaries.png"/></p>
 <p align="center"></p>
 
 The next table shows stats about the data used for generating the previous histogram:
@@ -211,6 +211,15 @@ I converted the range of salaries into a mid-range salary, e.g. €50k - 65k -->
 €57.5
 
 ## TODOs
-- Integrate more job data from Stack Overflow and other sites
+- Display jobs data summary directly on each graph or map
+- Integrate more jobs data from Stack Overflow
+- Generate map plots with plot.ly graphing library so the dots can be clicked on and be shown information such
+as the number of job posts and the min and max salaries for a particular job location
+- Generate bar charts as subplots to group them in the same figure
+- Enable interactive graphs for mobile devices; right now they don't show correctly at all
+
+## Roadmap
 - Fully automate the whole pipeline of generating the graphs, maps, and reports
-- Display job data summary directly on each graph or map
+- Integrate more jobs data from other jobs sites
+- Package the pipeline (except the Web scraper component) as a Docker container
+- Use the whole pipeline for analyzing other kind of sites such as news and social network sites
