@@ -5,10 +5,9 @@ import geopy
 from geopy.geocoders import Nominatim
 import ipdb
 import numpy as np
-from pycountry_convert import country_alpha2_to_country_name
 # Own modules
 from .analyzer import Analyzer
-from utility.genutil import add_plural, convert_list_to_str, dump_json
+from utility.genutil import add_plural
 
 
 class JobLocationsAnalyzer(Analyzer):
@@ -20,62 +19,106 @@ class JobLocationsAnalyzer(Analyzer):
         self.stats_names = [
             "sorted_all_countries_count", "sorted_eu_countries_count",
             "sorted_us_states_count"]
+        # TODO: for the `barh` field, all the sub-fields are based on the whole
+        # data not only the topk used for drawing the bar chart. There should be
+        # an `overall` field that should store those values and `barh` should only
+        # store values actually used for drawing the bar chart. See also other
+        # modules that use the same structure for the report `dict`.
         self.report = {
             'europe': {
                 'barh': {
-                    'number_of_job_posts': None,
-                    'number_of_countries': None,
-                    'published_dates': [],
-                    'top_10_countries': [],
-                    'job_posts_ids': [],
-                    'duplicates': [],
+                    'duplicates': [],  #
+                    'items': {
+                        'labels': ['country', 'count_desc'],
+                        'data': [],
+                        'number_of_items': None,
+                        'sum_of_counts': None
+                    },
+                    'job_posts_ids': [],  #
+                    'number_of_job_posts': None,  #
+                    'published_dates': [],  #
+                    'skipped': []
                 },
                 'map': {
-                    'number_of_job_posts': None,
-                    'number_of_countries': None,
-                    'published_dates': [],
-                    'top_10_countries': [],
-                    'top_10_addresses': [],
-                    'job_posts_ids': [],
+                    'items1': {
+                        'labels': ['address', 'count_desc'],
+                        'data': [],
+                        'number_of_items': None,
+                        'sum_of_counts': None
+                    },
+                    'items2': {
+                        'labels': ['country', 'count_desc'],
+                        'data': [],
+                        'number_of_items': None,
+                        'sum_of_counts': None
+                    },
                     'duplicates': [],
+                    'job_posts_ids': [],
+                    'number_of_job_posts': None,
+                    'published_dates': [],
                 },
             },
             'usa': {
                 'barh': {
-                    'number_of_job_posts': None,
-                    'number_of_us_states': None,
-                    'published_dates': [],
-                    'top_10_us_states': [],
-                    'job_posts_ids': [],
-                    'duplicates': [],
+                    'duplicates': [],  #
+                    'items': {
+                        'labels': ['us_state', 'count_desc'],
+                        'data': [],
+                        'number_of_items': None,
+                        'sum_of_counts': None
+                    },
+                    'job_posts_ids': [],  #
+                    'number_of_job_posts': None,  #
+                    'published_dates': [],  #
+                    'skipped': []
                 },
                 'map': {
-                    'number_of_job_posts': None,
-                    'number_of_us_states': None,
-                    'published_dates': [],
-                    'top_10_us_states': [],
-                    'top_10_addresses': [],
-                    'job_posts_ids': [],
+                    'items1': {
+                        'labels': ['address', 'count_desc'],
+                        'data': [],
+                        'number_of_items': None,
+                        'sum_of_counts': None
+                    },
+                    'items2': {
+                        'labels': ['us_state', 'count_desc'],
+                        'data': [],
+                        'number_of_items': None,
+                        'sum_of_counts': None
+                    },
                     'duplicates': [],
+                    'job_posts_ids': [],
+                    'number_of_job_posts': None,
+                    'published_dates': [],
                 },
             },
             'world': {
                 'barh': {
-                    'number_of_job_posts': None,
-                    'number_of_countries': None,
-                    'published_dates': [],
-                    'top_10_countries': [],
-                    'job_posts_ids': [],
-                    'duplicates': [],
+                    'duplicates': [],  #
+                    'items': {
+                        'labels': ['country', 'count_desc'],
+                        'data': [],
+                        'number_of_items': None,
+                    },
+                    'job_posts_ids': [],  #
+                    'number_of_job_posts': None,  #
+                    'published_dates': [],  #
+                    'skipped': []
                 },
                 'map': {
-                    'number_of_job_posts': None,
-                    'number_of_countries': None,
-                    'published_dates': [],
-                    'top_10_countries': [],
-                    'top_10_addresses': [],
-                    'job_posts_ids': [],
+                    'items1': {
+                        'labels': ['address', 'count_desc'],
+                        'data': [],
+                        'number_of_items': None,
+                    },
+                    'items2': {
+                        'labels': ['country', 'count_desc'],
+                        'data': [],
+                        'number_of_items': None,
+                    },
                     'duplicates': [],
+                    'job_posts_ids': [],
+                    'number_of_job_posts': None,
+                    'published_dates': [],
                 },
             }
         }
@@ -100,6 +143,7 @@ class JobLocationsAnalyzer(Analyzer):
         # If the JSON is not found, an exception is triggered
         self.us_states = self._load_json(os.path.expanduser(
             self.main_cfg['data_filepaths']['us_states']))
+        self.cache_addresses = {'europe': None, 'usa': None, 'world': None}
 
     def run_analysis(self):
         # Reset all locations stats to be computed
@@ -122,11 +166,6 @@ class JobLocationsAnalyzer(Analyzer):
         self.logger.debug(
             "There are {} occurrences of european countries in the job "
             "posts".format(sum(j for i, j in eu_countries_count)))
-        # Update report for Europe
-        self.report['europe']['barh']['number_of_countries'] = \
-            len(eu_countries_count)
-        self.report['europe']['barh']['top_10_countries'] = \
-            eu_countries_count[:10]
         self._generate_barh_chart(
             barh_type='barh_chart_europe',
             sorted_topic_count=np.array(self.stats['sorted_eu_countries_count']),
@@ -155,9 +194,6 @@ class JobLocationsAnalyzer(Analyzer):
             assert len(indices) == 2, "There should be 2 indices"
             self.logger.debug("There are {} 'None' US state".format(
                 np.array(us_states_count)[indices[0]][0][1]))
-        # Update report for USA
-        self.report['usa']['barh']['number_of_us_states'] = len(us_states_count)
-        self.report['usa']['barh']['top_10_us_states'] = us_states_count[:10]
         self._generate_barh_chart(
             barh_type='barh_chart_usa',
             sorted_topic_count=np.array(self.stats['sorted_us_states_count']),
@@ -179,9 +215,6 @@ class JobLocationsAnalyzer(Analyzer):
         self.logger.debug(
             "There are {} occurrences of countries in the job posts".format(
                 sum(j for i, j in countries_count)))
-        # Update report for the World
-        self.report['world']['barh']['number_of_countries'] = len(countries_count)
-        self.report['world']['barh']['top_10_countries'] = countries_count[:10]
         self._generate_barh_chart(
             barh_type='barh_chart_world',
             sorted_topic_count=np.array(self.stats["sorted_all_countries_count"]),
@@ -204,52 +237,9 @@ class JobLocationsAnalyzer(Analyzer):
         # =====================================================================
         #                               Report
         # =====================================================================
-        self._complete_report()
+        self._update_all_map_reports()
         if self.main_cfg['job_locations']['save_report']:
             self._save_report(self.main_cfg['job_locations']['report_filename'])
-
-    # `locations_list` is a list of tuples where tuple[0] is the `job_post_id` and
-    # tuple[1] is the location's short name
-    # `converter` is a method that converts the location's short name to its full
-    # name
-    def _count_locations(self, locations_list, converter=None, ignore_none=False):
-        locations_count = {}
-        set_ids = set()
-        duplicates = []
-        for job_post_id, loc in locations_list:
-            if loc is None and ignore_none:
-                self.logger.debug("The 'None' location will be skipped")
-                continue
-            if converter and loc is not None:
-                    try:
-                        self.logger.debug(
-                            "Converting '{}' to its fullname".format(loc))
-                        loc_fullname = converter(loc)
-                    except KeyError as e:
-                        self.logger.exception(e)
-                        self.logger.critical("No fullname found for '{}'".format(loc))
-                        self.logger.warning(
-                            "The location '{}' will be skipped".format(loc))
-                        continue
-                    else:
-                        if loc_fullname is None:
-                            self.logger.critical("No fullname found for '{}'".format(loc))
-                            self.logger.warning(
-                                "The location '{}' will be skipped".format(loc))
-                            continue
-                        self.logger.debug(
-                            "Converted '{}' to '{}'".format(loc, loc_fullname))
-                        loc = loc_fullname
-            locations_count.setdefault(loc, 0)
-            if job_post_id not in set_ids:
-                locations_count[loc] += 1
-                set_ids.add(job_post_id)
-            else:
-                self.logger.warning("Duplicate job_post_id '{}'".format(job_post_id))
-                duplicates.append(job_post_id)
-        results = list(locations_count.items())
-        results.sort(key=lambda tup: tup[1], reverse=True)
-        return results, list(set_ids), duplicates
 
     def _count_all_countries(self, ignore_none=False, use_fullnames=False):
         """
@@ -265,17 +255,20 @@ class JobLocationsAnalyzer(Analyzer):
         results = self.db_session.execute(sql).fetchall()
         if use_fullnames:
             converter = self._get_country_name
-            self.logger.debug("Converter used: {}".format(converter))
         else:
             converter = None
-        results, list_ids, duplicates = self._count_locations(
-            locations_list=results,
+        results, list_ids, duplicates, skipped = self._count_items(
+            list_items=results,
             converter=converter,
-            ignore_none=ignore_none)
+            ignore_none=ignore_none,
+            ignore_duplicates=True)
         # Update report for World
-        self.report['world']['barh']['number_of_job_posts'] = len(list_ids)
-        self.report['world']['barh']['job_post_ids'] = list_ids
-        self.report['world']['barh']['duplicates'] = duplicates
+        self._update_graph_report(
+            graph_report=self.report['world']['barh'],
+            items=results,
+            job_post_ids=list_ids,
+            duplicates=duplicates,
+            skipped=skipped)
         return results
 
     # A country is counted only once for each job post
@@ -293,17 +286,20 @@ class JobLocationsAnalyzer(Analyzer):
         results = self.db_session.execute(sql).fetchall()
         if use_fullnames:
             converter = self._get_country_name
-            self.logger.debug("Converter used: {}".format(converter))
         else:
             converter = None
-        results, list_ids, duplicates = self._count_locations(
-            locations_list=results,
+        results, list_ids, duplicates, skipped = self._count_items(
+            list_items=results,
             converter=converter,
-            ignore_none=ignore_none)
+            ignore_none=ignore_none,
+            ignore_duplicates=True)
         # Update report for Europe
-        self.report['europe']['barh']['number_of_job_posts'] = len(list_ids)
-        self.report['europe']['barh']['job_post_ids'] = list_ids
-        self.report['europe']['barh']['duplicates'] = duplicates
+        self._update_graph_report(
+            graph_report=self.report['europe']['barh'],
+            items=results,
+            job_post_ids=list_ids,
+            duplicates=duplicates,
+            skipped=skipped)
         return results
 
     # A US state is counted only once for each job post
@@ -322,17 +318,20 @@ class JobLocationsAnalyzer(Analyzer):
         results = self.db_session.execute(sql).fetchall()
         if use_fullnames:
             converter = self.us_states.get
-            self.logger.debug("Converter used: {}".format(converter))
         else:
             converter = None
-        results, list_ids, duplicates = self._count_locations(
-            locations_list=results,
+        results, list_ids, duplicates, skipped = self._count_items(
+            list_items=results,
             converter=converter,
-            ignore_none=ignore_none)
+            ignore_none=ignore_none,
+            ignore_duplicates=True)
         # Update report for USA
-        self.report['usa']['barh']['number_of_job_posts'] = len(list_ids)
-        self.report['usa']['barh']['job_post_ids'] = list_ids
-        self.report['usa']['barh']['duplicates'] = duplicates
+        self._update_graph_report(
+            graph_report=self.report['usa']['barh'],
+            items=results,
+            job_post_ids=list_ids,
+            duplicates=duplicates,
+            skipped=skipped)
         return results
 
     def _generate_map_europe(self):
@@ -356,21 +355,19 @@ class JobLocationsAnalyzer(Analyzer):
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
         self.logger.info("loading module 'utility.graphutil' ...")
-        from utility.graphutil import draw_usa_map
+        from utility.graphutil import draw_map_usa
         self.logger.debug("finished loading module 'utility.graphutil'")
         self.logger.info("Generating map '{}' ...".format(map_type))
-        addresses_data, _ = self._get_locations_geo_coords(
+        addresses_data, valid_locations = self._get_locations_geo_coords(
             locations=self._get_us_states(),
             fallbacks=['region+country', 'country'])
-        # Update report on USA
-        self.report['usa']['map']['top_10_addresses'] = \
-            self._get_topk_addresses(addresses_data)
+        self.cache_addresses['usa'] = [addresses_data, valid_locations]
         shape_filepath = os.path.expanduser(
             self.main_cfg['data_filepaths']['shape'])
         # TODO: explain why reversed US states is used
         us_states_filepath = os.path.expanduser(
             self.main_cfg['data_filepaths']['reversed_us_states'])
-        draw_usa_map(
+        draw_map_usa(
             addresses_data=addresses_data,
             shape_filepath=shape_filepath,
             us_states_filepath=us_states_filepath,
@@ -396,18 +393,14 @@ class JobLocationsAnalyzer(Analyzer):
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
         self.logger.info("loading module 'utility.graphutil' ...")
-        from utility.graphutil import draw_world_map
+        from utility.graphutil import draw_map_world
         self.logger.debug("finished loading module 'utility.graphutil'")
         self.logger.info("Generating map '{}' ...".format(map_type))
-        addresses_data, _ = self._get_locations_geo_coords(
+        addresses_data, valid_locations = self._get_locations_geo_coords(
             locations=self._get_all_locations(),
             fallbacks=['region+country', 'country'])
-        ipdb.set_trace()
-        # TODO: add number of addresses
-        # Update report on World
-        self.report['world']['map']['top_10_addresses'] = \
-            self._get_topk_addresses(addresses_data)
-        draw_world_map(
+        self.cache_addresses['world'] = [addresses_data, valid_locations]
+        draw_map_world(
             addresses_data=addresses_data,
             title=map_cfg['title'],
             fig_width=map_cfg['fig_width'],
@@ -447,7 +440,7 @@ class JobLocationsAnalyzer(Analyzer):
               "job_locations{}".format(where)
         return self.db_session.execute(sql).fetchall()
 
-    def _get_us_states(self, ignore_no_office_location=True):
+    def _get_us_states(self):
         """
         Returns all US states. A list of tuples is returned where a tuple is of
         the form (job_post_id, city, region, country).
@@ -460,24 +453,17 @@ class JobLocationsAnalyzer(Analyzer):
         # `None` within the string since not all job locations have a city or a
         # region. If you find out how to to concatenate the three columns, then
         # `get_location()` won't be needed within `_get_locations_geo_coords()`
+        """
         if ignore_no_office_location:
             where = " and country!='No office location'"
             self.logger.debug(
                 "All locations with 'No office location' will be ignored")
         else:
             where = ""
+        """
         sql = "SELECT job_post_id, city, region, country FROM job_locations " \
-              "WHERE country='US'{}".format(where)
-        results = self.db_session.execute(sql).fetchall()
-        return results
-
-    @staticmethod
-    def _get_country_name(country_alpha2):
-        try:
-            country_name = country_alpha2_to_country_name(country_alpha2)
-        except KeyError as e:
-            raise KeyError(e)
-        return country_name
+              "WHERE country='US'"
+        return self.db_session.execute(sql).fetchall()
 
     def _get_geo_coords(self, geolocator, location):
         try:
@@ -572,7 +558,8 @@ class JobLocationsAnalyzer(Analyzer):
         valid_locations = []
         # Skipped locations stats
         # TODO: explain fields of dict
-        unsual_report = {'empty_locations': 0,
+        unsual_report = {'empty_locations': set(),
+                         'no_office_location': set(),
                          'already_added': [],
                          'similar_locations': {},
                          'first_try_geocoder_error': set(),
@@ -603,16 +590,26 @@ class JobLocationsAnalyzer(Analyzer):
             location = build_location([city, region, country])
             self.logger.info("Location #{}: {} (job_post_id={})".format(
                               i, location, job_post_id))
+            # TODO: remove hack!!
+            if city == 'ód':
+                self.logger.warning("City 'ód' ignored!")
+                continue
             if not location:
                 # We ignore the case where the location is empty
                 # NOTE: This case shouldn't happen because all job locations
                 # have at least a country
-                self.logger.warning("The location is empty")
-                unsual_report['empty_locations'] += 1
+                self.logger.warning(
+                    "The location is empty for '{}'".format(job_post_id))
+                unsual_report['empty_locations'].add(job_post_id)
+                continue
+            if location == "No office location":
+                self.logger.warning(
+                    "'No office location' detected for '{}'".format(job_post_id))
+                unsual_report['no_office_location'].add(job_post_id)
                 continue
             elif location in loc_mappings:
                 # Location already added
-                unsual_report['already_added'].append(location)
+                unsual_report['already_added'].append((job_post_id, location))
                 # Update count of this locations's address
                 address = self.locations_mappings.get(location)
                 addresses_data[address]['count'] += 1
@@ -732,8 +729,9 @@ class JobLocationsAnalyzer(Analyzer):
 # of total locations: {}
 # of valid locations: {}
 # of successfully added addresses: {}
-# of empty locations: {}
 # of duplicate locations: {}
+# of empty locations: {}
+# of 'No office location': {}
 # of distinct locations: {}
 # of addresses with more than one location: {}
 # of similar locations: {}
@@ -746,10 +744,11 @@ class JobLocationsAnalyzer(Analyzer):
             len(locations),  # total locations
             len(valid_locations),  # valid locations
             len(addresses_data),  # successfully added addresses
-            unsual_report['empty_locations'],
             len(unsual_report['already_added']),  # duplicate locations
+            len(unsual_report['empty_locations']),
+            len(unsual_report['no_office_location']),
             len(loc_mappings),  # distinct locations
-            len(unsual_report['similar_locations']),
+            len(unsual_report['similar_locations']),  # addresses one + location
             sum(len(v) for k, v in unsual_report['similar_locations'].items()),
             len(unsual_report['first_try_geocoder_error']),
             len(unsual_report['first_try_geocoder_none']),
@@ -786,72 +785,64 @@ class JobLocationsAnalyzer(Analyzer):
                                reverse=True)[:topk]
         return [(addr[0], addr[1]['count']) for addr in top_addresses]
 
-    # `list_countries_alpha2` is a list of tuple where tuple[0] is the country
-    # name and tuple[1] is the count of the country
-    def _list_country_alpha2_to_country_name(self, list_countries_alpha2):
-        # Convert country names' alpha2 to their full country names
-        # TODO: is it better to have another column with the full country
-        # names? or will it take more storage?
-        list_countries_fullnames = []
-        # TODO: catch errors with `country_alpha2_to_country_name()`
-        for country_alpha2, count in list_countries_alpha2:
-            if country_alpha2 is None:
-                # Shouldn't happen but in any case ...
-                country_name = None
-            else:
-                try:
-                    country_name = country_alpha2_to_country_name(country_alpha2)
-                except KeyError as e:
-                    # self.logger.exception(e)
-                    self.logger.critical(
-                        "No country name for '{}'".format(country_alpha2))
-                    continue
-            list_countries_fullnames.append((country_name, count))
-        return list_countries_fullnames
-
-    # `job_post_ids` is a list of ids
-    def _get_min_max_published_dates(self, job_post_ids):
-        job_post_ids = convert_list_to_str(job_post_ids)
-        sql = "SELECT date_posted FROM job_posts WHERE id in ({}) ORDER BY " \
-              "date_posted ASC".format(job_post_ids)
-        results = self.db_session.execute(sql).fetchall()
-        return results[0][0], results[-1][0]
-
-    def _complete_report(self):
+    def _update_all_map_reports(self):
         # Update report for all
-        keys_and_funcs = [
-         ('europe', 'countries', 3, None, None),
-         ('usa', 'us_states', 2, self._get_us_states, self.us_states.get),
-         ('world', 'countries', 3, self._get_all_locations, self._get_country_name)]
-        for k1, k2, k3, fnc1, fnc2 in keys_and_funcs:
-            # Add the publishing dates for barh
-            min_date, max_date = self._get_min_max_published_dates(
-                self.report[k1]['barh']['job_post_ids'])
-            self.report[k1]['barh']['published_dates'] = [min_date, max_date]
-            # Update the `map` field
-            if k1 != 'europe' and not self.report[k1]['map']['top_10_addresses']:
-                addresses_data, valid_locations = \
-                    self._get_locations_geo_coords(
-                        locations=fnc1(),
+        self.logger.info("Updating map reports")
+        self.logger.warning("Europe map not yet implemented. Thus, the report "
+                            "for Europe will not be updated.")
+        maps_metadata = {
+            'usa': {
+                'location_col_idx': 2,
+                'locations_func': self._get_us_states,
+                'converter_func': self.us_states.get
+            },
+            'world': {
+                'location_col_idx': 3,
+                'locations_func': self._get_all_locations,
+                'converter_func': self._get_country_name
+            },
+        }
+        for k, v in maps_metadata.items():
+            self.logger.info("Updating the report for the '{}' map".format(k))
+            map_report = self.report[k]['map']
+            location_col_idx = v['location_col_idx']
+            locations_func = v['locations_func']
+            converter_func = v['converter_func']
+            if self.cache_addresses[k]:
+                addresses_data, valid_locations = self.cache_addresses[k]
+            else:
+                addresses_data, valid_locations = self._get_locations_geo_coords(
+                        locations=locations_func(),
                         fallbacks=['region+country', 'country'])
-                valid_locations = np.array(valid_locations)
-                unique_job_post_ids = np.unique(
-                    valid_locations[:, 0]).tolist()
-                self.report[k1]['map']['top_10_addresses'] = \
-                    self._get_topk_addresses(addresses_data)
-                self.report[k1]['map']['number_of_job_posts'] = \
-                    len(unique_job_post_ids)
-                self.report[k1]['map']['job_posts_ids'] = unique_job_post_ids
-                locations_list = [(i[0], i[k3]) for i in valid_locations]
-                results, list_ids, duplicates = self._count_locations(
-                    locations_list=locations_list,
-                    converter=fnc2)
-                self.report[k1]['map']['number_of_{}'.format(k2)] = len(results)
-                self.report[k1]['map']['top_10_{}'.format(k2)] = results[:10]
-                min_date, max_date = self._get_min_max_published_dates(
-                    unique_job_post_ids)
-                self.report[k1]['map']['published_dates'] = [min_date, max_date]
-                self.report[k1]['map']['duplicates'] = duplicates
+            valid_locations = np.array(valid_locations)
+            unique_job_post_ids = np.unique(valid_locations[:, 0]).tolist()
+            addresses_count_desc = sorted(
+                [(k, v['count']) for k, v in addresses_data.items()],
+                key=lambda x: x[1],
+                reverse=True)
+            list_locations = [(i[0], i[location_col_idx])
+                              for i in valid_locations]
+            results, list_ids, duplicates, skipped = self._count_items(
+                list_items=list_locations,
+                converter=converter_func,
+                ignore_duplicates=True)
+            min_date, max_date = self._get_min_max_published_dates(
+                unique_job_post_ids)
+            # Addresses (items1)
+            map_report['items1']['data'] = addresses_count_desc
+            map_report['items1']['number_of_items'] = \
+                len(addresses_count_desc)
+            map_report['items1']['sum_of_counts'] = \
+                sum([v['count'] for k, v in addresses_data.items()])
+            # Countries or US states (items2)
+            map_report['items2']['data'] = results
+            map_report['items2']['number_of_items'] = len(results)
+            map_report['items2']['sum_of_counts'] = sum([i[1] for i in results])
+            map_report['duplicates'] = duplicates
+            map_report['job_posts_ids'] = unique_job_post_ids
+            map_report['number_of_job_posts'] = len(unique_job_post_ids)
+            map_report['published_dates'] = [min_date, max_date]
+            map_report['skipped'] = skipped
 
 
 # Build location string from list of strings (city, region, country)

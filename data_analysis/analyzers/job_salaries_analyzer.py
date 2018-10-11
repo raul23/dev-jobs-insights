@@ -13,32 +13,125 @@ class JobSalariesAnalyzer(Analyzer):
         # NOTE: not all fields are numpy arrays
         # e.g. `job_id_to_mid_range_salary` is a dict
         self.stats_names = [
-            "salaries",
-            "job_ids_with_salary",
-            "job_id_to_mid_range_salary",
-            "sorted_mid_range_salaries",
-            "mean_mid_range_salary",
-            "std_mid_range_salary",
+            "salaries",  # np.array: job_post_id, min_salary, max_salary
+            "job_ids_with_salary",  # np.array; IMPORTANT: all job ids UNSORTED
+            "job_id_to_mid_range_salary",  # dict; IMPORTANT: all job ids
+            "mid_range_salaries_asc",  # ASC order
             "min_mid_range_salary",
             "max_mid_range_salary",
-            "avg_mid_range_salaries_in_world",
-            "avg_mid_range_salaries_in_europe",
-            "avg_mid_range_salaries_in_us_states",
-            "avg_mid_range_salaries_in_industries",
-            "avg_mid_range_salaries_in_roles",
-            "avg_mid_range_salaries_in_skills",
+            "mean_mid_range_salary",
+            "std_mid_range_salary",
+            "avg_mid_range_salaries_in_europe",  # np.array
+            "avg_mid_range_salaries_in_industries",  # np.array
+            "avg_mid_range_salaries_in_roles",  # np.array
+            "avg_mid_range_salaries_in_skills",  # np.array
+            "avg_mid_range_salaries_in_usa",  # np.array
+            "avg_mid_range_salaries_in_world",  # np.array
         ]
+        self.report = {
+            "currency": None,
+            "min_mid_range_salary": None,
+            "max_mid_range_salary": None,
+            "mean_mid_range_salary": None,
+            "std_mid_range_salary": None,
+            'histogram': {
+                'items': {
+                    'labels': ['mid_range_salaries_asc'],
+                    'data': [],
+                    'number_of_items': None,
+                },
+                'job_post_ids': [],
+                'number_of_job_posts': None,  
+                'published_dates': [],
+            },
+            'scatter_europe': {
+                'items': {
+                    'labels': ['country',
+                               'average_mid_range_salary_desc',
+                               'count_'],
+                    'data': [],
+                    'number_of_items': None,
+                },
+                'job_post_ids': [],
+                'number_of_job_posts': None,  
+                'published_dates': [],
+            },
+            'scatter_industries': {
+                'items': {
+                    'labels': ['industry',
+                               'average_mid_range_salary_desc',
+                               'count_'],
+                    'data': [],
+                    'number_of_items': None,
+                },
+                'job_post_ids': [],
+                'number_of_job_posts': None,  
+                'published_dates': [],
+            },
+            'scatter_roles': {
+                'items': {
+                    'labels': ['role',
+                               'average_mid_range_salary_desc',
+                               'count_'],
+                    'data': [],
+                    'number_of_items': None,
+                },
+                'job_post_ids': [],
+                'number_of_job_posts': None,
+                'published_dates': [],
+            },
+            'scatter_skills': {
+                'items': {
+                    'labels': ['skill',
+                               'average_mid_range_salary_desc',
+                               'count_'],
+                    'data': [],
+                    'number_of_items': None,
+                },
+                'job_post_ids': [],
+                'number_of_job_posts': None,  
+                'published_dates': [],
+            },
+            'scatter_usa': {
+                'items': {
+                    'labels': ['us_state',
+                               'average_mid_range_salary_desc',
+                               'count_'],
+                    'data': [],
+                    'number_of_items': None,
+                },
+                'job_post_ids': [],
+                'number_of_job_posts': None,  
+                'published_dates': [],
+            },
+            'scatter_world': {
+                'items': {
+                    'labels': ['country',
+                               'average_mid_range_salary_desc',
+                               'count_'],
+                    'data': [],
+                    'number_of_items': None,
+                },
+                'job_post_ids': [],
+                'number_of_job_posts': None,  
+                'published_dates': [],
+            },
+        }
         super().__init__(analysis_type,
                          conn,
                          db_session,
                          main_cfg,
                          logging_cfg,
                          self.stats_names,
+                         self.report,
                          __name__,
                          __file__,
                          os.getcwd())
         # List of topics against which to compute salary stats/graphs
         self.salary_topics = self._get_salary_topics()
+        # If the JSON is not found, an exception is triggered
+        self.us_states = self._load_json(os.path.expanduser(
+            self.main_cfg['data_filepaths']['us_states']))
 
     def run_analysis(self):
         # Reset all locations stats to be computed
@@ -48,27 +141,36 @@ class JobSalariesAnalyzer(Analyzer):
         # Numpy arrays are of shape: (number_of_rows_in_result_set, 3)
         salaries = np.array(self._get_salaries())
         self.stats['salaries'] = salaries
-        self.stats['job_ids_with_salary'] = salaries[:, 0]
+        self.stats['job_ids_with_salary'] = salaries[:, 0].tolist()
+        # Sanity check on `job_post_id`s to make sure only one salary per `job_post_id`
+        assert len(np.unique(self.stats['job_ids_with_salary'])) == \
+            len(self.stats['job_ids_with_salary']), \
+            "There should be one salary per job post"
         # Compute mid-range salary for each min-max salary interval
         self._compute_mid_range_salaries()
         # Compute global stats on salaries, e.g. global max/min mid-range salaries
         self._compute_global_stats()
-        # Analyze salary by different topics
+        # =====================================================================
+        #                          Analysis by topic
+        # =====================================================================
+        # Analyze salary by different topics (e.g. industries, skills)
         for topic in self.salary_topics:
             try:
+                key_scatter_cfg = 'scatter_salary_{}'.format(topic)
+                scatter_cfg = self.main_cfg['job_salaries'][key_scatter_cfg]
                 key_stats = 'avg_mid_range_salaries_in_{}'.format(topic)
-                self.stats[key_stats] = self._analyze_salary_by_topic(topic)
+                self.stats[key_stats] = self._analyze_salary_by_topic(
+                    topic=topic,
+                    use_fullnames=scatter_cfg.get('use_fullnames', False))
             except AttributeError as e:
                 self.logger.critical(e)
                 self.logger.error("The topic '{}' will be skipped!".format(topic))
             else:
-                ###########################
-                #       SCATTER PLOTS
-                ###########################
+                # =============================================================
+                #                       Scatter plot
+                # =============================================================
                 # Generate scatter plot of number of job posts vs average
                 # mid-range salary for each topic (e.g. locations, roles)
-                key_scatter_cfg = 'scatter_salary_{}'.format(topic)
-                scatter_cfg = self.main_cfg['job_salaries'][key_scatter_cfg]
                 self._generate_scatter_plot(
                     scatter_type=key_scatter_cfg,
                     y=self.stats[key_stats]['count'],
@@ -77,19 +179,35 @@ class JobSalariesAnalyzer(Analyzer):
                     scatter_cfg=scatter_cfg,
                     append_xlabel_title="({})".format(
                         self.main_cfg['job_salaries']['salary_currency']))
-        ###########################
-        #        GRAPHS
-        ###########################
+        # =====================================================================
+        #                            Histogram
+        # =====================================================================
         # Histogram
         hist_cfg = self.main_cfg['job_salaries']['histogram_job_salaries']
         self._generate_histogram(
             hist_type='histogram_job_salaries',
-            sorted_topic_count=self.stats['sorted_mid_range_salaries'],
+            data=self.stats['mid_range_salaries_asc'],
             hist_cfg=hist_cfg,
             append_xlabel_title="({})".format(
                 self.main_cfg['job_salaries']['salary_currency']))
+        # Update report for histogram
+        self._update_graph_report(
+            graph_report=self.report['histogram'],
+            items=self.stats['mid_range_salaries_asc'].tolist(),
+            job_post_ids=self.stats['job_ids_with_salary'])
         # TODO: add pie charts
         # self._generate_pie_chart()
+        # =====================================================================
+        #                               Report
+        # =====================================================================
+        # Update report for overall stats
+        self.report['currency'] = self.main_cfg['job_salaries']['salary_currency']
+        self.report['min_mid_range_salary'] = self.stats['min_mid_range_salary']
+        self.report['max_mid_range_salary'] = self.stats['max_mid_range_salary']
+        self.report['mean_mid_range_salary'] = self.stats['mean_mid_range_salary']
+        self.report['std_mid_range_salary'] = self.stats['std_mid_range_salary']
+        if self.main_cfg['job_salaries']['save_report']:
+            self._save_report(self.main_cfg['job_salaries']['report_filename'])
 
     def _add_salary(self, dict_, topic_name, job_id):
         dict_.setdefault(topic_name, {"average_mid_range_salary": 0,
@@ -105,7 +223,7 @@ class JobSalariesAnalyzer(Analyzer):
         # Update cumulative sum
         dict_[topic_name]["cumulative_sum"] += mid_range_salary
 
-    def _analyze_salary_by_topic(self, topic):
+    def _analyze_salary_by_topic(self, topic, use_fullnames=False):
         try:
             select_method = self.__getattribute__("_select_{}".format(topic))
         except AttributeError as e:
@@ -116,31 +234,41 @@ class JobSalariesAnalyzer(Analyzer):
         # expression
         str_job_post_ids = convert_list_to_str(job_post_ids)
         # Two columns selected: job_post_id and name
-        # e.g. name of an industry (telecommunication) or a skill (python)
-        results = select_method(str_job_post_ids)
-        # Sanity check on job_post_ids
+        # e.g. name of an industry or a skill
+        results = select_method(str_job_post_ids, use_fullnames)
+        # Sanity check on `job_post_id`s
+        # `set1`: all `job_post_id`s
         set1 = set(job_post_ids)
-        set2 = set(np.array(results)[:, 0].astype(np.int))
+        # `set2`: `job_post_id`s only for the topic
+        set2 = set(np.array(results)[:, 0].astype(np.int).tolist())
         assert len(set2) == len(set1.intersection(set2)), \
-            "set1 (all job_post_ids) should be a superset of set2"
+            "set1 (all `job_post_id`s) should be a superset of set2 " \
+            "(`job_post_id`s for the given topic only '{}'".format(topic)
         # Process results to extract average mid-range salaries for each
         # topic's rows
-        return self._process_topic_with_salaries(results, topic)
+        struct_arr = self._process_topic_with_salaries(results, topic)
+        # Update report for the given topic (e.g. industries, skills)
+        # NOTE: `items` are sorted by the `average_mid_range_salary`
+        self._update_graph_report(
+            graph_report=self.report['scatter_{}'.format(topic)],
+            items=struct_arr.tolist(),
+            job_post_ids=list(set2))
+        return struct_arr
 
     def _compute_global_stats(self):
         # Get the mid range salaries only, not the job_post_id column
-        sorted_mid_range_salaries = self.stats["sorted_mid_range_salaries"]
+        mid_range_salaries_asc = self.stats["mid_range_salaries_asc"]
         self.stats["mean_mid_range_salary"] = \
-            round(sorted_mid_range_salaries.mean())
+            round(mid_range_salaries_asc.mean())
         # Compute std across list of mid-range salaries
         self.stats["std_mid_range_salary"] = \
-            round(sorted_mid_range_salaries.std())
+            round(mid_range_salaries_asc.std())
         # Get min and max salaries across list of mid-range salaries
-        # Since the `sorted_mid_range_salaries` are in ascending order, we can
+        # Since the `mid_range_salaries_asc` are in ascending order, we can
         # easily get the min and max salaries from the first and last elements,
         # respectively.
-        self.stats["min_mid_range_salary"] = sorted_mid_range_salaries[0]
-        self.stats["max_mid_range_salary"] = sorted_mid_range_salaries[-1]
+        self.stats["min_mid_range_salary"] = mid_range_salaries_asc[0]
+        self.stats["max_mid_range_salary"] = mid_range_salaries_asc[-1]
 
     def _compute_mid_range_salaries(self):
         # Compute mid-range salary for each min-max salary interval
@@ -149,10 +277,10 @@ class JobSalariesAnalyzer(Analyzer):
         self.stats['job_id_to_mid_range_salary'] = \
             dict(zip(self.stats['salaries'][:, 0], mid_range_salaries))
         # Sort the mid range salaries in ascending order
-        self.stats['sorted_mid_range_salaries'] = np.sort(mid_range_salaries)
+        self.stats['mid_range_salaries_asc'] = np.sort(mid_range_salaries)
 
     # `sorted_topic_count` is a numpy array
-    def _generate_histogram(self, hist_type, sorted_topic_count, hist_cfg,
+    def _generate_histogram(self, hist_type, data, hist_cfg,
                             append_xlabel_title='', append_ylabel_title=''):
         if not hist_cfg['display_graph'] and not hist_cfg['save_graph']:
             self.logger.warning("The bar chart '{}' is disabled for the '{}' "
@@ -161,7 +289,7 @@ class JobSalariesAnalyzer(Analyzer):
         if append_xlabel_title:
             hist_cfg['xlabel'] += " " + append_xlabel_title
         if append_ylabel_title:
-            hist_cfg['xlabel'] += " " + append_ylabel_title
+            hist_cfg['ylabel'] += " " + append_ylabel_title
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
         self.logger.info("loading module 'utility.graphutil' ...")
@@ -169,16 +297,16 @@ class JobSalariesAnalyzer(Analyzer):
         self.logger.debug("finished loading module 'utility.graphutil'")
         self.logger.info("Generating histogram: {} ...".format(hist_type))
         if hist_cfg['start_bins'] == "min":
-            start_bins = sorted_topic_count.min()
+            start_bins = data.min()
         else:
             start_bins = hist_cfg['start_bins']
         if hist_cfg['end_bins'] == "max":
-            end_bins = sorted_topic_count.max() + 1
+            end_bins = data.max() + 1
         else:
             end_bins = hist_cfg['end_bins']
         size_bins = hist_cfg['size_bins']
         draw_histogram(
-            data=sorted_topic_count,
+            data=data,
             bins=np.arange(start_bins, end_bins, size_bins),
             xlabel=hist_cfg['xlabel'],
             ylabel=hist_cfg['ylabel'],
@@ -280,7 +408,7 @@ class JobSalariesAnalyzer(Analyzer):
         struct_arr = struct_arr[::-1]
         return struct_arr
 
-    def _select_europe(self, job_post_ids):
+    def _select_europe(self, job_post_ids, use_fullnames=False):
         """
         Returns all European countries with the specified `job_post_ids`. A list
         of tuples is returned where a tuple is of the form (job_post_id, country).
@@ -290,9 +418,14 @@ class JobSalariesAnalyzer(Analyzer):
         sql = "SELECT job_post_id, country FROM job_locations WHERE" \
               " job_post_id in ({}) and country in ({})".format(
                 job_post_ids, self._get_european_countries_as_str())
-        return self.db_session.execute(sql).fetchall()
+        results = self.db_session.execute(sql).fetchall()
+        if use_fullnames:
+            results = self._convert_countries_names(
+                list_countries=results,
+                converter=self._get_country_name)
+        return results
 
-    def _select_industries(self, job_post_ids):
+    def _select_industries(self, job_post_ids, *args):
         """
         Returns all industries with the specified `job_post_id`s. A list of
         tuples is returned where a tuple is of the form (job_post_id, name).
@@ -303,7 +436,7 @@ class JobSalariesAnalyzer(Analyzer):
               "({})".format(job_post_ids)
         return self.db_session.execute(sql).fetchall()
 
-    def _select_roles(self, job_post_ids):
+    def _select_roles(self, job_post_ids, *args):
         """
         Returns all roles with the specified `job_post_id`s. A list of
         tuples is returned where a tuple is of the form (job_post_id, name).
@@ -314,7 +447,7 @@ class JobSalariesAnalyzer(Analyzer):
               "({})".format(job_post_ids)
         return self.db_session.execute(sql).fetchall()
 
-    def _select_skills(self, job_post_ids):
+    def _select_skills(self, job_post_ids, *args):
         """
         Returns all skills with the specified `job_post_id`s. A list of
         tuples is returned where a tuple is of the form (job_post_id, name).
@@ -325,7 +458,7 @@ class JobSalariesAnalyzer(Analyzer):
               "({})".format(job_post_ids)
         return self.db_session.execute(sql).fetchall()
 
-    def _select_usa(self, job_post_ids):
+    def _select_usa(self, job_post_ids, use_fullnames=False):
         """
         Returns all US states with the specified `job_post_id`s. A list of
         tuples is returned where a tuple is of the form (job_post_id, country).
@@ -335,9 +468,14 @@ class JobSalariesAnalyzer(Analyzer):
         """
         sql = "SELECT job_post_id, region FROM job_locations WHERE job_post_id " \
               "in ({}) and country='US' and region!='NULL'".format(job_post_ids)
-        return self.db_session.execute(sql).fetchall()
+        results = self.db_session.execute(sql).fetchall()
+        if use_fullnames:
+            results = self._convert_countries_names(
+                list_countries=results,
+                converter=self.us_states.get)
+        return results
 
-    def _select_world(self, job_post_ids):
+    def _select_world(self, job_post_ids, use_fullnames=False):
         """
         Returns all countries with the specified `job_post_id`s. A list of
         tuples is returned where a tuple is of the form (job_post_id, country).
@@ -346,4 +484,10 @@ class JobSalariesAnalyzer(Analyzer):
         """
         sql = "SELECT job_post_id, country FROM job_locations WHERE job_post_id " \
               "in ({})".format(job_post_ids)
-        return self.db_session.execute(sql).fetchall()
+        results = self.db_session.execute(sql).fetchall()
+        if use_fullnames:
+            results = self._convert_countries_names(
+                list_countries=results,
+                converter=self._get_country_name)
+        return results
+

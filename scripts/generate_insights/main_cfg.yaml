@@ -50,12 +50,14 @@ companies:
 #         INDUSTRIES
 #=============================
 industries:
-  run_analysis: False
+  run_analysis: True
+  save_report: True
+  report_filename: industries_report.json
   # Horizontal bar chart
   # TODO: add fontweight='bold' option
   barh_chart_industries:
     display_graph: False
-    save_graph: False
+    save_graph: True
     fname: barh_industries.png
     # Add text (number of job posts) to the right of each bar
     add_text_right_bar: True
@@ -66,13 +68,15 @@ industries:
     max_label_length: 30
     title: Top {} most popular industries @ stackoverflow.com/jobs
     topk: 20
-    xlabel: Number of job posts
+    xlabel: Number of occurrences in job posts
     ylabel: Industries
 #=============================
 #        JOB BENEFITS
 #=============================
 job_benefits:
-  run_analysis: False
+  run_analysis: True
+  save_report: True
+  report_filename: job_benefits_report.json
   barh_chart_job_benefits:
     display_graph: False
     save_graph: True
@@ -86,7 +90,7 @@ job_benefits:
     max_label_length: 60
     title: Top {} most popular job benefits @ stackoverflow.com/jobs
     topk: 20
-    xlabel: Number of job posts
+    xlabel: Number of occurrences in job posts
     ylabel: Industries
 #=============================
 #       JOB LOCATIONS
@@ -105,7 +109,7 @@ job_locations:
   barh_chart_europe:
     use_fullnames:  True
     display_graph: False
-    save_graph: False
+    save_graph: True
     fname: barh_europe.png
     # Add text (number of job posts) to the right of each bar
     add_text_right_bar: True
@@ -116,13 +120,13 @@ job_locations:
     max_label_length: 60
     title: Top {} most popular european countries @ stackoverflow.com/jobs
     topk: 20
-    xlabel: Number of job posts
+    xlabel: Number of occurrences in job posts
     ylabel: Countries
   barh_chart_usa:
     use_fullnames: True
-    ignore_none: True
+    ignore_none: False
     display_graph: False
-    save_graph: False
+    save_graph: True
     fname: barh_usa.png
     # Add text (number of job posts) to the right of each bar
     add_text_right_bar: True
@@ -133,12 +137,12 @@ job_locations:
     max_label_length: 60
     title: Top {} most popular US states @ stackoverflow.com/jobs
     topk: 20
-    xlabel: Number of job posts
+    xlabel: Number of occurrences in job posts
     ylabel: US states
   barh_chart_world:
     use_fullnames: True
     display_graph: False
-    save_graph: False
+    save_graph: True
     fname: barh_world.png
     # Add text (number of job posts) to the right of each bar
     add_text_right_bar: True
@@ -149,7 +153,7 @@ job_locations:
     max_label_length: 60
     title: Top {} most popular countries @ stackoverflow.com/jobs
     topk: 20
-    xlabel: Number of job posts
+    xlabel: Number of occurrences in job posts
     ylabel: Countries
   #=============================
   #          MAPS
@@ -160,7 +164,7 @@ job_locations:
   # TODO: add plt.tight_layout() to map_usa
   map_usa:
     display_graph: False
-    save_graph: False
+    save_graph: True
     fname: map_usa.png
     draw_parallels: False
     draw_meridians: False
@@ -194,7 +198,7 @@ job_locations:
       marker_scale: 2
   map_world:
     display_graph: False
-    save_graph:  False
+    save_graph:  True
     fname: map_world.png
     # TODO: drawing parallels and meridians disabled
     draw_parallels: True
@@ -252,7 +256,9 @@ job_posts:
 #       JOB SALARIES
 #=============================
 job_salaries:
-  run_analysis: False
+  run_analysis: True
+  save_report: True
+  report_filename: job_salaries_report.json
   salary_currency: USD
   salary_thresholds:
     # Thresholds for removing salary outliers, i.e. salaries in the range
@@ -263,12 +269,12 @@ job_salaries:
   # TODO: remove the `topics` key and add the list as the new keys
   # Then within each key, add the scatter plots
   topics: # Dimensions of analysis
-    europe: False
-    industries: False
-    roles: False
+    europe: True
+    industries: True
+    roles: True
     skills: True
-    usa: False
-    world: False
+    usa: True
+    world: True
   #=============================
   #         HISTOGRAM
   #=============================
@@ -280,7 +286,7 @@ job_salaries:
     start_bins: 0
     end_bins: max
     size_bins: 10000
-    xlabel: Mid-range salaries
+    xlabel: Average mid-range salaries
     ylabel: Number of job posts
     title: "Histogram: Mid-range salaries among Stack Overflow developer job posts"
     grid_which: major
@@ -296,15 +302,16 @@ job_salaries:
   #       SCATTER PLOTS
   #=============================
   scatter_salary_europe:
+    use_fullnames:  True
     plot:
       auto_open: False
       filename: scatter_salary_europe.html
       image_width: 800
       image_height: 600
-      include_plotlyjs: True
+      include_plotlyjs: False
       link_text: Export to plot.ly
       # 'file' | 'div' | 'None'
-      output_type: file
+      output_type: div
       show_link: True
       validate: True
     plotly:
@@ -321,7 +328,7 @@ job_salaries:
             color: "#7f7f7f"
           showline: True
         xaxis:
-          title: Mid-range salaries
+          title: Average mid-range salaries
           titlefont:
             family: "Courier New, monospace"
             size: 18
@@ -334,10 +341,10 @@ job_salaries:
       filename: scatter_salary_industries.html
       image_width: 800
       image_height: 600
-      include_plotlyjs: True
+      include_plotlyjs: False
       link_text: Export to plot.ly
       # 'file' | 'div' | 'None'
-      output_type: file
+      output_type: div
       show_link: True
       validate: True
     # Plotly options need to be separated from my own options since it will
@@ -357,7 +364,7 @@ job_salaries:
             color: "#7f7f7f"
           showline: True
         xaxis:
-          title: Mid-range salaries
+          title: Average mid-range salaries
           titlefont:
             family: "Courier New, monospace"
             size: 18
@@ -370,10 +377,10 @@ job_salaries:
       filename: scatter_salary_roles.html
       image_width: 800
       image_height: 600
-      include_plotlyjs: True
+      include_plotlyjs: False
       link_text: Export to plot.ly
       # 'file' | 'div' | 'None'
-      output_type: file
+      output_type: div
       show_link: True
       validate: True
     plotly:
@@ -390,7 +397,7 @@ job_salaries:
             color: "#7f7f7f"
           showline: True
         xaxis:
-          title: Mid-range salaries
+          title: Average mid-range salaries
           titlefont:
             family: "Courier New, monospace"
             size: 18
@@ -423,7 +430,7 @@ job_salaries:
             color: "#7f7f7f"
           showline: True
         xaxis:
-          title: Mid-range salaries
+          title: Average mid-range salaries
           titlefont:
             family: "Courier New, monospace"
             size: 18
@@ -431,15 +438,16 @@ job_salaries:
           tickformat: $0.0f
           showline: False
   scatter_salary_usa:
+    use_fullnames:  True
     plot:
       auto_open: False
       filename: scatter_salary_usa.html
       image_width: 800
       image_height: 600
-      include_plotlyjs: True
+      include_plotlyjs: False
       link_text: Export to plot.ly
       # 'file' | 'div' | 'None'
-      output_type: file
+      output_type: div
       show_link: True
       validate: True
     plotly:
@@ -456,7 +464,7 @@ job_salaries:
             color: "#7f7f7f"
           showline: True
         xaxis:
-          title: Mid-range salaries
+          title: Average mid-range salaries
           titlefont:
             family: "Courier New, monospace"
             size: 18
@@ -464,15 +472,16 @@ job_salaries:
           tickformat: $0.0f
           showline: False
   scatter_salary_world:
+    use_fullnames:  True
     plot:
       auto_open: False
       filename: scatter_salary_world.html
       image_width: 800
       image_height: 600
-      include_plotlyjs: True
+      include_plotlyjs: False
       link_text: Export to plot.ly
       # 'file' | 'div' | 'None'
-      output_type: file
+      output_type: div
       show_link: True
       validate: True
     plotly:
@@ -489,7 +498,7 @@ job_salaries:
             color: "#7f7f7f"
           showline: True
         xaxis:
-          title: Mid-range salaries
+          title: Average mid-range salaries
           titlefont:
             family: "Courier New, monospace"
             size: 18
@@ -500,7 +509,9 @@ job_salaries:
 #          ROLES
 #=============================
 roles:
-  run_analysis: False
+  run_analysis: True
+  save_report: True
+  report_filename: roles_report.json
   # Horizontal bar chart
   barh_chart_roles:
     display_graph: False
@@ -515,13 +526,15 @@ roles:
     max_label_length: 30
     title: Top {} most popular roles @ stackoverflow.com/jobs
     topk: 20
-    xlabel: Number of job posts
+    xlabel: Number of occurrences in job posts
     ylabel: Roles
 #=============================
 #         SKILLS
 #=============================
 skills:
-  run_analysis: False
+  run_analysis: True
+  save_report: True
+  report_filename: skills_report.json
   # Horizontal bar chart
   barh_chart_skills:
     display_graph: False
@@ -536,5 +549,5 @@ skills:
     max_label_length: 30
     title: Top {} most popular technologies @ stackoverflow.com/jobs
     topk: 20
-    xlabel: Number of job posts
+    xlabel: Number of occurrences in job posts
     ylabel: Technologies (aka skills)
