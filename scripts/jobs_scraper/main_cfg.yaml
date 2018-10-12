@@ -7,16 +7,16 @@ db_filepath: ~/databases/rss_feeds.sqlite
 #=============================
 data_paths:
   # Short names --> Full names
-  us_states: ~/data/dev_jobs_insights/us_states.json
+  us_states: ~/data/dev-jobs-insights/us_states.json
   # NOTE: if `cached_webpages_dirpath` is 'None', then the webpages will not be
   # cached. The webpages will then be retrieved from the internet.
-  cached_webpages: ~/data/dev_jobs_insights/cache/webpages/stackoverflow_job_posts/
-  currencies: ~/data/dev_jobs_insights/currencies.json
+  cached_webpages: ~/data/dev-jobs-insights/cache/webpages/stackoverflow_job_posts/
+  currencies: ~/data/dev-jobs-insights/currencies.json
 #=============================
 #       SAVING CONFIG
 #=============================
 saving_cfg:
-  scraped_job_data_dirpath: ~/data/dev_jobs_insights/scraped_job_data
+  scraped_job_data_dirpath: ~/data/dev-jobs-insights/scraped_job_data
   split_size: 100
 #=============================
 #       SALARY CONFIG

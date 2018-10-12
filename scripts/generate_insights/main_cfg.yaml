@@ -8,17 +8,17 @@ db_url:
 #      DATA INPUT CONFIG
 #=============================
 data_filepaths:
-  countries: ~/data/dev_jobs_insights/countries.json
+  countries: ~/data/dev-jobs-insights/countries.json
   # Short names --> Full names
-  us_states: ~/data/dev_jobs_insights/us_states.json
+  us_states: ~/data/dev-jobs-insights/us_states.json
   # Full names --> Short names
-  reversed_us_states: ~/data/dev_jobs_insights/reversed_us_states.json
-  shape: ~/data/dev_jobs_insights/basemap/st99_d00
+  reversed_us_states: ~/data/dev-jobs-insights/reversed_us_states.json
+  shape: ~/data/dev-jobs-insights/basemap/st99_d00
   # `addresses_geo_coords`: dictionary of longitude and latitude coordinates of
   # some addresses (cities and countries) around the world
   # - keys: full addresses as given by the geocoding service
   # - values: `geopy.location.Location` objects (storing the geo coordinates)
-  cache_adr_geo_coords: ~/data/dev_jobs_insights/cache/addresses_geo_coords.pkl
+  cache_adr_geo_coords: ~/data/dev-jobs-insights/cache/addresses_geo_coords.pkl
   # `locations_mappings`: mappings from location names to their corresponding
   # `geopy.location.Location` objects. There can be more than one location name
   # pointing to the same full geo coordinates. Thus, we can't use the location
@@ -31,7 +31,7 @@ data_filepaths:
   #     1. For a given location name, get its address from `locations_mappings`
   #     2. From the address obtained in 1., get its geo coordinates from
   #        `addresses_geo_coords`
-  cache_loc_mappings: ~/data/dev_jobs_insights/cache/locations_mappings.pkl
+  cache_loc_mappings: ~/data/dev-jobs-insights/cache/locations_mappings.pkl
 #=============================
 #       SAVING CONFIG
 #=============================
@@ -40,7 +40,7 @@ data_filepaths:
 # - graphs/maps: PNG format
 # - scatter plots: HTML+JavaScript (produced with Plotly)
 # - stats: PICKLE format (dict)
-saving_dirpath: ~/data/reports/
+saving_dirpath: ~/data/dev-jobs-insights/reports/
 #=============================
 #         COMPANIES
 #=============================
