@@ -126,3 +126,6 @@ sandbox/
 
 # Test files
 test*.py
+
+# Test config files
+my_main_cfg.yaml
