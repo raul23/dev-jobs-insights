@@ -1,7 +1,7 @@
 import os
 # Own modules
-from utility.genutil import get_local_time
-from utility.logging_boilerplate import LoggingBoilerplate
+from utilities.genutils import get_local_time
+from utilities.logging_boilerplate import LoggingBoilerplate
 
 
 class Feed:

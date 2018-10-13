@@ -4,7 +4,7 @@ import ipdb
 import numpy as np
 # Own modules
 from .analyzer import Analyzer
-from utility.genutil import convert_list_to_str
+from utilities.genutils import convert_list_to_str
 
 
 class JobSalariesAnalyzer(Analyzer):
@@ -292,9 +292,9 @@ class JobSalariesAnalyzer(Analyzer):
             hist_cfg['ylabel'] += " " + append_ylabel_title
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
-        self.logger.info("loading module 'utility.graphutil' ...")
-        from utility.graphutil import draw_histogram
-        self.logger.debug("finished loading module 'utility.graphutil'")
+        self.logger.info("loading module 'utilities.graphutil' ...")
+        from utilities.graphutils import draw_histogram
+        self.logger.debug("finished loading module 'utilities.graphutil'")
         self.logger.info("Generating histogram: {} ...".format(hist_type))
         if hist_cfg['start_bins'] == "min":
             start_bins = data.min()
@@ -344,9 +344,9 @@ class JobSalariesAnalyzer(Analyzer):
             plotly_cfg['layout']['yaxis']['title'] += " " + append_ylabel_title
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
-        self.logger.info("loading module 'utility.graphutil' ...")
-        from utility.graphutil import draw_scatter_plot
-        self.logger.debug("finished loading module 'utility.graphutil'")
+        self.logger.info("loading module 'utilities.graphutil' ...")
+        from utilities.graphutils import draw_scatter_plot
+        self.logger.debug("finished loading module 'utilities.graphutil'")
         self.logger.info("Generating scatter plot '{}' ...".format(scatter_type))
         # Add full path to plot's filename
         plot_cfg['filename'] = os.path.join(

@@ -8,7 +8,7 @@ import sys
 import ipdb
 # Own modules
 from data_analysis import job_data_analyzer as ja
-from utility.script_boilerplate import ScriptBoilerplate
+from utilities.script_boilerplate import ScriptBoilerplate
 spinner.stop()
 
 

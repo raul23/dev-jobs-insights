@@ -6,8 +6,8 @@ import ipdb
 from tables import (Company, JobPost, ExperienceLevel, Industry, JobBenefit,
                     JobSalary, JobLocation, Role, Skill)
 from tables import ValueOverrideError
-from utility.logging_boilerplate import LoggingBoilerplate
-from utility.logging_wrapper import LoggingWrapper
+from utilities.logging_boilerplate import LoggingBoilerplate
+from utilities.logging_wrapper import LoggingWrapper
 
 
 class DuplicateRecordError(Exception):

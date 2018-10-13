@@ -10,8 +10,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 # Own modules
 from tables import Base
-from utility.genutil import load_pickle, read_yaml_config
-from utility.script_boilerplate import ScriptBoilerplate
+from utilities.genutils import load_pickle, read_yaml_config
+from utilities.script_boilerplate import ScriptBoilerplate
 
 
 logger = None

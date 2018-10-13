@@ -9,8 +9,8 @@ import feedparser
 from entry import Entry
 from exc import *
 from feed import Feed
-from utility.genutil import connect_db, read_yaml_config
-from utility.script_boilerplate import ScriptBoilerplate
+from utilities.genutils import connect_db, read_yaml_config
+from utilities.script_boilerplate import ScriptBoilerplate
 
 
 class RSSReader:

@@ -5,9 +5,9 @@ import numpy as np
 from pycountry_convert import country_alpha2_to_continent_code, \
     country_alpha2_to_country_name, map_countries
 # Own modules
-from utility.genutil import convert_list_to_str, dump_json, dump_pickle, \
+from utilities.genutils import convert_list_to_str, dump_json, dump_pickle, \
     load_json, load_pickle
-from utility.logging_boilerplate import LoggingBoilerplate
+from utilities.logging_boilerplate import LoggingBoilerplate
 
 
 class Analyzer:
@@ -196,9 +196,9 @@ class Analyzer:
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
         # TODO: add spinner when loading this module
-        self.logger.info("loading module 'utility.graphutil' ...")
-        from utility.graphutil import draw_barh_chart
-        self.logger.debug("finished loading module 'utility.graphutil'")
+        self.logger.info("loading module 'utilities.graphutil' ...")
+        from utilities.graphutils import draw_barh_chart
+        self.logger.debug("finished loading module 'utilities.graphutil'")
         self.logger.info("Generating bar chart '{}' ...".format(barh_type))
         topk = barh_chart_cfg['topk']
         shorter_labels = self._shrink_labels(

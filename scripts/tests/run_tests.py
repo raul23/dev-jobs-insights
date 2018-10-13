@@ -14,8 +14,8 @@ from job_salaries import run_tests_on_job_salaries
 from roles import run_tests_on_roles
 from skills import run_tests_on_skills
 from tables import Base
-from utility.genutil import read_yaml_config
-from utility.script_boilerplate import ScriptBoilerplate
+from utilities.genutils import read_yaml_config
+from utilities.script_boilerplate import ScriptBoilerplate
 
 logger = None
 db_session = None

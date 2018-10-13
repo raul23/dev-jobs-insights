@@ -2,7 +2,7 @@ import os
 # Third-party modules
 import ipdb
 # Own modules
-from utility.logging_boilerplate import LoggingBoilerplate
+from utilities.logging_boilerplate import LoggingBoilerplate
 
 logger = None
 db_session = None

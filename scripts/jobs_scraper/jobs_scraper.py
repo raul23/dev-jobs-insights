@@ -19,10 +19,10 @@ import ipdb
 from job_data import DuplicateRecordError, JobData, NoOfficeLocationFoundError
 import exc
 from scraping_session import ScrapingSession
-from utility.genutil import connect_db, dump_pickle, get_local_datetime, \
+from utilities.genutils import connect_db, dump_pickle, get_local_datetime, \
     load_json, read_file, read_yaml_config, write_file
-from utility.logging_boilerplate import LoggingBoilerplate
-from utility.script_boilerplate import ScriptBoilerplate
+from utilities.logging_boilerplate import LoggingBoilerplate
+from utilities.script_boilerplate import ScriptBoilerplate
 
 
 # ref.: https://stackoverflow.com/a/50120316

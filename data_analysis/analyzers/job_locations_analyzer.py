@@ -7,7 +7,7 @@ import ipdb
 import numpy as np
 # Own modules
 from .analyzer import Analyzer
-from utility.genutil import add_plural
+from utilities.genutils import add_plural
 
 
 class JobLocationsAnalyzer(Analyzer):
@@ -354,9 +354,9 @@ class JobLocationsAnalyzer(Analyzer):
         """
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
-        self.logger.info("loading module 'utility.graphutil' ...")
-        from utility.graphutil import draw_map_usa
-        self.logger.debug("finished loading module 'utility.graphutil'")
+        self.logger.info("loading module 'utilities.graphutil' ...")
+        from utilities.graphutils import draw_map_usa
+        self.logger.debug("finished loading module 'utilities.graphutil'")
         self.logger.info("Generating map '{}' ...".format(map_type))
         addresses_data, valid_locations = self._get_locations_geo_coords(
             locations=self._get_us_states(),
@@ -392,9 +392,9 @@ class JobLocationsAnalyzer(Analyzer):
             return 1
         # Lazy import. Loading of module takes lots of time. So do it only when
         # needed
-        self.logger.info("loading module 'utility.graphutil' ...")
-        from utility.graphutil import draw_map_world
-        self.logger.debug("finished loading module 'utility.graphutil'")
+        self.logger.info("loading module 'utilities.graphutil' ...")
+        from utilities.graphutils import draw_map_world
+        self.logger.debug("finished loading module 'utilities.graphutil'")
         self.logger.info("Generating map '{}' ...".format(map_type))
         addresses_data, valid_locations = self._get_locations_geo_coords(
             locations=self._get_all_locations(),

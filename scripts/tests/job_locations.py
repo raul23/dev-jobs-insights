@@ -3,7 +3,7 @@ import os
 import ipdb
 # Own modules
 from analyzers.job_locations_analyzer import build_location
-from utility.logging_boilerplate import LoggingBoilerplate
+from utilities.logging_boilerplate import LoggingBoilerplate
 
 logger = None
 db_session = None
