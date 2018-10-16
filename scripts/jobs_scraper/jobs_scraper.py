@@ -46,11 +46,11 @@ class JobsScraper:
         self.logger = logger
         # Setup `job_data`'s logger
         log_info = JobData.get_logging_info()
-        sb = LoggingBoilerplate(log_info[0],
+        lb = LoggingBoilerplate(log_info[0],
                                 log_info[1],
                                 log_info[2],
                                 logging_cfg)
-        self.job_data_logger = sb.get_logger()
+        self.job_data_logger = lb.get_logger()
         # =====================================================================
         # Sessions initialization
         # =====================================================================
@@ -144,6 +144,11 @@ class JobsScraper:
                 self.logger.info("#{} Processing '{}'".format(count, url))
                 self.logger.info("Scraping session initialized for job_post_id "
                                  "{}".format(job_post_id))
+
+                # TODO: remove, used for only saving webpages
+                # html = self.load_cached_webpage()
+                # continue
+
                 # Update the job post's URL
                 self.session.data.set_job_post(url=url)
                 # =============================================================
