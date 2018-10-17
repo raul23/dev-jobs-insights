@@ -10,7 +10,6 @@ SCHEMA_FILENAME = "rss_feeds_schema.sql"
 
 if __name__ == '__main__':
     # Setup argument parser
-    parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser(description="Create SQLite database '{}'".format(DB_FILENAME))
     parser.add_argument("-o", action="store_true", dest="overwrite",
                         default=False,
