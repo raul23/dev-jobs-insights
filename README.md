@@ -86,7 +86,7 @@ The next table shows stats about the data used for generating the world map:
           Switzerland <b>(34)</b></td>
     </tr>
     <tr>
-        <td align="center"><b>Top 5 cities (based on number of occurrences in job posts)</b></td>
+        <td align="center"><b>Top 5 cities in the world (based on number of occurrences in job posts)</b></td>
         <td align="center">
         Berlin, 10117, Deutschland <b>(58)</b> <br/>
         London, Greater London, England, SW1A 2DU, UK <b>(46)</b> <br/>
