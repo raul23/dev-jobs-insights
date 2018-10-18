@@ -86,7 +86,7 @@ The next table shows stats about the data used for generating the world map:
           Switzerland <b>(34)</b></td>
     </tr>
     <tr>
-        <td align="center"><b>Top 5 job locations (based on number of occurrences in job posts)</b></td>
+        <td align="center"><b>Top 5 cities (based on number of occurrences in job posts)</b></td>
         <td align="center">
         Berlin, 10117, Deutschland <b>(58)</b> <br/>
         London, Greater London, England, SW1A 2DU, UK <b>(46)</b> <br/>
@@ -134,7 +134,7 @@ The next table shows stats about the data used for generating the USA map:
         New Jersey <b>(23)</b></td>
     </tr>
     <tr>
-        <td align="center"><b>Top 5 US job locations (based on number of occurrences in job posts)</b></td>
+        <td align="center"><b>Top 5 US cities (based on number of occurrences in job posts)</b></td>
         <td align="center">
         NYC, New York, USA <b>(33)</b> <br/>
         SF, California, USA <b>(26)</b> <br/>
