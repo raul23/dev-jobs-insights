@@ -103,7 +103,7 @@ means that more job posts are associated with this location compared to other
 locations having smaller dots.
 
 Each job post can be associated with more than one job location and a job
-location consists of three components: city, region (aka state or province), and
+location consists of three components: city, region (a.k.a state or province), and
 country.
 
 ## Map of the distribution of job posts in the USA
