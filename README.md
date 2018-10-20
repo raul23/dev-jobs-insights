@@ -96,8 +96,8 @@ The next table shows stats about the data used for generating the world map:
     </tr>
 </table>
 
-Each dot on the map represents a particular job location (or address) from a job
-post and the size of the dot gives the relative importance of the job location
+Each dot on the map represents a particular job location (or address) from job
+posts and the size of the dot gives the relative importance of the job location
 compared to other job locations. Thus, a bigger dot for a particular location
 means that more job posts are associated with this location compared to other
 locations having smaller dots.
