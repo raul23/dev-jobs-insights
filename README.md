@@ -211,7 +211,7 @@ I converted the range of salaries into a mid-range salary, e.g. €50k - 65k -->
 €57.5
 
 ## TODOs
-- Display jobs data summary directly on each graph or map
+- Display jobs data summary directly on each graph and map
 - Integrate more jobs data from Stack Overflow
 - Generate map plots with plot.ly graphing library so the dots can be clicked on and be shown information such
 as the number of job posts and the min and max salaries for a particular job location
